@@ -1,0 +1,467 @@
+<script setup>
+import { computed, h, ref } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
+const isCollapsed = ref(localStorage.getItem('portGateSidebar') === 'collapsed')
+
+const icons = {
+  home: [
+    ['path', { d: 'M3 10.5 12 3l9 7.5' }],
+    ['path', { d: 'M5 9.5V21h14V9.5' }],
+    ['path', { d: 'M9 21v-7h6v7' }],
+  ],
+  cctv: [
+    ['path', { d: 'M4 6h11l3 3v5H4z' }],
+    ['path', { d: 'M18 10h3v3h-3' }],
+    ['path', { d: 'M9 14v4' }],
+    ['path', { d: 'M6 21h10' }],
+    ['path', { d: 'M12 14l4 7' }],
+  ],
+  dashboard: [
+    ['path', { d: 'M4 4h7v7H4z' }],
+    ['path', { d: 'M13 4h7v4h-7z' }],
+    ['path', { d: 'M13 10h7v10h-7z' }],
+    ['path', { d: 'M4 13h7v7H4z' }],
+  ],
+  clipboard: [
+    ['path', { d: 'M9 4h6l1 2h3v15H5V6h3z' }],
+    ['path', { d: 'M9 4h6v4H9z' }],
+    ['path', { d: 'M8 12h8' }],
+    ['path', { d: 'M8 16h6' }],
+  ],
+  truck: [
+    ['path', { d: 'M3 7h11v9H3z' }],
+    ['path', { d: 'M14 10h4l3 3v3h-7z' }],
+    ['circle', { cx: '7', cy: '18', r: '2' }],
+    ['circle', { cx: '18', cy: '18', r: '2' }],
+  ],
+  container: [
+    ['path', { d: 'M3 7h18v11H3z' }],
+    ['path', { d: 'M7 7v11' }],
+    ['path', { d: 'M11 7v11' }],
+    ['path', { d: 'M15 7v11' }],
+    ['path', { d: 'M3 11h18' }],
+  ],
+  bell: [
+    ['path', { d: 'M6 17h12l-1.5-2.5V10a4.5 4.5 0 0 0-9 0v4.5z' }],
+    ['path', { d: 'M10 20h4' }],
+    ['path', { d: 'M12 4V2.5' }],
+  ],
+  request: [
+    ['path', { d: 'M5 4h10l4 4v12H5z' }],
+    ['path', { d: 'M15 4v4h4' }],
+    ['path', { d: 'M9 14h6' }],
+    ['path', { d: 'M12 11v6' }],
+  ],
+  approval: [
+    ['path', { d: 'M5 4h14v16H5z' }],
+    ['path', { d: 'm8 12 3 3 5-6' }],
+  ],
+  driver: [
+    ['circle', { cx: '12', cy: '7', r: '3' }],
+    ['path', { d: 'M5 21a7 7 0 0 1 14 0' }],
+    ['path', { d: 'm16 12 2 2 4-5' }],
+  ],
+  list: [
+    ['path', { d: 'M8 6h13' }],
+    ['path', { d: 'M8 12h13' }],
+    ['path', { d: 'M8 18h13' }],
+    ['path', { d: 'M3 6h1' }],
+    ['path', { d: 'M3 12h1' }],
+    ['path', { d: 'M3 18h1' }],
+  ],
+  menu: [
+    ['path', { d: 'M4 7h16' }],
+    ['path', { d: 'M4 12h16' }],
+    ['path', { d: 'M4 17h16' }],
+  ],
+  logout: [
+    ['path', { d: 'M10 5H5v14h5' }],
+    ['path', { d: 'M14 8l4 4-4 4' }],
+    ['path', { d: 'M8 12h10' }],
+  ],
+}
+
+const MenuIcon = (props) =>
+  h(
+    'svg',
+    {
+      class: 'menu-icon',
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': '1.8',
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      'aria-hidden': 'true',
+    },
+    icons[props.name]?.map(([tag, attrs]) => h(tag, attrs)) || icons.home.map(([tag, attrs]) => h(tag, attrs)),
+  )
+
+const menus = {
+  carrier: [
+    { label: '업무 홈', path: '/carrier/dashboard', icon: 'home' },
+    { label: '운송 요청', path: '/carrier/requests', icon: 'request' },
+    { label: '승인 현황', path: '/carrier/approvals', icon: 'approval' },
+  ],
+  driver: [
+    { label: '작업 홈', path: '/driver/dashboard', icon: 'driver' },
+    { label: '작업 현황', path: '/driver/work-status', icon: 'list' },
+  ],
+  admin: [
+    { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
+    { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
+    { label: '작업 관리', path: '/admin/tasks', icon: 'clipboard' },
+    { label: '차량 출입 조회', path: '/admin/gate-logs', icon: 'truck' },
+    { label: '컨테이너 조회', path: '/admin/containers', icon: 'container' },
+    { label: '알림/이벤트', path: '/admin/events', icon: 'bell' },
+  ],
+}
+
+const roleLabels = {
+  carrier: '운송사 담당자',
+  driver: '화물 기사',
+  admin: '관리자',
+}
+
+const activeRole = computed(() => route.meta.role || route.path.split('/')[1] || 'admin')
+const activeMenus = computed(() => menus[activeRole.value] || menus.admin)
+const pageTitle = computed(() => route.meta.title || '항만 게이트 시스템')
+
+const toggleSidebar = () => {
+  isCollapsed.value = !isCollapsed.value
+  localStorage.setItem('portGateSidebar', isCollapsed.value ? 'collapsed' : 'expanded')
+}
+
+const logout = () => {
+  localStorage.removeItem('portGateUser')
+  router.push('/login')
+}
+</script>
+
+<template>
+  <div class="app-shell" :class="{ collapsed: isCollapsed }">
+    <aside class="sidebar">
+      <button
+        class="brand-toggle"
+        type="button"
+        :aria-label="isCollapsed ? '사이드바 열기' : '사이드바 닫기'"
+        @click="toggleSidebar"
+      >
+        <span class="brand-mark"><MenuIcon name="menu" /></span>
+        <span class="brand-text">
+          <b>Port Gate</b>
+          <small>Container Sector Guide</small>
+        </span>
+      </button>
+
+      <div class="role-badge">
+        <small>현재 화면</small>
+        <strong>{{ roleLabels[activeRole] }}</strong>
+      </div>
+
+      <nav class="side-nav">
+        <RouterLink
+          v-for="item in activeMenus"
+          :key="item.path"
+          :to="item.path"
+          class="side-link"
+          :title="item.label"
+        >
+          <span class="side-icon"><MenuIcon :name="item.icon" /></span>
+          <span class="side-label">{{ item.label }}</span>
+        </RouterLink>
+      </nav>
+
+      <div class="side-footer">
+        <div class="side-note">
+          <b>오늘 기준</b>
+          <span>입차 18대</span>
+          <span>배차 대기 9건</span>
+          <span>상차 진행 6건</span>
+        </div>
+        <button class="logout-button" type="button" :title="'로그아웃'" @click="logout">
+          <MenuIcon name="logout" />
+          <span class="logout-label">로그아웃</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <div>
+          <small>항만 게이트 차량 출입 및 컨테이너 상차 섹터 안내</small>
+          <h1>{{ pageTitle }}</h1>
+        </div>
+      </header>
+
+      <main class="content">
+        <slot />
+      </main>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.app-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: 230px minmax(0, 1fr);
+  transition: grid-template-columns 0.16s ease;
+}
+
+.app-shell.collapsed {
+  grid-template-columns: 54px minmax(0, 1fr);
+}
+
+.sidebar {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  color: #ffffff;
+  background: #26384d;
+  border-right: 1px solid #172636;
+}
+
+.brand-toggle {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 10px;
+  color: #ffffff;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.brand-mark {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: #1b5d8d;
+  border: 1px solid #6f98bd;
+  border-radius: 1px;
+}
+
+.brand-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.brand-text b,
+.brand-text small {
+  display: block;
+}
+
+.brand-text b {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.brand-text small {
+  color: #c5d2df;
+  font-size: 11px;
+}
+
+.menu-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.role-badge,
+.side-note {
+  padding: 8px;
+  background: #30455d;
+  border: 1px solid #53677c;
+  border-radius: 1px;
+}
+
+.role-badge small,
+.side-note span {
+  display: block;
+  color: #c5d2df;
+}
+
+.role-badge strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.side-nav {
+  display: grid;
+  gap: 3px;
+}
+
+.side-link {
+  display: flex;
+  min-height: 34px;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  color: #dceaff;
+  border: 1px solid transparent;
+  border-radius: 1px;
+  font-weight: 700;
+}
+
+.side-icon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: center;
+  background: #1e3042;
+  border: 1px solid #53677c;
+  border-radius: 1px;
+}
+
+.side-label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.side-link.router-link-active,
+.side-link:hover {
+  color: #102a5c;
+  background: #eaf1f8;
+  border-color: #9fb0c0;
+}
+
+.side-link.router-link-active .side-icon,
+.side-link:hover .side-icon {
+  color: #ffffff;
+  background: var(--blue-700);
+}
+
+.side-footer {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.side-note b {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.logout-button {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #ffffff;
+  background: #b8403a;
+  border: 1px solid #d58a86;
+  border-radius: 1px;
+  font-weight: 700;
+}
+
+.logout-button:hover {
+  background: #bb2e27;
+}
+
+.app-shell.collapsed .sidebar {
+  align-items: center;
+  padding: 12px 8px;
+}
+
+.app-shell.collapsed .brand-toggle {
+  justify-content: center;
+  padding-bottom: 10px;
+}
+
+.app-shell.collapsed .brand-text,
+.app-shell.collapsed .role-badge,
+.app-shell.collapsed .side-note,
+.app-shell.collapsed .side-label,
+.app-shell.collapsed .logout-label {
+  display: none;
+}
+
+.app-shell.collapsed .side-link {
+  justify-content: center;
+  width: 34px;
+  padding: 0;
+}
+
+.app-shell.collapsed .logout-button {
+  width: 34px;
+  padding: 0;
+}
+
+.main-area {
+  min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  background: linear-gradient(#ffffff, #edf2f6);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar small {
+  color: var(--ink-500);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.topbar h1 {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.content {
+  padding: 10px;
+}
+
+@media (max-width: 900px) {
+  .app-shell,
+  .app-shell.collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar,
+  .app-shell.collapsed .sidebar {
+    align-items: stretch;
+    position: static;
+  }
+
+  .side-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell.collapsed .side-nav,
+  .app-shell.collapsed .side-footer {
+    display: none;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+</style>
