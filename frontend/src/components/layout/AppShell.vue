@@ -107,17 +107,17 @@ const MenuIcon = (props) =>
   )
 
 const menus = {
-  carrier: [
+  CARRIER: [
     { label: '업무 홈', path: '/carrier/dashboard', icon: 'home' },
     { label: '운송 요청', path: '/carrier/requests', icon: 'request' },
     { label: '승인 현황', path: '/carrier/approvals', icon: 'approval' },
   ],
-  driver: [
+  DRIVER: [
     { label: '작업 홈', path: '/driver/dashboard', icon: 'driver' },
     { label: '작업 현황', path: '/driver/work-status', icon: 'list' },
     { label: '차량 등록', path: '/driver/vehicles', icon: 'truck' },
   ],
-  admin: [
+  ADMIN: [
     { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
     { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
     { label: '가입 인원관리', path: '/admin/members', icon: 'users' },
