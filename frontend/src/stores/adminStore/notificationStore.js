@@ -1,6 +1,6 @@
 // stores/notificationStore.js
 import { defineStore } from 'pinia'
-import { fetchNotifications } from '@/api/notificationApi'
+import { fetchNotifications } from '@/api/adminApi/notificationApi'
 
 export const useNotificationStore = defineStore('notification', {
   state: () => ({ notifications: [], loading: false, error: '' }),

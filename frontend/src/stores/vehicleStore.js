@@ -1,6 +1,5 @@
-// stores/vehicleStore.js
 import { defineStore } from 'pinia'
-import { fetchVehicles } from '@/api/vehicleApi'
+import { createVehicle, deleteVehicle, fetchVehicles, updateVehicle } from '@/api/vehicleApi'
 
 export const useVehicleStore = defineStore('vehicle', {
   state: () => ({
@@ -24,7 +23,49 @@ export const useVehicleStore = defineStore('vehicle', {
       }
     },
 
-    // 백엔드에 등록(POST) API가 없어 현재는 동작하지 않습니다.
-    // addVehicle은 VehicleController에 @PostMapping이 추가된 뒤 구현하는 것이 맞습니다.
+    async addVehicle(vehicle) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await createVehicle(vehicle)
+        await this.loadVehicles()
+      } catch (error) {
+        this.error = '차량 등록에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async editVehicle(vehicleId, vehicle) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await updateVehicle(vehicleId, vehicle)
+        await this.loadVehicles()
+      } catch (error) {
+        this.error = '차량 수정에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async removeVehicle(vehicleId) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await deleteVehicle(vehicleId)
+        await this.loadVehicles()
+      } catch (error) {
+        this.error = '차량 삭제에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
   },
 })

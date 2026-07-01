@@ -16,6 +16,7 @@ DRIVER
 
 import DriverDashboardView from '@/views/driver/DriverDashboardView.vue'
 import DriverGateStatusView from '@/views/driver/DriverGateStatusView.vue'
+import DriverVehiclesView from '@/views/driver/DriverVehiclesView.vue'
 
 export default [
   {
@@ -43,6 +44,15 @@ export default [
         path: 'sector-guide',
         redirect: '/driver/dashboard',
       },
+      {
+  path: 'vehicles',
+  name: 'driver-vehicles',
+  component: DriverVehiclesView,
+  meta: {
+    role: 'DRIVER',
+    title: '차량 등록',
+  },
+},
     ],
   },
 ]

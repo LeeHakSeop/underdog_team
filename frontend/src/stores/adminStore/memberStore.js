@@ -1,6 +1,6 @@
 // stores/memberStore.js
 import { defineStore } from 'pinia'
-import { fetchMembers, createMember } from '@/api/memberApi'
+import { fetchMembers, createMember } from '@/api/adminApi/memberApi'
 
 export const useMemberStore = defineStore('member', {
   state: () => ({ members: [], loading: false, error: '' }),

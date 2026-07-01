@@ -13,6 +13,29 @@ public class VehicleService {
     @Resource
     VehicleMapper mapper;
 
-    public List<VehicleDTO> list(VehicleDTO dto){return mapper.list(dto);}
+    public List<VehicleDTO> list(){return mapper.list();}
+
+    public VehicleDTO detail(Long vehicleId){return mapper.detail(vehicleId);}
+
+    public int insert(VehicleDTO dto){
+        setDefaultValues(dto);
+        return mapper.insert(dto);
+    }
+
+    public int update(VehicleDTO dto){
+        setDefaultValues(dto);
+        return mapper.update(dto);
+    }
+
+    public int delete(Long vehicleId){return mapper.delete(vehicleId);}
+
+    private void setDefaultValues(VehicleDTO dto) {
+        if (dto.getIsRegistered() == null) {
+            dto.setIsRegistered(false);
+        }
+        if (dto.getVehicleStatus() == null || dto.getVehicleStatus().isBlank()) {
+            dto.setVehicleStatus("PENDING");
+        }
+    }
 
 }
