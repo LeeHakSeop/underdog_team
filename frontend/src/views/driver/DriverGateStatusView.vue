@@ -1,13 +1,16 @@
 <script setup>
-import {
+import { computed } from 'vue'
+import { useLogisticsData } from '@/composables/useLogisticsData'
+
+const {
   gateLogs,
   getContainerNumber,
   getPlateNumber,
   getSectorByContainerId,
   workOrders,
-} from '../../data/dbData'
+} = useLogisticsData()
 
-const driverOrders = workOrders.filter((order) => [1, 3].includes(order.driver_id))
+const driverOrders = computed(() => workOrders.value.filter((order) => [1, 3].includes(order.driver_id)))
 </script>
 
 <template>

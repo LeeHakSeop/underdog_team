@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { fetchVehicles } from '@/api/vehicleApi'
+import { createVehicle, deleteVehicle, fetchVehicles, updateVehicle } from '@/api/vehicleApi'
 
 export const useVehicleStore = defineStore('vehicle', {
   state: () => ({
@@ -23,7 +23,56 @@ export const useVehicleStore = defineStore('vehicle', {
       }
     },
 
+<<<<<<< HEAD
     
   },
 })
 
+=======
+    async addVehicle(vehicle) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await createVehicle(vehicle)
+        await this.loadVehicles()
+      } catch (error) {
+        this.error = '차량 등록에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async editVehicle(vehicleId, vehicle) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await updateVehicle(vehicleId, vehicle)
+        await this.loadVehicles()
+      } catch (error) {
+        this.error = '차량 수정에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async removeVehicle(vehicleId) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await deleteVehicle(vehicleId)
+        await this.loadVehicles()
+      } catch (error) {
+        this.error = '차량 삭제에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+  },
+})
+>>>>>>> origin/KSM

@@ -1,50 +1,41 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { carriers, drivers, vehicles } from '@/data/dbData'
+import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useCarrierStore } from '@/stores/carrierStore'
+import { useDriverStore } from '@/stores/driverStore'
+import { useVehicleStore } from '@/stores/vehicleStore'
 
 const activeTab = ref('carrier')
+const carrierStore = useCarrierStore()
+const driverStore = useDriverStore()
+const vehicleStore = useVehicleStore()
+const { carriers } = storeToRefs(carrierStore)
+const { drivers } = storeToRefs(driverStore)
+const { vehicles } = storeToRefs(vehicleStore)
 
-const readRows = (key) => JSON.parse(localStorage.getItem(key) || '[]')
-const writeRows = (key, rows) => localStorage.setItem(key, JSON.stringify(rows))
-
-const localCarriers = ref(readRows('portGateCarrierSignups'))
-const localDrivers = ref(readRows('portGateDriverSignups'))
-const localVehicles = ref(readRows('portGateVehicles'))
-
-const carrierRows = computed(() => [...carriers, ...localCarriers.value])
-const driverRows = computed(() => [...drivers, ...localDrivers.value])
-const vehicleRows = computed(() => [...vehicles, ...localVehicles.value])
+onMounted(() => {
+  carrierStore.loadCarriers()
+  driverStore.loadDrivers()
+  vehicleStore.loadVehicles()
+})
 
 const tabs = computed(() => [
-  { key: 'carrier', label: '운송사', count: carrierRows.value.length },
-  { key: 'driver', label: '기사', count: driverRows.value.length },
-  { key: 'vehicle', label: '차량', count: vehicleRows.value.length },
+  { key: 'carrier', label: '운송사', count: carriers.value.length },
+  { key: 'driver', label: '기사', count: drivers.value.length },
+  { key: 'vehicle', label: '차량', count: vehicles.value.length },
 ])
 
-const updateCarrierStatus = (carrierId, carrier_status) => {
-  localCarriers.value = localCarriers.value.map((carrier) =>
-    carrier.carrier_id === carrierId ? { ...carrier, carrier_status } : carrier,
-  )
-  writeRows('portGateCarrierSignups', localCarriers.value)
+const updateCarrierStatus = (carrier, carrierStatus) => {
+  return carrierStore.editCarrier(carrier.carrierId, { ...carrier, carrierStatus })
 }
 
-const updateDriverPermission = (driverId, changes) => {
-  localDrivers.value = localDrivers.value.map((driver) =>
-    driver.driver_id === driverId ? { ...driver, ...changes } : driver,
-  )
-  writeRows('portGateDriverSignups', localDrivers.value)
+const updateDriverPermission = (driver, changes) => {
+  return driverStore.editDriver(driver.driverId, { ...driver, ...changes })
 }
 
-const updateVehicleApproval = (vehicleId, changes) => {
-  localVehicles.value = localVehicles.value.map((vehicle) =>
-    vehicle.vehicle_id === vehicleId ? { ...vehicle, ...changes } : vehicle,
-  )
-  writeRows('portGateVehicles', localVehicles.value)
+const updateVehicleApproval = (vehicle, changes) => {
+  return vehicleStore.editVehicle(vehicle.vehicleId, { ...vehicle, ...changes })
 }
-
-const isLocalCarrier = (carrierId) => localCarriers.value.some((carrier) => carrier.carrier_id === carrierId)
-const isLocalDriver = (driverId) => localDrivers.value.some((driver) => driver.driver_id === driverId)
-const isLocalVehicle = (vehicleId) => localVehicles.value.some((vehicle) => vehicle.vehicle_id === vehicleId)
 </script>
 
 <template>
@@ -53,7 +44,7 @@ const isLocalVehicle = (vehicleId) => localVehicles.value.some((vehicle) => vehi
       <div class="section-title">
         <h2>가입 및 권한 승인 관리</h2>
         <span class="status-pill">
-          운송사 {{ carrierRows.length }} / 기사 {{ driverRows.length }} / 차량 {{ vehicleRows.length }}
+          운송사 {{ carriers.length }} / 기사 {{ drivers.length }} / 차량 {{ vehicles.length }}
         </span>
       </div>
 
@@ -90,26 +81,25 @@ const isLocalVehicle = (vehicleId) => localVehicles.value.some((vehicle) => vehi
             </tr>
           </thead>
           <tbody>
-            <tr v-for="carrier in carrierRows" :key="carrier.carrier_id">
-              <td>{{ carrier.carrier_id }}</td>
-              <td>{{ carrier.carrier_name }}</td>
-              <td>{{ carrier.carrier_contact || '-' }}</td>
-              <td>{{ carrier.manager_name || '-' }}</td>
+            <tr v-for="carrier in carriers" :key="carrier.carrierId">
+              <td>{{ carrier.carrierId }}</td>
+              <td>{{ carrier.carrierName }}</td>
+              <td>{{ carrier.carrierContact || '-' }}</td>
+              <td>{{ carrier.managerName || '-' }}</td>
               <td>
-                <span class="status-pill" :class="{ green: carrier.carrier_status === 'APPROVED', amber: carrier.carrier_status === 'PENDING' }">
-                  {{ carrier.carrier_status }}
+                <span class="status-pill" :class="{ green: carrier.carrierStatus === 'APPROVED', amber: carrier.carrierStatus === 'PENDING' }">
+                  {{ carrier.carrierStatus }}
                 </span>
               </td>
               <td>
-                <div v-if="isLocalCarrier(carrier.carrier_id)" class="action-row">
-                  <button class="ghost-button" type="button" @click="updateCarrierStatus(carrier.carrier_id, 'APPROVED')">
+                <div class="action-row">
+                  <button class="ghost-button" type="button" @click="updateCarrierStatus(carrier, 'APPROVED')">
                     승인
                   </button>
-                  <button class="ghost-button" type="button" @click="updateCarrierStatus(carrier.carrier_id, 'REJECTED')">
+                  <button class="ghost-button" type="button" @click="updateCarrierStatus(carrier, 'REJECTED')">
                     반려
                   </button>
                 </div>
-                <span v-else>기본 데이터</span>
               </td>
             </tr>
           </tbody>
@@ -137,39 +127,38 @@ const isLocalVehicle = (vehicleId) => localVehicles.value.some((vehicle) => vehi
             </tr>
           </thead>
           <tbody>
-            <tr v-for="driver in driverRows" :key="driver.driver_id">
-              <td>{{ driver.driver_id }}</td>
-              <td>{{ driver.driver_name }}</td>
-              <td>{{ driver.driver_contact || '-' }}</td>
+            <tr v-for="driver in drivers" :key="driver.driverId">
+              <td>{{ driver.driverId }}</td>
+              <td>{{ driver.driverName }}</td>
+              <td>{{ driver.driverContact || '-' }}</td>
               <td>
-                <span class="status-pill" :class="driver.is_registered ? 'green' : 'red'">
-                  {{ driver.is_registered }}
+                <span class="status-pill" :class="driver.isRegistered ? 'green' : 'red'">
+                  {{ driver.isRegistered }}
                 </span>
               </td>
-              <td>{{ driver.carrier_id || '-' }}</td>
+              <td>{{ driver.carrierId || '-' }}</td>
               <td>
-                <span class="status-pill" :class="driver.can_enter ? 'green' : 'red'">
-                  {{ driver.can_enter }}
+                <span class="status-pill" :class="driver.canEnter ? 'green' : 'red'">
+                  {{ driver.canEnter }}
                 </span>
               </td>
               <td>
-                <div v-if="isLocalDriver(driver.driver_id)" class="action-row">
+                <div class="action-row">
                   <button
                     class="ghost-button"
                     type="button"
-                    @click="updateDriverPermission(driver.driver_id, { is_registered: true, can_enter: true })"
+                    @click="updateDriverPermission(driver, { isRegistered: true, canEnter: true })"
                   >
                     승인
                   </button>
                   <button
                     class="ghost-button"
                     type="button"
-                    @click="updateDriverPermission(driver.driver_id, { is_registered: false, can_enter: false })"
+                    @click="updateDriverPermission(driver, { isRegistered: false, canEnter: false })"
                   >
                     차단
                   </button>
                 </div>
-                <span v-else>기본 데이터</span>
               </td>
             </tr>
           </tbody>
@@ -200,38 +189,37 @@ const isLocalVehicle = (vehicleId) => localVehicles.value.some((vehicle) => vehi
             </tr>
           </thead>
           <tbody>
-            <tr v-for="vehicle in vehicleRows" :key="vehicle.vehicle_id">
-              <td>{{ vehicle.vehicle_id }}</td>
-              <td>{{ vehicle.plate_number }}</td>
-              <td>{{ vehicle.vehicle_type }}</td>
+            <tr v-for="vehicle in vehicles" :key="vehicle.vehicleId">
+              <td>{{ vehicle.vehicleId }}</td>
+              <td>{{ vehicle.plateNumber }}</td>
+              <td>{{ vehicle.vehicleType }}</td>
               <td>{{ vehicle.tonnage }}</td>
               <td>
-                <span class="status-pill" :class="vehicle.is_registered ? 'green' : 'red'">
-                  {{ vehicle.is_registered }}
+                <span class="status-pill" :class="vehicle.isRegistered ? 'green' : 'red'">
+                  {{ vehicle.isRegistered }}
                 </span>
               </td>
-              <td>{{ vehicle.vehicle_status }}</td>
-              <td>{{ vehicle.tractor_no || '-' }}</td>
-              <td>{{ vehicle.chassis_no || '-' }}</td>
-              <td>{{ vehicle.carrier_id }}</td>
+              <td>{{ vehicle.vehicleStatus }}</td>
+              <td>{{ vehicle.tractorNo || '-' }}</td>
+              <td>{{ vehicle.chassisNo || '-' }}</td>
+              <td>{{ vehicle.carrierId }}</td>
               <td>
-                <div v-if="isLocalVehicle(vehicle.vehicle_id)" class="action-row">
+                <div class="action-row">
                   <button
                     class="ghost-button"
                     type="button"
-                    @click="updateVehicleApproval(vehicle.vehicle_id, { is_registered: true, vehicle_status: 'NORMAL' })"
+                    @click="updateVehicleApproval(vehicle, { isRegistered: true, vehicleStatus: 'NORMAL' })"
                   >
                     승인
                   </button>
                   <button
                     class="ghost-button"
                     type="button"
-                    @click="updateVehicleApproval(vehicle.vehicle_id, { is_registered: false, vehicle_status: 'RESTRICTED' })"
+                    @click="updateVehicleApproval(vehicle, { isRegistered: false, vehicleStatus: 'RESTRICTED' })"
                   >
                     제한
                   </button>
                 </div>
-                <span v-else>기본 데이터</span>
               </td>
             </tr>
           </tbody>

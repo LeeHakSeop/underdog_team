@@ -1,20 +1,22 @@
 <script setup>
 import { computed } from 'vue'
-import {
+import { useLogisticsData } from '@/composables/useLogisticsData'
+
+const {
   getCarrierName,
   getContainerNumber,
   getDriverName,
   getPlateNumber,
   getSectorByContainerId,
   workOrders,
-} from '../../data/dbData'
+} = useLogisticsData()
 
 const pendingOrders = computed(() => {
-  return workOrders.filter((order) => order.work_status === 'DISPATCH_WAITING')
+  return workOrders.value.filter((order) => order.work_status === 'DISPATCH_WAITING')
 })
 
 const acceptedOrders = computed(() => {
-  return workOrders.filter((order) => ['DRIVER_ACCEPTED', 'APPROVED'].includes(order.work_status))
+  return workOrders.value.filter((order) => ['DRIVER_ACCEPTED', 'APPROVED'].includes(order.work_status))
 })
 </script>
 

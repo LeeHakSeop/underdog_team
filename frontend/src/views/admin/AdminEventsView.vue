@@ -1,5 +1,32 @@
 <script setup>
-import { exceptionLogs, workStatusHistory } from '../../data/dbData'
+import { computed } from 'vue'
+import { useLogisticsData } from '@/composables/useLogisticsData'
+
+const { gateLogs, getPlateNumber, workOrders } = useLogisticsData()
+
+const workStatusHistory = computed(() =>
+  workOrders.value.map((order) => ({
+    history_id: order.work_order_id,
+    changed_time: order.reserved_time,
+    work_order_id: order.work_order_id,
+    prev_status: '-',
+    new_status: order.work_status,
+    changed_by: 'SYSTEM',
+    reason: 'DB 작업 상태',
+  })),
+)
+
+const exceptionLogs = computed(() =>
+  gateLogs.value
+    .filter((log) => log.process_result && !['NORMAL', '정상'].includes(log.process_result))
+    .map((log) => ({
+      exception_id: log.gate_log_id,
+      process_status: log.process_result,
+      exception_type: log.in_out_type,
+      plate_number: getPlateNumber(log.vehicle_id),
+      exception_message: `${log.gate_name} 처리 확인 필요`,
+    })),
+)
 </script>
 
 <template>

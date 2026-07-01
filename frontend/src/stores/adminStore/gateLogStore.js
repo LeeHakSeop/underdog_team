@@ -1,6 +1,6 @@
 // stores/gateLogStore.js
 import { defineStore } from 'pinia'
-import { fetchGateLogs } from '@/api/gateLogApi'
+import { fetchGateLogs } from '@/api/adminApi/gateLogApi'
 
 export const useGateLogStore = defineStore('gateLog', {
   state: () => ({ gateLogs: [], loading: false, error: '' }),

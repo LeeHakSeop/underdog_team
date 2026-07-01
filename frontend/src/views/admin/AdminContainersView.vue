@@ -1,13 +1,28 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { containers, getSectorName } from '../../data/dbData'
+import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useContainerStore } from '@/stores/adminStore/containerStore'
+import { useYardSectorStore } from '@/stores/adminStore/yardSectorStore'
 
 const containerQuery = ref('')
+const containerStore = useContainerStore()
+const yardSectorStore = useYardSectorStore()
+const { containers } = storeToRefs(containerStore)
+const { yardSectors } = storeToRefs(yardSectorStore)
+
+onMounted(() => {
+  containerStore.loadContainers()
+  yardSectorStore.loadYardSectors()
+})
+
+const getSectorName = (sectorId) => {
+  return yardSectors.value.find((sector) => sector.sectorId === sectorId)?.sectorName || '-'
+}
 
 const visibleContainers = computed(() => {
   const query = containerQuery.value.trim().toLowerCase()
-  if (!query) return containers
-  return containers.filter((container) => container.container_number.toLowerCase().includes(query))
+  if (!query) return containers.value
+  return containers.value.filter((container) => container.containerNumber.toLowerCase().includes(query))
 })
 </script>
 
@@ -36,15 +51,15 @@ const visibleContainers = computed(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="container in visibleContainers" :key="container.container_id">
-              <td>{{ container.container_id }}</td>
-              <td>{{ container.container_number }}</td>
-              <td>{{ container.container_size }}</td>
-              <td>{{ container.container_type }}</td>
-              <td>{{ container.current_location }}</td>
-              <td>{{ getSectorName(container.sector_id) }}</td>
-              <td><span class="status-pill" :class="{ green: container.can_exit }">{{ container.can_exit }}</span></td>
-              <td><span class="status-pill" :class="{ red: container.on_hold }">{{ container.on_hold }}</span></td>
+            <tr v-for="container in visibleContainers" :key="container.containerId">
+              <td>{{ container.containerId }}</td>
+              <td>{{ container.containerNumber }}</td>
+              <td>{{ container.containerSize }}</td>
+              <td>{{ container.shippingLine || '-' }}</td>
+              <td>{{ container.containerLocation }}</td>
+              <td>{{ getSectorName(container.sectorId) }}</td>
+              <td><span class="status-pill" :class="{ green: container.canExit }">{{ container.canExit }}</span></td>
+              <td>{{ container.sealNumber || '-' }}</td>
             </tr>
           </tbody>
         </table>

@@ -22,6 +22,7 @@ import AdminTasksView from '@/views/admin/AdminTasksView.vue'
 import AdminGateLogsView from '@/views/admin/AdminGateLogsView.vue'
 import AdminContainersView from '@/views/admin/AdminContainersView.vue'
 import AdminEventsView from '@/views/admin/AdminEventsView.vue'
+import AdminMembersView from '@/views/admin/AdminMembersView.vue'
 
 export default [
   {
@@ -65,6 +66,15 @@ export default [
         component: AdminEventsView,
         meta: { role: 'ADMIN', title: '알림/이벤트' },
       },
+      {
+  path: 'members',
+  name: 'admin-members',
+  component: AdminMembersView,
+  meta: {
+    role: 'ADMIN',
+    title: '가입 인원관리',
+  },
+},
     ],
   },
 ]

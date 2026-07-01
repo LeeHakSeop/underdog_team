@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue'
-import { yardSectors } from '../../data/dbData'
+import { computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useYardSectorStore } from '@/stores/adminStore/yardSectorStore'
 
 const props = defineProps({
   selectedCode: {
@@ -10,6 +11,12 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select'])
+const yardSectorStore = useYardSectorStore()
+const { yardSectors } = storeToRefs(yardSectorStore)
+
+onMounted(() => {
+  if (!yardSectors.value.length) yardSectorStore.loadYardSectors()
+})
 
 const positions = {
   'A-01': { x: 24, y: 30, className: 'available' },
@@ -18,14 +25,14 @@ const positions = {
 }
 
 const sectors = computed(() =>
-  yardSectors.map((sector) => ({
+  yardSectors.value.map((sector) => ({
     ...sector,
-    ...(positions[sector.sector_name] || { x: 50, y: 50, className: 'available' }),
+    ...(positions[sector.sectorName] || { x: 50, y: 50, className: 'available' }),
   })),
 )
 
 const selectedSector = computed(() => {
-  return sectors.value.find((sector) => sector.sector_name === props.selectedCode) || sectors.value[0]
+  return sectors.value.find((sector) => sector.sectorName === props.selectedCode) || sectors.value[0]
 })
 </script>
 
@@ -34,31 +41,31 @@ const selectedSector = computed(() => {
     <div class="map-header">
       <div>
         <b>야드 섹터 안내</b>
-        <span>섹터와 대기 차량 현황을 확인합니다.</span>
+        <span>섹터별 대기 차량 현황을 확인합니다.</span>
       </div>
-      <span class="status-pill green">{{ selectedSector?.sector_name }}</span>
+      <span class="status-pill green">{{ selectedSector?.sectorName }}</span>
     </div>
 
     <div class="yard-canvas">
       <div class="gate-marker">GATE</div>
       <button
         v-for="sector in sectors"
-        :key="sector.sector_id"
+        :key="sector.sectorId"
         class="sector-node"
-        :class="[sector.className, { selected: sector.sector_name === selectedSector?.sector_name }]"
+        :class="[sector.className, { selected: sector.sectorName === selectedSector?.sectorName }]"
         type="button"
         :style="{ left: `${sector.x}%`, top: `${sector.y}%` }"
-        @click="emit('select', sector.sector_name)"
+        @click="emit('select', sector.sectorName)"
       >
-        <strong>{{ sector.sector_name }}</strong>
-        <small>대기 {{ sector.waiting_vehicle_count }}대</small>
+        <strong>{{ sector.sectorName }}</strong>
+        <small>대기 {{ sector.waitingVehicleCount }}대</small>
       </button>
     </div>
 
     <div class="map-footer">
-      <span>블록: {{ selectedSector?.block_name }}</span>
-      <span>상태: {{ selectedSector?.sector_status }}</span>
-      <span>대체 대기장: {{ selectedSector?.alt_waiting_area }}</span>
+      <span>블록: {{ selectedSector?.blockName }}</span>
+      <span>상태: {{ selectedSector?.sectorStatus }}</span>
+      <span>대체 대기장: {{ selectedSector?.altWaitingArea }}</span>
     </div>
   </div>
 </template>

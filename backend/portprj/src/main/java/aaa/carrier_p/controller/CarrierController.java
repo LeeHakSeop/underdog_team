@@ -15,14 +15,31 @@ public class CarrierController {
     @Resource
     CarrierService carrierService;
 
-    @GetMapping("/list")
+    @GetMapping
     public List<CarrierDTO> list(){
         return carrierService.list();
     }
 
-    @PostMapping("/reg")
+    @GetMapping("/{carrierId}")
+    public CarrierDTO detail(@PathVariable Long carrierId){
+        return carrierService.detail(carrierId);
+    }
+
+    @PostMapping
     public CarrierDTO reg(@RequestBody CarrierDTO dto){
         carrierService.insert(dto);
         return dto;
+    }
+
+    @PutMapping("/{carrierId}")
+    public CarrierDTO modify(@PathVariable Long carrierId, @RequestBody CarrierDTO dto){
+        dto.setCarrierId(carrierId);
+        carrierService.update(dto);
+        return carrierService.detail(carrierId);
+    }
+
+    @DeleteMapping("/{carrierId}")
+    public int delete(@PathVariable Long carrierId){
+        return carrierService.delete(carrierId);
     }
 }

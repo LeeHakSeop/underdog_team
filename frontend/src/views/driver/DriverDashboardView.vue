@@ -1,19 +1,21 @@
 <script setup>
 import { computed, ref } from 'vue'
 import SectorMap from '../../components/yard/SectorMap.vue'
-import {
+import { useLogisticsData } from '@/composables/useLogisticsData'
+
+const {
   driverActions,
   getCarrierName,
   getContainerNumber,
   getSectorByContainerId,
   workOrders,
-} from '../../data/dbData'
+} = useLogisticsData()
 
-const task = workOrders[0]
+const task = computed(() => workOrders.value[0] || null)
 const decision = ref('pending')
 
 const approved = computed(() => decision.value === 'approved')
-const taskSector = computed(() => getSectorByContainerId(task.container_id))
+const taskSector = computed(() => getSectorByContainerId(task.value?.container_id))
 </script>
 
 <template>
@@ -29,23 +31,23 @@ const taskSector = computed(() => getSectorByContainerId(task.container_id))
       <div class="request-summary">
         <div>
           <span>작업 ID</span>
-          <strong>{{ task.work_order_id }}</strong>
+          <strong>{{ task?.work_order_id }}</strong>
         </div>
         <div>
           <span>운송사</span>
-          <strong>{{ getCarrierName(task.carrier_id) }}</strong>
+          <strong>{{ getCarrierName(task?.carrier_id) }}</strong>
         </div>
         <div>
           <span>컨테이너</span>
-          <strong>{{ getContainerNumber(task.container_id) }}</strong>
+          <strong>{{ getContainerNumber(task?.container_id) }}</strong>
         </div>
         <div>
           <span>작업 유형</span>
-          <strong>{{ task.work_type }}</strong>
+          <strong>{{ task?.work_type }}</strong>
         </div>
         <div>
           <span>예약 시간</span>
-          <strong>{{ task.reserved_time }}</strong>
+          <strong>{{ task?.reserved_time }}</strong>
         </div>
         <div>
           <span>배정 섹터</span>

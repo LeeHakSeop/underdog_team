@@ -1,6 +1,6 @@
 // stores/taskStore.js
 import { defineStore } from 'pinia'
-import { fetchTasks, createTask } from '@/api/taskApi'
+import { fetchTasks, createTask } from '@/api/adminApi/taskApi'
 
 export const useTaskStore = defineStore('task', {
   state: () => ({ tasks: [], loading: false, error: '' }),

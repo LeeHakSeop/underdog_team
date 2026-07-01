@@ -1,6 +1,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import {
+import { useLogisticsData } from '@/composables/useLogisticsData'
+
+const {
   gateLogs,
   getCarrierName,
   getContainer,
@@ -8,13 +10,13 @@ import {
   getDriverName,
   getPlateNumber,
   getSectorByContainerId,
-  plateRecognitions,
   workOrders,
-} from '../../data/dbData'
+} = useLogisticsData()
 
 const gateCells = computed(() => {
-  const rows = gateLogs.map((log) => {
-    const recognition = plateRecognitions.find((item) => item.gate_log_id === log.gate_log_id)
+  const rows = gateLogs.value.map((log) => {
+    const plateNumber = getPlateNumber(log.vehicle_id)
+    const recognition = plateNumber === '-' ? null : { recognized_plate: plateNumber }
     return { ...log, recognition }
   })
 
@@ -42,7 +44,7 @@ const selectedGate = computed(() => {
 const matchedOrder = computed(() => {
   const vehicleId = selectedGate.value?.vehicle_id
   if (!vehicleId) return null
-  return workOrders.find((order) => order.vehicle_id === vehicleId) || null
+  return workOrders.value.find((order) => order.vehicle_id === vehicleId) || null
 })
 
 const matchedContainer = computed(() => {
@@ -204,6 +206,8 @@ watch(selectedGate, (gate) => {
 <style scoped>
 .control-room {
   display: grid;
+  min-height: 0;
+  grid-template-rows: minmax(620px, auto) minmax(260px, auto);
   gap: 10px;
   color: #dceaff;
 }
@@ -219,13 +223,14 @@ watch(selectedGate, (gate) => {
 
 .control-layout {
   display: grid;
+  min-height: 0;
   grid-template-columns: minmax(0, 1.55fr) minmax(360px, 0.9fr);
   gap: 10px;
 }
 
 .cctv-wall {
   display: grid;
-  min-height: 650px;
+  min-height: 620px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 4px;
@@ -288,8 +293,10 @@ watch(selectedGate, (gate) => {
 
 .recognition-panel {
   display: grid;
+  min-height: 0;
   align-content: start;
   gap: 8px;
+  overflow: auto;
   padding: 8px;
 }
 
@@ -398,13 +405,16 @@ watch(selectedGate, (gate) => {
 }
 
 .log-panel {
+  min-height: 0;
   padding: 8px;
 }
 
 .compact-table {
   display: grid;
   gap: 3px;
-  overflow-x: auto;
+  min-height: 0;
+  max-height: 282px;
+  overflow: auto;
 }
 
 .compact-row {

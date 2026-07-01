@@ -1,7 +1,9 @@
 <script setup>
 import { computed, ref } from 'vue'
 import SectorMap from '../../components/yard/SectorMap.vue'
-import {
+import { useLogisticsData } from '@/composables/useLogisticsData'
+
+const {
   getCarrierName,
   getContainerNumber,
   getDriverName,
@@ -9,12 +11,12 @@ import {
   getSectorByContainerId,
   operationStats,
   workOrders,
-} from '../../data/dbData'
+} = useLogisticsData()
 
 const selectedSectorCode = ref('B-07')
 
 const sectorOrders = computed(() => {
-  return workOrders.filter((order) => {
+  return workOrders.value.filter((order) => {
     return getSectorByContainerId(order.container_id)?.sector_name === selectedSectorCode.value
   })
 })

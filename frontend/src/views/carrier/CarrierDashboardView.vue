@@ -1,13 +1,16 @@
 <script setup>
-import {
+import { computed } from 'vue'
+import { useLogisticsData } from '@/composables/useLogisticsData'
+
+const {
   availableDrivers,
   containers,
   getContainerNumber,
   getSectorByContainerId,
   workOrders,
-} from '../../data/dbData'
+} = useLogisticsData()
 
-const carrierOrders = workOrders.slice(0, 2)
+const carrierOrders = computed(() => workOrders.value.slice(0, 2))
 </script>
 
 <template>

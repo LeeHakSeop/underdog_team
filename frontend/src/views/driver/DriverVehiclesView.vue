@@ -1,81 +1,62 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { vehicles } from '../../data/dbData'
+import { onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useVehicleStore } from '@/stores/vehicleStore'
 
-const readRows = () => JSON.parse(localStorage.getItem('portGateVehicles') || '[]')
-const writeRows = (rows) => localStorage.setItem('portGateVehicles', JSON.stringify(rows))
-
-const localVehicles = ref(readRows())
+const vehicleStore = useVehicleStore()
+const { vehicles } = storeToRefs(vehicleStore)
 const editingId = ref(null)
 
-const vehicleForm = ref({
-  plate_number: '',
-  vehicle_type: 'TRACTOR',
+const emptyForm = () => ({
+  plateNumber: '',
+  vehicleType: 'TRACTOR',
   tonnage: '25T',
-  is_registered: false,
-  vehicle_status: 'PENDING',
-  tractor_no: '',
-  chassis_no: '',
-  carrier_id: 1,
+  isRegistered: false,
+  vehicleStatus: 'PENDING',
+  tractorNo: '',
+  chassisNo: '',
+  carrierId: 1,
 })
 
-const vehicleRows = computed(() => [...vehicles, ...localVehicles.value])
+const vehicleForm = ref(emptyForm())
 
-const nextId = computed(() => {
-  return vehicleRows.value.reduce((max, row) => Math.max(max, Number(row.vehicle_id) || 0), 0) + 1
+onMounted(() => {
+  vehicleStore.loadVehicles()
 })
 
 const resetForm = () => {
   editingId.value = null
-  vehicleForm.value = {
-    plate_number: '',
-    vehicle_type: 'TRACTOR',
-    tonnage: '25T',
-    is_registered: false,
-    vehicle_status: 'PENDING',
-    tractor_no: '',
-    chassis_no: '',
-    carrier_id: 1,
-  }
+  vehicleForm.value = emptyForm()
 }
 
-const saveVehicle = () => {
-  if (editingId.value) {
-    localVehicles.value = localVehicles.value.map((vehicle) =>
-      vehicle.vehicle_id === editingId.value
-        ? { ...vehicleForm.value, vehicle_id: editingId.value, carrier_id: Number(vehicleForm.value.carrier_id) }
-        : vehicle,
-    )
-  } else {
-    localVehicles.value = [
-      ...localVehicles.value,
-      {
-        ...vehicleForm.value,
-        vehicle_id: nextId.value,
-        carrier_id: Number(vehicleForm.value.carrier_id),
-        is_registered: false,
-        vehicle_status: 'PENDING',
-      },
-    ]
+const saveVehicle = async () => {
+  const payload = {
+    ...vehicleForm.value,
+    carrierId: Number(vehicleForm.value.carrierId),
   }
 
-  writeRows(localVehicles.value)
+  if (editingId.value) {
+    await vehicleStore.editVehicle(editingId.value, payload)
+  } else {
+    await vehicleStore.addVehicle({
+      ...payload,
+      isRegistered: false,
+      vehicleStatus: 'PENDING',
+    })
+  }
+
   resetForm()
 }
 
 const editVehicle = (vehicle) => {
-  if (!localVehicles.value.some((item) => item.vehicle_id === vehicle.vehicle_id)) return
-  editingId.value = vehicle.vehicle_id
+  editingId.value = vehicle.vehicleId
   vehicleForm.value = { ...vehicle }
 }
 
-const deleteVehicle = (vehicleId) => {
-  localVehicles.value = localVehicles.value.filter((vehicle) => vehicle.vehicle_id !== vehicleId)
-  writeRows(localVehicles.value)
+const deleteVehicle = async (vehicleId) => {
+  await vehicleStore.removeVehicle(vehicleId)
   if (editingId.value === vehicleId) resetForm()
 }
-
-const isLocalVehicle = (vehicleId) => localVehicles.value.some((vehicle) => vehicle.vehicle_id === vehicleId)
 </script>
 
 <template>
@@ -89,11 +70,11 @@ const isLocalVehicle = (vehicleId) => localVehicles.value.some((vehicle) => vehi
       <form class="form-grid" @submit.prevent="saveVehicle">
         <div class="field">
           <label for="plateNumber">차량 번호</label>
-          <input id="plateNumber" v-model="vehicleForm.plate_number" required />
+          <input id="plateNumber" v-model="vehicleForm.plateNumber" required />
         </div>
         <div class="field">
           <label for="vehicleType">차량 유형</label>
-          <select id="vehicleType" v-model="vehicleForm.vehicle_type">
+          <select id="vehicleType" v-model="vehicleForm.vehicleType">
             <option value="TRACTOR">TRACTOR</option>
             <option value="CARGO">CARGO</option>
             <option value="TRAILER">TRAILER</option>
@@ -105,23 +86,23 @@ const isLocalVehicle = (vehicleId) => localVehicles.value.some((vehicle) => vehi
         </div>
         <div class="field">
           <label for="tractorNo">트랙터 번호</label>
-          <input id="tractorNo" v-model="vehicleForm.tractor_no" />
+          <input id="tractorNo" v-model="vehicleForm.tractorNo" />
         </div>
         <div class="field">
           <label for="chassisNo">샤시 번호</label>
-          <input id="chassisNo" v-model="vehicleForm.chassis_no" />
+          <input id="chassisNo" v-model="vehicleForm.chassisNo" />
         </div>
         <div class="field">
           <label for="carrierId">운송사 ID</label>
-          <input id="carrierId" v-model.number="vehicleForm.carrier_id" min="1" type="number" />
+          <input id="carrierId" v-model.number="vehicleForm.carrierId" min="1" type="number" />
         </div>
         <div class="field">
           <label for="isRegistered">등록 승인 여부</label>
-          <input id="isRegistered" :value="vehicleForm.is_registered" disabled />
+          <input id="isRegistered" :value="vehicleForm.isRegistered" disabled />
         </div>
         <div class="field">
           <label for="vehicleStatus">차량 상태</label>
-          <input id="vehicleStatus" v-model="vehicleForm.vehicle_status" disabled />
+          <input id="vehicleStatus" v-model="vehicleForm.vehicleStatus" disabled />
         </div>
         <div class="form-actions">
           <button class="primary-button" type="submit">{{ editingId ? '수정' : '등록' }}</button>
@@ -133,7 +114,7 @@ const isLocalVehicle = (vehicleId) => localVehicles.value.some((vehicle) => vehi
     <section class="panel">
       <div class="section-title">
         <h2>차량 목록</h2>
-        <span class="status-pill">{{ vehicleRows.length }}건</span>
+        <span class="status-pill">{{ vehicles.length }}건</span>
       </div>
       <div class="table-wrap">
         <table class="data-table">
@@ -152,26 +133,25 @@ const isLocalVehicle = (vehicleId) => localVehicles.value.some((vehicle) => vehi
             </tr>
           </thead>
           <tbody>
-            <tr v-for="vehicle in vehicleRows" :key="vehicle.vehicle_id">
-              <td>{{ vehicle.vehicle_id }}</td>
-              <td>{{ vehicle.plate_number }}</td>
-              <td>{{ vehicle.vehicle_type }}</td>
+            <tr v-for="vehicle in vehicles" :key="vehicle.vehicleId">
+              <td>{{ vehicle.vehicleId }}</td>
+              <td>{{ vehicle.plateNumber }}</td>
+              <td>{{ vehicle.vehicleType }}</td>
               <td>{{ vehicle.tonnage }}</td>
               <td>
-                <span class="status-pill" :class="vehicle.is_registered ? 'green' : 'amber'">
-                  {{ vehicle.is_registered }}
+                <span class="status-pill" :class="vehicle.isRegistered ? 'green' : 'amber'">
+                  {{ vehicle.isRegistered }}
                 </span>
               </td>
-              <td>{{ vehicle.vehicle_status }}</td>
-              <td>{{ vehicle.tractor_no || '-' }}</td>
-              <td>{{ vehicle.chassis_no || '-' }}</td>
-              <td>{{ vehicle.carrier_id }}</td>
+              <td>{{ vehicle.vehicleStatus }}</td>
+              <td>{{ vehicle.tractorNo || '-' }}</td>
+              <td>{{ vehicle.chassisNo || '-' }}</td>
+              <td>{{ vehicle.carrierId }}</td>
               <td>
-                <div v-if="isLocalVehicle(vehicle.vehicle_id)" class="action-row">
+                <div class="action-row">
                   <button class="ghost-button" type="button" @click="editVehicle(vehicle)">수정</button>
-                  <button class="ghost-button" type="button" @click="deleteVehicle(vehicle.vehicle_id)">삭제</button>
+                  <button class="ghost-button" type="button" @click="deleteVehicle(vehicle.vehicleId)">삭제</button>
                 </div>
-                <span v-else>기본 데이터</span>
               </td>
             </tr>
           </tbody>

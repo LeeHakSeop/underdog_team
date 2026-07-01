@@ -1,21 +1,36 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { gateLogs, getPlateNumber } from '../../data/dbData'
+import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useGateLogStore } from '@/stores/adminStore/gateLogStore'
+import { useVehicleStore } from '@/stores/vehicleStore'
 
 const vehicleQuery = ref('')
 const sortKey = ref('time')
+const gateLogStore = useGateLogStore()
+const vehicleStore = useVehicleStore()
+const { gateLogs } = storeToRefs(gateLogStore)
+const { vehicles } = storeToRefs(vehicleStore)
+
+onMounted(() => {
+  gateLogStore.loadGateLogs()
+  vehicleStore.loadVehicles()
+})
+
+const getPlateNumber = (vehicleId) => {
+  return vehicles.value.find((vehicle) => vehicle.vehicleId === vehicleId)?.plateNumber || '-'
+}
 
 const visibleLogs = computed(() => {
   const query = vehicleQuery.value.trim().toLowerCase()
   const filtered = query
-    ? gateLogs.filter((log) => getPlateNumber(log.vehicle_id).toLowerCase().includes(query))
-    : [...gateLogs]
+    ? gateLogs.value.filter((log) => getPlateNumber(log.vehicleId).toLowerCase().includes(query))
+    : [...gateLogs.value]
 
   return filtered.sort((a, b) => {
     if (sortKey.value === 'gate') {
-      return a.gate_name.localeCompare(b.gate_name)
+      return a.gateName.localeCompare(b.gateName)
     }
-    return String(a.entry_time || a.exit_time).localeCompare(String(b.entry_time || b.exit_time))
+    return String(a.entryTime || a.exitTime).localeCompare(String(b.entryTime || b.exitTime))
   })
 })
 </script>
@@ -50,16 +65,16 @@ const visibleLogs = computed(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="log in visibleLogs" :key="log.gate_log_id">
-              <td>{{ log.gate_log_id }}</td>
-              <td>{{ getPlateNumber(log.vehicle_id) }}</td>
-              <td>{{ log.gate_number }}</td>
-              <td>{{ log.gate_name }}</td>
-              <td>{{ log.entry_time || '-' }}</td>
-              <td>{{ log.exit_time || '-' }}</td>
-              <td>{{ log.in_out_type }}</td>
-              <td><span class="status-pill">{{ log.process_result }}</span></td>
-              <td>{{ log.manager_check }}</td>
+            <tr v-for="log in visibleLogs" :key="log.gateLogId">
+              <td>{{ log.gateLogId }}</td>
+              <td>{{ getPlateNumber(log.vehicleId) }}</td>
+              <td>{{ log.gateNumber }}</td>
+              <td>{{ log.gateName }}</td>
+              <td>{{ log.entryTime || '-' }}</td>
+              <td>{{ log.exitTime || '-' }}</td>
+              <td>{{ log.inOutType }}</td>
+              <td><span class="status-pill">{{ log.processResult }}</span></td>
+              <td>{{ log.managerCheck }}</td>
             </tr>
           </tbody>
         </table>

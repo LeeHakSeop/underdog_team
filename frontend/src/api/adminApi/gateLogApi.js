@@ -1,3 +1,3 @@
 // api/gateLogApi.js
-import { request } from './apiClient'
-export const fetchGateLogs = () => request('/api/gatelog')
+import { request } from '../apiClient'
+export const fetchGateLogs = () => request('/api/gate-log')

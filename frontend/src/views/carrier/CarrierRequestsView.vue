@@ -1,5 +1,30 @@
 <script setup>
-import { availableDrivers, containers } from '../../data/dbData'
+import { ref } from 'vue'
+import { useLogisticsData } from '@/composables/useLogisticsData'
+import { useTaskStore } from '@/stores/adminStore/taskStore'
+
+const { availableDrivers, containers } = useLogisticsData()
+const taskStore = useTaskStore()
+
+const requestForm = ref({
+  containerId: '',
+  driverId: '',
+  vehicleId: '',
+  workType: 'LOAD_OUT',
+  reservedTime: '2026-07-01T13:00',
+  workStatus: 'DISPATCH_WAITING',
+})
+
+const submitRequest = async () => {
+  await taskStore.addTask({
+    ...requestForm.value,
+    containerId: Number(requestForm.value.containerId),
+    driverId: Number(requestForm.value.driverId) || null,
+    vehicleId: Number(requestForm.value.vehicleId) || null,
+    reservedTime: requestForm.value.reservedTime,
+    isApproved: false,
+  })
+}
 </script>
 
 <template>
@@ -9,31 +34,45 @@ import { availableDrivers, containers } from '../../data/dbData'
         <div class="section-title">
           <h2>운송 요청 등록</h2>
         </div>
-        <form class="form-grid">
+        <form class="form-grid" @submit.prevent="submitRequest">
           <div class="field">
             <label for="containerId">컨테이너</label>
-            <select id="containerId">
+            <select id="containerId" v-model="requestForm.containerId" required>
+              <option value="" disabled>컨테이너 선택</option>
               <option v-for="container in containers" :key="container.container_id" :value="container.container_id">
                 {{ container.container_number }}
               </option>
             </select>
           </div>
           <div class="field">
+            <label for="driverId">기사</label>
+            <select id="driverId" v-model="requestForm.driverId">
+              <option value="">미배정</option>
+              <option v-for="driver in availableDrivers" :key="driver.driver_id" :value="driver.driver_id">
+                {{ driver.driver_name }}
+              </option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="vehicleId">차량 ID</label>
+            <input id="vehicleId" v-model="requestForm.vehicleId" min="1" type="number" />
+          </div>
+          <div class="field">
             <label for="workType">작업 유형</label>
-            <select id="workType">
-              <option value="LOAD_OUT">반출 상차</option>
+            <select id="workType" v-model="requestForm.workType">
+              <option value="LOAD_OUT">반출 적재</option>
               <option value="UNLOAD_IN">반입 하차</option>
             </select>
           </div>
           <div class="field">
             <label for="reservedTime">예약 시간</label>
-            <input id="reservedTime" type="datetime-local" value="2026-07-01T13:00" />
+            <input id="reservedTime" v-model="requestForm.reservedTime" type="datetime-local" />
           </div>
           <div class="field">
             <label for="workStatus">작업 상태</label>
-            <input id="workStatus" value="DISPATCH_WAITING" />
+            <input id="workStatus" v-model="requestForm.workStatus" />
           </div>
-          <button class="primary-button full request-button" type="button">운송 요청 등록</button>
+          <button class="primary-button full request-button" type="submit">운송 요청 등록</button>
         </form>
       </article>
 
@@ -43,7 +82,13 @@ import { availableDrivers, containers } from '../../data/dbData'
           <span class="status-pill green">{{ availableDrivers.length }}명</span>
         </div>
         <div class="match-list">
-          <button v-for="driver in availableDrivers" :key="driver.driver_id" class="match-card" type="button">
+          <button
+            v-for="driver in availableDrivers"
+            :key="driver.driver_id"
+            class="match-card"
+            type="button"
+            @click="requestForm.driverId = driver.driver_id"
+          >
             <span>
               <b>{{ driver.driver_name }}</b>
               <small>기사 ID {{ driver.driver_id }} / 운송사 ID {{ driver.carrier_id }}</small>

@@ -225,7 +225,10 @@ const logout = () => {
 }
 
 .sidebar {
+  position: sticky;
+  top: 0;
   display: flex;
+  height: 100vh;
   min-width: 0;
   flex-direction: column;
   gap: 10px;
@@ -416,7 +419,10 @@ const logout = () => {
 }
 
 .main-area {
+  display: flex;
+  min-height: 100vh;
   min-width: 0;
+  flex-direction: column;
 }
 
 .topbar {
@@ -443,6 +449,8 @@ const logout = () => {
 }
 
 .content {
+  min-height: 0;
+  flex: 1;
   padding: 10px;
 }
 

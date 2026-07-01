@@ -1,11 +1,13 @@
 <script setup>
-import {
+import { useLogisticsData } from '@/composables/useLogisticsData'
+
+const {
   getContainerNumber,
   getDriverName,
   getPlateNumber,
   getSectorByContainerId,
   workOrders,
-} from '../../data/dbData'
+} = useLogisticsData()
 </script>
 
 <template>
