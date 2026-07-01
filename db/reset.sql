@@ -1,1 +1,0 @@
-DROP SCHEMA IF EXISTS port_gate CASCADE;
