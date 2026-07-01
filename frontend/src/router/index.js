@@ -1,4 +1,24 @@
+/*
+=========================================
+Router 메인 설정
+=========================================
+
+역할
+- Vue Router 생성
+- 각 역할별 Router 등록
+- 로그인/권한 검사(Guard) 연결
+
+관리 파일
+- auth.js
+- admin.js
+- carrier.js
+- driver.js
+- guard.js
+=========================================
+*/
+
 import { createRouter, createWebHistory } from 'vue-router'
+<<<<<<< HEAD
 import LoginView from '../views/LoginView.vue'
 import CarrierDashboardView from '../views/carrier/CarrierDashboardView.vue'
 import CarrierRequestsView from '../views/carrier/CarrierRequestsView.vue'
@@ -13,10 +33,20 @@ import AdminTasksView from '../views/admin/AdminTasksView.vue'
 import AdminGateLogsView from '../views/admin/AdminGateLogsView.vue'
 import AdminContainersView from '../views/admin/AdminContainersView.vue'
 import AdminEventsView from '../views/admin/AdminEventsView.vue'
+=======
+
+import authRoutes from './auth'
+import adminRoutes from './admin'
+import carrierRoutes from './carrier'
+import driverRoutes from './driver'
+
+import { authGuard } from './guard'
+>>>>>>> origin/hakseop
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+<<<<<<< HEAD
     {
       path: '/',
       redirect: '/login',
@@ -134,30 +164,15 @@ const router = createRouter({
         },
       ],
     },
+=======
+    ...authRoutes,
+    ...adminRoutes,
+    ...carrierRoutes,
+    ...driverRoutes,
+>>>>>>> origin/hakseop
   ],
 })
 
-router.beforeEach((to) => {
-  if (to.path === '/login') {
-    return true
-  }
-
-  const user = JSON.parse(localStorage.getItem('portGateUser') || 'null')
-  if (!user) {
-    return '/login'
-  }
-
-  const roleRoot = {
-    CARRIER: '/carrier',
-    DRIVER: '/driver',
-    ADMIN: '/admin',
-  }[user.roleCode]
-
-  if (roleRoot && !to.path.startsWith(roleRoot)) {
-    return roleRoot === '/admin' ? '/admin/main' : `${roleRoot}/dashboard`
-  }
-
-  return true
-})
+router.beforeEach(authGuard)
 
 export default router
