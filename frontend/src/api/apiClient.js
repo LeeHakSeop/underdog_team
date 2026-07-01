@@ -9,7 +9,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL
 export const request = async (path, options = {}) => {
     // 브라우저 localStorage에 저장된 JWT를 가져옵니다.
     // 아직 로그인하지 않았다면 token에는 null이 들어갑니다.
-
+    console.log('요청 URL:', `${BASE_URL}${path}`)
     const token = localStorage.getItem('token')
     // 기존 요청 헤더를 Headers 객체로 변환합니다.
     // Headers 객체를 사용하면 has(), set() 메서드로 헤더를 쉽게 관리할 수 있습니다.

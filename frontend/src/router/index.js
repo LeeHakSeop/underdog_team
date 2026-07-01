@@ -23,6 +23,7 @@ import authRoutes from './auth'
 import adminRoutes from './admin'
 import carrierRoutes from './carrier'
 import driverRoutes from './driver'
+import vehicleRoutes from './vehicle'
 
 import { authGuard } from './guard'
 
@@ -33,9 +34,11 @@ const router = createRouter({
     ...adminRoutes,
     ...carrierRoutes,
     ...driverRoutes,
+    ...vehicleRoutes,
   ],
 })
 
-router.beforeEach(authGuard)
+// 개발중에 OFF
+// router.beforeEach(authGuard)
 
 export default router
