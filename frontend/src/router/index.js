@@ -5,8 +5,10 @@ import CarrierRequestsView from '../views/carrier/CarrierRequestsView.vue'
 import CarrierApprovalsView from '../views/carrier/CarrierApprovalsView.vue'
 import DriverDashboardView from '../views/driver/DriverDashboardView.vue'
 import DriverGateStatusView from '../views/driver/DriverGateStatusView.vue'
+import DriverVehiclesView from '../views/driver/DriverVehiclesView.vue'
 import AdminMainView from '../views/admin/AdminMainView.vue'
 import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
+import AdminMembersView from '../views/admin/AdminMembersView.vue'
 import AdminTasksView from '../views/admin/AdminTasksView.vue'
 import AdminGateLogsView from '../views/admin/AdminGateLogsView.vue'
 import AdminContainersView from '../views/admin/AdminContainersView.vue'
@@ -68,6 +70,12 @@ const router = createRouter({
           meta: { role: 'driver', title: '작업 현황' },
         },
         {
+          path: 'vehicles',
+          name: 'driver-vehicles',
+          component: DriverVehiclesView,
+          meta: { role: 'driver', title: '차량 등록' },
+        },
+        {
           path: 'gate-status',
           redirect: '/driver/work-status',
         },
@@ -93,6 +101,12 @@ const router = createRouter({
           name: 'admin-dashboard',
           component: AdminDashboardView,
           meta: { role: 'admin', title: '센터 현황' },
+        },
+        {
+          path: 'members',
+          name: 'admin-members',
+          component: AdminMembersView,
+          meta: { role: 'admin', title: '가입 인원관리' },
         },
         {
           path: 'tasks',
