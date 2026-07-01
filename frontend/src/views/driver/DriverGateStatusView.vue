@@ -1,7 +1,7 @@
 <script setup>
 import { gateLogs, workOrders } from '../../data/mockData'
 
-const driverOrders = workOrders.filter((order) => order.driverName === '김도현' || order.driverName === '박민재')
+const driverOrders = workOrders.filter((order) => [1, 3].includes(order.driver_id))
 </script>
 
 <template>
