@@ -1,14 +1,20 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useCarrierStore } from '@/stores/carrierStore'
 
 const router = useRouter()
+const carrierStore = useCarrierStore()
+
 const mode = ref('login')
+const submitMessage = ref('')
+
 const loginForm = ref({
   username: 'admin',
   password: '1234',
   roleCode: 'ADMIN',
 })
+
 const signupForm = ref({
   username: '',
   password: '',
@@ -31,10 +37,14 @@ const roleOptions = [
   { code: 'ADMIN', label: '관리자', home: '/admin/main' },
 ]
 
-const selectedRole = computed(() => roleOptions.find((role) => role.code === signupForm.value.roleCode))
+const selectedRole = computed(() =>
+  roleOptions.find((role) => role.code === signupForm.value.roleCode)
+)
 
 const login = () => {
-  const role = roleOptions.find((item) => item.code === loginForm.value.roleCode) || roleOptions[2]
+  const role =
+    roleOptions.find((item) => item.code === loginForm.value.roleCode) ||
+    roleOptions[2]
 
   localStorage.setItem(
     'portGateUser',
@@ -48,9 +58,7 @@ const login = () => {
   router.push(role.home)
 }
 
-const signup = () => {
-  const role = roleOptions.find((item) => item.code === signupForm.value.roleCode) || roleOptions[0]
-
+const saveLoginUser = (role) => {
   localStorage.setItem(
     'portGateUser',
     JSON.stringify({
@@ -60,8 +68,31 @@ const signup = () => {
       roleName: role.label,
     }),
   )
+}
 
-  router.push(role.home)
+const signup = async () => {
+  const role =
+    roleOptions.find((item) => item.code === signupForm.value.roleCode) ||
+    roleOptions[0]
+
+  submitMessage.value = ''
+
+  try {
+    if (role.code === 'CARRIER') {
+      await carrierStore.addCarrier({
+        carrierName: signupForm.value.carrierName || signupForm.value.name,
+        carrierContact: signupForm.value.phone,
+        managerName: signupForm.value.managerName || signupForm.value.name,
+        carrierStatus: 'ACTIVE',
+      })
+    }
+
+    saveLoginUser(role)
+    router.push(role.home)
+  } catch (error) {
+    submitMessage.value =
+      carrierStore.error || '회원가입 처리 중 오류가 발생했습니다.'
+  }
 }
 </script>
 
@@ -120,15 +151,15 @@ const signup = () => {
         <form v-else class="auth-form" @submit.prevent="signup">
           <div class="form-head">
             <h2>회원가입</h2>
-            <p>DB 사용자 역할 구조에 맞춰 기본 정보와 역할별 정보를 입력합니다.</p>
+            <p>역할과 DB 기준 정보를 입력합니다.</p>
           </div>
 
           <div class="form-grid">
             <div class="field">
-              <label for="signupRole">역할 코드</label>
+              <label for="signupRole">역할</label>
               <select id="signupRole" v-model="signupForm.roleCode">
                 <option v-for="role in roleOptions" :key="role.code" :value="role.code">
-                  {{ role.code }} - {{ role.label }}
+                  {{ role.label }}
                 </option>
               </select>
             </div>
@@ -160,7 +191,7 @@ const signup = () => {
             <div v-if="signupForm.roleCode === 'CARRIER'" class="form-grid">
               <div class="field">
                 <label for="carrierName">운송사명</label>
-                <input id="carrierName" v-model="signupForm.carrierName" />
+                <input id="carrierName" v-model="signupForm.carrierName" required />
               </div>
               <div class="field">
                 <label for="businessNo">사업자번호</label>
@@ -198,7 +229,10 @@ const signup = () => {
             </div>
           </div>
 
-          <button class="submit-button" type="submit">회원가입 후 시작</button>
+          <p v-if="submitMessage" class="form-message">{{ submitMessage }}</p>
+          <button class="submit-button" :disabled="carrierStore.loading" type="submit">
+            {{ carrierStore.loading ? '처리 중' : '회원가입 후 시작' }}
+          </button>
         </form>
       </div>
     </section>
@@ -315,6 +349,15 @@ const signup = () => {
   font-weight: 700;
 }
 
+.form-message {
+  margin: 0;
+  padding: 8px 10px;
+  color: #9f1d1d;
+  background: #fff2f2;
+  border: 1px solid #e6b8b8;
+  font-size: 13px;
+}
+
 .submit-button {
   min-height: 34px;
   color: #ffffff;
@@ -322,6 +365,11 @@ const signup = () => {
   border: 1px solid var(--blue-700);
   border-radius: 2px;
   font-weight: 700;
+}
+
+.submit-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 @media (max-width: 980px) {
