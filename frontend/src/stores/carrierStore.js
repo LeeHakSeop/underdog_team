@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { fetchCarriers, registerCarrier } from '@/api/carrierApi'
+import { fetchCarriers, createCarrier } from '@/api/carrierApi'
 
 export const useCarrierStore = defineStore('carrier', {
   state: () => ({
@@ -28,9 +28,8 @@ export const useCarrierStore = defineStore('carrier', {
       this.error = ''
 
       try {
-        const createdCarrier = await registerCarrier(carrier)
-        this.carriers = [createdCarrier, ...this.carriers]
-        return createdCarrier
+        await createCarrier(carrier)
+        await this.loadCarriers()
       } catch (error) {
         this.error = '운송사 등록에 실패했습니다.'
         throw error

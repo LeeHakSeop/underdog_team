@@ -1,18 +1,30 @@
-import axios from 'axios'
+// src/api/carrierApi.js
+import { request } from './apiClient'
 
-const carrierClient = axios.create({
-  baseURL: 'http://localhost/api/carrier',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
-
-export async function fetchCarriers() {
-  const response = await carrierClient.get('/list')
-  return response.data
+export const fetchCarriers = () => {
+  return request('/api/carrier')
 }
 
-export async function registerCarrier(carrier) {
-  const response = await carrierClient.post('/reg', carrier)
-  return response.data
+export const fetchCarrierById = (carrierId) => {
+  return request(`/api/carrier/${carrierId}`)
+}
+
+export const createCarrier = (carrier) => {
+  return request('/api/carrier', {
+    method: 'POST',
+    body: JSON.stringify(carrier),
+  })
+}
+
+export const updateCarrier = (carrierId, carrier) => {
+  return request(`/api/carrier/${carrierId}`, {
+    method: 'PUT',
+    body: JSON.stringify(carrier),
+  })
+}
+
+export const deleteCarrier = (carrierId) => {
+  return request(`/api/carrier/${carrierId}`, {
+    method: 'DELETE',
+  })
 }

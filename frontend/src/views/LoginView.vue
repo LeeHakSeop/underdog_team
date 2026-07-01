@@ -8,6 +8,7 @@ const carrierStore = useCarrierStore()
 
 const mode = ref('login')
 const submitMessage = ref('')
+
 const loginForm = ref({
   username: 'admin',
   password: '1234',
@@ -36,10 +37,14 @@ const roleOptions = [
   { code: 'ADMIN', label: '관리자', home: '/admin/main' },
 ]
 
-const selectedRole = computed(() => roleOptions.find((role) => role.code === signupForm.value.roleCode))
+const selectedRole = computed(() =>
+  roleOptions.find((role) => role.code === signupForm.value.roleCode)
+)
 
 const login = () => {
-  const role = roleOptions.find((item) => item.code === loginForm.value.roleCode) || roleOptions[2]
+  const role =
+    roleOptions.find((item) => item.code === loginForm.value.roleCode) ||
+    roleOptions[2]
 
   localStorage.setItem(
     'portGateUser',
@@ -53,7 +58,7 @@ const login = () => {
   router.push(role.home)
 }
 
-const saveLoginUser = (role, carrier = null) => {
+const saveLoginUser = (role) => {
   localStorage.setItem(
     'portGateUser',
     JSON.stringify({
@@ -61,21 +66,20 @@ const saveLoginUser = (role, carrier = null) => {
       name: signupForm.value.name,
       roleCode: role.code,
       roleName: role.label,
-      carrierId: carrier?.carrierId,
-      carrierName: carrier?.carrierName,
     }),
   )
 }
 
 const signup = async () => {
-  const role = roleOptions.find((item) => item.code === signupForm.value.roleCode) || roleOptions[0]
+  const role =
+    roleOptions.find((item) => item.code === signupForm.value.roleCode) ||
+    roleOptions[0]
+
   submitMessage.value = ''
 
   try {
-    let carrier = null
-
     if (role.code === 'CARRIER') {
-      carrier = await carrierStore.addCarrier({
+      await carrierStore.addCarrier({
         carrierName: signupForm.value.carrierName || signupForm.value.name,
         carrierContact: signupForm.value.phone,
         managerName: signupForm.value.managerName || signupForm.value.name,
@@ -83,10 +87,11 @@ const signup = async () => {
       })
     }
 
-    saveLoginUser(role, carrier)
+    saveLoginUser(role)
     router.push(role.home)
   } catch (error) {
-    submitMessage.value = carrierStore.error || '회원가입 처리 중 오류가 발생했습니다.'
+    submitMessage.value =
+      carrierStore.error || '회원가입 처리 중 오류가 발생했습니다.'
   }
 }
 </script>
