@@ -1,19 +1,26 @@
 <script setup>
 import { computed, ref } from 'vue'
 import SectorMap from '../../components/yard/SectorMap.vue'
-import { driverActions, workOrders } from '../../data/mockData'
+import {
+  driverActions,
+  getCarrierName,
+  getContainerNumber,
+  getSectorByContainerId,
+  workOrders,
+} from '../../data/dbData'
 
 const task = workOrders[0]
 const decision = ref('pending')
 
 const approved = computed(() => decision.value === 'approved')
+const taskSector = computed(() => getSectorByContainerId(task.container_id))
 </script>
 
 <template>
   <div class="page-stack driver-page">
     <section class="panel request-panel">
       <div class="section-title">
-        <h2>운송사 요청 작업</h2>
+        <h2>배정 작업</h2>
         <span class="status-pill" :class="{ green: approved }">
           {{ approved ? '승인 완료' : '승인 대기' }}
         </span>
@@ -21,45 +28,45 @@ const approved = computed(() => decision.value === 'approved')
 
       <div class="request-summary">
         <div>
-          <span>작업번호</span>
-          <strong>{{ task.orderNo }}</strong>
+          <span>작업 ID</span>
+          <strong>{{ task.work_order_id }}</strong>
         </div>
         <div>
           <span>운송사</span>
-          <strong>{{ task.carrierName }}</strong>
+          <strong>{{ getCarrierName(task.carrier_id) }}</strong>
         </div>
         <div>
           <span>컨테이너</span>
-          <strong>{{ task.containerNo }}</strong>
+          <strong>{{ getContainerNumber(task.container_id) }}</strong>
         </div>
         <div>
           <span>작업 유형</span>
-          <strong>{{ task.workType }}</strong>
+          <strong>{{ task.work_type }}</strong>
         </div>
         <div>
-          <span>예약</span>
-          <strong>{{ task.time }}</strong>
+          <span>예약 시간</span>
+          <strong>{{ task.reserved_time }}</strong>
         </div>
         <div>
           <span>배정 섹터</span>
-          <strong>{{ task.sectorCode }}</strong>
+          <strong>{{ taskSector?.sector_name || '-' }}</strong>
         </div>
       </div>
 
       <div class="decision-actions">
-        <button class="primary-button" type="button" @click="decision = 'approved'">승인</button>
-        <button class="danger-button" type="button" @click="decision = 'rejected'">거부</button>
+        <button class="primary-button" type="button" @click="decision = 'approved'">수락</button>
+        <button class="danger-button" type="button" @click="decision = 'rejected'">거절</button>
       </div>
     </section>
 
     <section v-if="approved" class="grid-2 driver-grid">
       <article class="panel map-panel">
-        <SectorMap :selected-code="task.sectorCode" />
+        <SectorMap :selected-code="taskSector?.sector_name" />
       </article>
 
       <article class="panel">
         <div class="section-title">
-          <h2>작업 관리</h2>
+          <h2>작업 상태 입력</h2>
           <span class="status-pill green">기사 입력</span>
         </div>
         <div class="action-grid">
@@ -71,8 +78,8 @@ const approved = computed(() => decision.value === 'approved')
     </section>
 
     <section v-else-if="decision === 'rejected'" class="panel rejected-panel">
-      <strong>거부 처리됨</strong>
-      <span>운송사 요청 작업이 기사 화면에서 거부 상태로 표시됩니다.</span>
+      <strong>거절 처리됨</strong>
+      <span>해당 작업은 기사 화면에서 거절 상태로 표시됩니다.</span>
     </section>
   </div>
 </template>

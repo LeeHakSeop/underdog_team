@@ -1,3 +1,4 @@
+// stores/vehicleStore.js
 import { defineStore } from 'pinia'
 import { fetchVehicles } from '@/api/vehicleApi'
 
@@ -23,7 +24,7 @@ export const useVehicleStore = defineStore('vehicle', {
       }
     },
 
-    
+    // 백엔드에 등록(POST) API가 없어 현재는 동작하지 않습니다.
+    // addVehicle은 VehicleController에 @PostMapping이 추가된 뒤 구현하는 것이 맞습니다.
   },
 })
-
