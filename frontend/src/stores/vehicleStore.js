@@ -23,12 +23,6 @@ export const useVehicleStore = defineStore('vehicle', {
       }
     },
 
-<<<<<<< HEAD
-    
-  },
-})
-
-=======
     async addVehicle(vehicle) {
       this.loading = true
       this.error = ''
@@ -75,4 +69,4 @@ export const useVehicleStore = defineStore('vehicle', {
     },
   },
 })
->>>>>>> origin/KSM
+

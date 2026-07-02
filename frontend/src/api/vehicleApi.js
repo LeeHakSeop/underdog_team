@@ -1,11 +1,8 @@
 import { request } from "./apiClient"
 
 export const fetchVehicles = () => {
-<<<<<<< HEAD
+
     return request('/api/vehicle')
-}
-=======
-  return request('/api/vehicle')
 }
 
 export const fetchVehicleById = (vehicleId) => {
@@ -31,4 +28,4 @@ export const deleteVehicle = (vehicleId) => {
     method: 'DELETE',
   })
 }
->>>>>>> origin/KSM
+
