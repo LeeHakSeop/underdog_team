@@ -1,4 +1,3 @@
-// api/driverApi.js
 import { request } from './apiClient'
 
 export const fetchDrivers = () => {

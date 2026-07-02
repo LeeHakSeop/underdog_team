@@ -1,4 +1,3 @@
-// src/api/carrierApi.js
 import { request } from './apiClient'
 
 export const fetchCarriers = () => {
