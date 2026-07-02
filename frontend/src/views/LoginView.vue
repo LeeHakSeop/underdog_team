@@ -3,26 +3,30 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+
 const mode = ref('login')
+const submitMessage = ref('')
+
 const loginForm = ref({
   username: 'admin',
   password: '1234',
   roleCode: 'ADMIN',
 })
-const signupForm = ref({
-  username: '',
-  password: '',
-  name: '',
-  email: '',
-  phone: '',
-  roleCode: 'CARRIER',
-  carrierName: '',
-  businessNo: '',
-  managerName: '',
-  driverName: '',
-  driverCarrierName: '',
-  driverCanEnter: 'Y',
-  adminArea: '전체 운영',
+
+const signupRole = ref('CARRIER')
+const carrierForm = ref({
+  carrier_name: '',
+  carrier_contact: '',
+  manager_name: '',
+  carrier_status: 'PENDING',
+})
+
+const driverForm = ref({
+  driver_name: '',
+  driver_contact: '',
+  is_registered: false,
+  carrier_id: 1,
+  can_enter: false,
 })
 
 const roleOptions = [
@@ -31,48 +35,71 @@ const roleOptions = [
   { code: 'ADMIN', label: '관리자', home: '/admin/main' },
 ]
 
-const selectedRole = computed(() => roleOptions.find((role) => role.code === signupForm.value.roleCode))
+const selectedRole = computed(() => roleOptions.find((role) => role.code === signupRole.value))
 
-const login = () => {
-  const role = roleOptions.find((item) => item.code === loginForm.value.roleCode) || roleOptions[2]
+const readRows = (key) => JSON.parse(localStorage.getItem(key) || '[]')
+const writeRows = (key, rows) => localStorage.setItem(key, JSON.stringify(rows))
 
+const nextId = (rows, idKey) => {
+  return rows.reduce((max, row) => Math.max(max, Number(row[idKey]) || 0), 0) + 1
+}
+
+const saveLoginUser = (role, username) => {
   localStorage.setItem(
     'portGateUser',
     JSON.stringify({
-      username: loginForm.value.username,
+      username,
       roleCode: role.code,
       roleName: role.label,
     }),
   )
+}
 
+const login = () => {
+  const role = roleOptions.find((item) => item.code === loginForm.value.roleCode) || roleOptions[2]
+  saveLoginUser(role, loginForm.value.username)
   router.push(role.home)
 }
 
 const signup = () => {
-  const role = roleOptions.find((item) => item.code === signupForm.value.roleCode) || roleOptions[0]
+  const role = selectedRole.value || roleOptions[0]
+  submitMessage.value = ''
 
-  localStorage.setItem(
-    'portGateUser',
-    JSON.stringify({
-      username: signupForm.value.username,
-      name: signupForm.value.name,
-      roleCode: role.code,
-      roleName: role.label,
-    }),
-  )
+  if (role.code === 'CARRIER') {
+    const rows = readRows('portGateCarrierSignups')
+    rows.push({
+      carrier_id: nextId(rows, 'carrier_id'),
+      carrier_name: carrierForm.value.carrier_name,
+      carrier_contact: carrierForm.value.carrier_contact,
+      manager_name: carrierForm.value.manager_name,
+      carrier_status: 'PENDING',
+    })
+    writeRows('portGateCarrierSignups', rows)
+    submitMessage.value = '운송사 가입 정보가 저장되었습니다. 관리자 승인이 필요합니다.'
+    return
+  }
 
-  router.push(role.home)
+  if (role.code === 'DRIVER') {
+    const rows = readRows('portGateDriverSignups')
+    rows.push({
+      driver_id: nextId(rows, 'driver_id'),
+      driver_name: driverForm.value.driver_name,
+      driver_contact: driverForm.value.driver_contact,
+      is_registered: false,
+      carrier_id: Number(driverForm.value.carrier_id),
+      can_enter: false,
+    })
+    writeRows('portGateDriverSignups', rows)
+    submitMessage.value = '기사 가입 정보가 저장되었습니다. 관리자 승인이 필요합니다.'
+  }
 }
 </script>
 
 <template>
   <main class="auth-page">
     <section class="brand-panel">
-      <p class="eyebrow">Port Gate System</p>
-      <h1>
-        항만 게이트 차량 출입 및<br />
-        컨테이너 상차 섹터 안내 시스템
-      </h1>
+      <p class="eyebrow">항만 게이트 시스템</p>
+      <h1>차량 출입 및 컨테이너 상차 섹터 안내</h1>
     </section>
 
     <section class="auth-panel">
@@ -101,7 +128,7 @@ const signup = () => {
             </select>
           </div>
           <div class="field">
-            <label for="loginUsername">사용자 ID</label>
+            <label for="loginUsername">아이디</label>
             <input id="loginUsername" v-model="loginForm.username" autocomplete="username" />
           </div>
           <div class="field">
@@ -120,85 +147,67 @@ const signup = () => {
         <form v-else class="auth-form" @submit.prevent="signup">
           <div class="form-head">
             <h2>회원가입</h2>
-            <p>DB 사용자 역할 구조에 맞춰 기본 정보와 역할별 정보를 입력합니다.</p>
+            <p>가입 정보는 DB 구조에 맞춰 저장되고, 승인과 권한은 관리자가 결정합니다.</p>
           </div>
 
-          <div class="form-grid">
-            <div class="field">
-              <label for="signupRole">역할 코드</label>
-              <select id="signupRole" v-model="signupForm.roleCode">
-                <option v-for="role in roleOptions" :key="role.code" :value="role.code">
-                  {{ role.code }} - {{ role.label }}
-                </option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="signupUsername">사용자 ID</label>
-              <input id="signupUsername" v-model="signupForm.username" required />
-            </div>
-            <div class="field">
-              <label for="signupPassword">비밀번호</label>
-              <input id="signupPassword" v-model="signupForm.password" required type="password" />
-            </div>
-            <div class="field">
-              <label for="signupName">이름</label>
-              <input id="signupName" v-model="signupForm.name" required />
-            </div>
-            <div class="field">
-              <label for="signupEmail">이메일</label>
-              <input id="signupEmail" v-model="signupForm.email" type="email" />
-            </div>
-            <div class="field">
-              <label for="signupPhone">연락처</label>
-              <input id="signupPhone" v-model="signupForm.phone" />
-            </div>
+          <div class="field">
+            <label for="signupRole">가입 유형</label>
+            <select id="signupRole" v-model="signupRole">
+              <option value="CARRIER">운송사</option>
+              <option value="DRIVER">화물 기사</option>
+            </select>
           </div>
 
-          <div class="role-fields">
-            <h3>{{ selectedRole?.label }} 추가 정보</h3>
-
-            <div v-if="signupForm.roleCode === 'CARRIER'" class="form-grid">
+          <div v-if="signupRole === 'CARRIER'" class="role-fields">
+            <h3>운송사 정보</h3>
+            <div class="form-grid">
               <div class="field">
                 <label for="carrierName">운송사명</label>
-                <input id="carrierName" v-model="signupForm.carrierName" />
+                <input id="carrierName" v-model="carrierForm.carrier_name" required />
               </div>
               <div class="field">
-                <label for="businessNo">사업자번호</label>
-                <input id="businessNo" v-model="signupForm.businessNo" />
+                <label for="carrierContact">연락처</label>
+                <input id="carrierContact" v-model="carrierForm.carrier_contact" />
               </div>
               <div class="field">
                 <label for="managerName">담당자명</label>
-                <input id="managerName" v-model="signupForm.managerName" />
-              </div>
-            </div>
-
-            <div v-else-if="signupForm.roleCode === 'DRIVER'" class="form-grid">
-              <div class="field">
-                <label for="driverName">기사명</label>
-                <input id="driverName" v-model="signupForm.driverName" />
+                <input id="managerName" v-model="carrierForm.manager_name" />
               </div>
               <div class="field">
-                <label for="driverCarrierName">소속 운송사</label>
-                <input id="driverCarrierName" v-model="signupForm.driverCarrierName" />
-              </div>
-              <div class="field">
-                <label for="driverCanEnter">출입 가능 여부</label>
-                <select id="driverCanEnter" v-model="signupForm.driverCanEnter">
-                  <option value="Y">Y - 가능</option>
-                  <option value="N">N - 제한</option>
-                </select>
-              </div>
-            </div>
-
-            <div v-else class="form-grid">
-              <div class="field">
-                <label for="adminArea">관리 영역</label>
-                <input id="adminArea" v-model="signupForm.adminArea" />
+                <label for="carrierStatus">가입 상태</label>
+                <input id="carrierStatus" v-model="carrierForm.carrier_status" disabled />
               </div>
             </div>
           </div>
 
-          <button class="submit-button" type="submit">회원가입 후 시작</button>
+          <div v-else class="role-fields">
+            <h3>기사 정보</h3>
+            <div class="form-grid">
+              <div class="field">
+                <label for="driverName">기사명</label>
+                <input id="driverName" v-model="driverForm.driver_name" required />
+              </div>
+              <div class="field">
+                <label for="driverContact">연락처</label>
+                <input id="driverContact" v-model="driverForm.driver_contact" />
+              </div>
+              <div class="field">
+                <label for="carrierId">소속 운송사 ID</label>
+                <input id="carrierId" v-model.number="driverForm.carrier_id" min="1" type="number" />
+              </div>
+              <div class="field">
+                <label for="isRegistered">등록 승인 여부</label>
+                <input id="isRegistered" :value="driverForm.is_registered" disabled />
+              </div>
+              <div class="field">
+                <label for="canEnter">출입 가능 여부</label>
+                <input id="canEnter" :value="driverForm.can_enter" disabled />
+              </div>
+            </div>
+          </div>
+
+          <p v-if="submitMessage" class="form-message">{{ submitMessage }}</p>
+          <button class="submit-button" type="submit">가입 정보 저장</button>
         </form>
       </div>
     </section>
@@ -230,7 +239,6 @@ const signup = () => {
   color: #c9d6e2;
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0;
 }
 
 .brand-panel h1 {
@@ -255,14 +263,11 @@ const signup = () => {
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 2px;
-  box-shadow: none;
 }
 
 .auth-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0;
-  padding: 0;
   background: #e7edf3;
   border: 1px solid var(--line);
   border-radius: 2px;
@@ -273,7 +278,6 @@ const signup = () => {
   color: var(--ink-500);
   background: transparent;
   border: 0;
-  border-radius: 0;
   font-weight: 700;
 }
 
@@ -315,6 +319,15 @@ const signup = () => {
   font-weight: 700;
 }
 
+.form-message {
+  margin: 0;
+  padding: 8px 10px;
+  color: #173b60;
+  background: #eef7ff;
+  border: 1px solid #bdd2ed;
+  font-size: 13px;
+}
+
 .submit-button {
   min-height: 34px;
   color: #ffffff;
@@ -327,17 +340,10 @@ const signup = () => {
 @media (max-width: 980px) {
   .auth-page {
     grid-template-columns: 1fr;
-    background: #eef4fb;
   }
 
   .brand-panel {
-    min-height: 360px;
-    padding-bottom: 24px;
-    background: #26384d;
-  }
-
-  .auth-panel {
-    padding-top: 20px;
+    min-height: 300px;
   }
 }
 

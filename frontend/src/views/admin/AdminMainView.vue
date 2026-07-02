@@ -1,44 +1,66 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { containers, gateCameras, gateLogs, workOrders } from '../../data/mockData'
+import { useLogisticsData } from '@/composables/useLogisticsData'
 
-const selectedGateId = ref(gateCameras[0]?.id || '')
-const processType = ref(gateCameras[0]?.gateType || 'IN')
+const {
+  gateLogs,
+  getCarrierName,
+  getContainer,
+  getContainerNumber,
+  getDriverName,
+  getPlateNumber,
+  getSectorByContainerId,
+  workOrders,
+} = useLogisticsData()
+
+const gateCells = computed(() => {
+  const rows = gateLogs.value.map((log) => {
+    const plateNumber = getPlateNumber(log.vehicle_id)
+    const recognition = plateNumber === '-' ? null : { recognized_plate: plateNumber }
+    return { ...log, recognition }
+  })
+
+  while (rows.length < 9) {
+    const next = rows.length + 1
+    rows.push({
+      gate_log_id: `empty-${next}`,
+      gate_number: `G-${String(next).padStart(2, '0')}`,
+      gate_name: `게이트 ${String(next).padStart(2, '0')}`,
+      in_out_type: next % 2 === 0 ? 'OUT' : 'IN',
+      recognition: null,
+    })
+  }
+
+  return rows.slice(0, 9)
+})
+
+const selectedGateId = ref(gateCells.value[0]?.gate_log_id || '')
+const processType = ref(gateCells.value[0]?.in_out_type || 'IN')
 
 const selectedGate = computed(() => {
-  return gateCameras.find((camera) => camera.id === selectedGateId.value) || gateCameras[0]
+  return gateCells.value.find((gate) => gate.gate_log_id === selectedGateId.value) || gateCells.value[0]
 })
 
 const matchedOrder = computed(() => {
-  if (!selectedGate.value?.matchedOrderNo) return null
-  return workOrders.find((order) => order.orderNo === selectedGate.value.matchedOrderNo) || null
+  const vehicleId = selectedGate.value?.vehicle_id
+  if (!vehicleId) return null
+  return workOrders.value.find((order) => order.vehicle_id === vehicleId) || null
 })
 
 const matchedContainer = computed(() => {
   if (!matchedOrder.value) return null
-  return containers.find((container) => container.containerNo === matchedOrder.value.containerNo) || null
+  return getContainer(matchedOrder.value.container_id)
 })
 
-const gateRows = computed(() => {
-  const rows = [...gateCameras]
-  while (rows.length < 9) {
-    const next = rows.length + 1
-    rows.push({
-      id: `G-${String(next).padStart(2, '0')}`,
-      name: `게이트 ${String(next).padStart(2, '0')}`,
-      gateType: next % 2 === 0 ? 'OUT' : 'IN',
-      status: '대기',
-      recognizedVehicleNo: '',
-      matchedOrderNo: '',
-    })
-  }
-  return rows.slice(0, 9)
+const matchedSector = computed(() => {
+  if (!matchedOrder.value) return null
+  return getSectorByContainerId(matchedOrder.value.container_id)
 })
 
 const processLabel = computed(() => (processType.value === 'IN' ? '입차 처리' : '출차 처리'))
 
 watch(selectedGate, (gate) => {
-  processType.value = gate?.gateType || 'IN'
+  processType.value = gate?.in_out_type || 'IN'
 })
 </script>
 
@@ -47,16 +69,16 @@ watch(selectedGate, (gate) => {
     <section class="control-layout">
       <article class="cctv-wall">
         <button
-          v-for="gate in gateRows"
-          :key="gate.id"
+          v-for="gate in gateCells"
+          :key="gate.gate_log_id"
           class="cctv-cell"
-          :class="{ active: gate.id === selectedGateId, empty: !gate.recognizedVehicleNo }"
+          :class="{ active: gate.gate_log_id === selectedGateId, empty: !gate.recognition }"
           type="button"
-          @click="selectedGateId = gate.id"
+          @click="selectedGateId = gate.gate_log_id"
         >
-          <span class="gate-label">{{ gate.name }}</span>
-          <strong v-if="gate.recognizedVehicleNo" class="detected-number">
-            {{ gate.recognizedVehicleNo }}
+          <span class="gate-label">{{ gate.gate_name }}</span>
+          <strong v-if="gate.recognition" class="detected-number">
+            {{ gate.recognition.recognized_plate }}
           </strong>
           <em v-else>CCTV 대기</em>
         </button>
@@ -64,9 +86,9 @@ watch(selectedGate, (gate) => {
 
       <aside class="recognition-panel">
         <div class="result-card">
-          <small>선택 게이트</small>
-          <strong>{{ selectedGate.recognizedVehicleNo || '미확인' }}</strong>
-          <span>{{ selectedGate.name }}</span>
+          <small>번호판 인식 결과</small>
+          <strong>{{ selectedGate?.recognition?.recognized_plate || '미인식' }}</strong>
+          <span>{{ selectedGate?.gate_name }}</span>
         </div>
 
         <div class="decision-box">
@@ -93,56 +115,56 @@ watch(selectedGate, (gate) => {
             <h3>작업 정보</h3>
             <dl>
               <div>
-                <dt>작업번호</dt>
-                <dd>{{ matchedOrder?.orderNo || '-' }}</dd>
+                <dt>작업 ID</dt>
+                <dd>{{ matchedOrder?.work_order_id || '-' }}</dd>
               </div>
               <div>
-                <dt>작업유형</dt>
-                <dd>{{ matchedOrder?.workType || '-' }}</dd>
+                <dt>작업 유형</dt>
+                <dd>{{ matchedOrder?.work_type || '-' }}</dd>
               </div>
               <div>
-                <dt>예약시간</dt>
-                <dd>{{ matchedOrder?.time || '-' }}</dd>
+                <dt>예약 시간</dt>
+                <dd>{{ matchedOrder?.reserved_time || '-' }}</dd>
               </div>
               <div>
-                <dt>작업상태</dt>
-                <dd>{{ matchedOrder?.status || '-' }}</dd>
+                <dt>작업 상태</dt>
+                <dd>{{ matchedOrder?.work_status || '-' }}</dd>
               </div>
             </dl>
           </section>
 
           <section>
-            <h3>차량 · 기사 · 운송사</h3>
+            <h3>차량 / 기사 / 운송사</h3>
             <dl>
               <div>
-                <dt>차량번호</dt>
-                <dd>{{ matchedOrder?.vehicleNo || '-' }}</dd>
+                <dt>차량</dt>
+                <dd>{{ matchedOrder ? getPlateNumber(matchedOrder.vehicle_id) : '-' }}</dd>
               </div>
               <div>
-                <dt>기사명</dt>
-                <dd>{{ matchedOrder?.driverName || '-' }}</dd>
+                <dt>기사</dt>
+                <dd>{{ matchedOrder ? getDriverName(matchedOrder.driver_id) : '-' }}</dd>
               </div>
               <div>
                 <dt>운송사</dt>
-                <dd>{{ matchedOrder?.carrierName || '-' }}</dd>
+                <dd>{{ matchedOrder ? getCarrierName(matchedOrder.carrier_id) : '-' }}</dd>
               </div>
             </dl>
           </section>
 
           <section>
-            <h3>컨테이너 · 섹터</h3>
+            <h3>컨테이너 / 야드 섹터</h3>
             <dl>
               <div>
                 <dt>컨테이너</dt>
-                <dd>{{ matchedOrder?.containerNo || '-' }}</dd>
+                <dd>{{ matchedOrder ? getContainerNumber(matchedOrder.container_id) : '-' }}</dd>
               </div>
               <div>
                 <dt>규격/유형</dt>
-                <dd>{{ matchedContainer ? `${matchedContainer.sizeType} / ${matchedContainer.type}` : '-' }}</dd>
+                <dd>{{ matchedContainer ? `${matchedContainer.container_size} / ${matchedContainer.container_type}` : '-' }}</dd>
               </div>
               <div>
-                <dt>배정 섹터</dt>
-                <dd>{{ matchedOrder?.sectorCode || '-' }}</dd>
+                <dt>섹터</dt>
+                <dd>{{ matchedSector?.sector_name || '-' }}</dd>
               </div>
             </dl>
           </section>
@@ -158,23 +180,23 @@ watch(selectedGate, (gate) => {
 
     <section class="panel log-panel">
       <div class="section-title">
-        <h2>최근 게이트 기록</h2>
-        <span class="status-pill">DB gate_log</span>
+        <h2>게이트 입출차 기록</h2>
+        <span class="status-pill">DB 기록</span>
       </div>
       <div class="compact-table">
         <div class="compact-row head">
           <span>시간</span>
-          <span>차량번호</span>
+          <span>차량</span>
           <span>게이트</span>
           <span>구분</span>
           <span>처리 결과</span>
         </div>
-        <div v-for="log in gateLogs" :key="log.logNo" class="compact-row">
-          <span>{{ log.time }}</span>
-          <span>{{ log.vehicleNo }}</span>
-          <span>{{ log.gate }}</span>
-          <span>{{ log.type }}</span>
-          <span>{{ log.result }}</span>
+        <div v-for="log in gateLogs" :key="log.gate_log_id" class="compact-row">
+          <span>{{ log.entry_time || log.exit_time }}</span>
+          <span>{{ getPlateNumber(log.vehicle_id) }}</span>
+          <span>{{ log.gate_name }}</span>
+          <span>{{ log.in_out_type }}</span>
+          <span>{{ log.process_result }}</span>
         </div>
       </div>
     </section>
@@ -184,6 +206,8 @@ watch(selectedGate, (gate) => {
 <style scoped>
 .control-room {
   display: grid;
+  min-height: 0;
+  grid-template-rows: minmax(620px, auto) minmax(260px, auto);
   gap: 10px;
   color: #dceaff;
 }
@@ -199,13 +223,14 @@ watch(selectedGate, (gate) => {
 
 .control-layout {
   display: grid;
+  min-height: 0;
   grid-template-columns: minmax(0, 1.55fr) minmax(360px, 0.9fr);
   gap: 10px;
 }
 
 .cctv-wall {
   display: grid;
-  min-height: 650px;
+  min-height: 620px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 4px;
@@ -268,8 +293,10 @@ watch(selectedGate, (gate) => {
 
 .recognition-panel {
   display: grid;
+  min-height: 0;
   align-content: start;
   gap: 8px;
+  overflow: auto;
   padding: 8px;
 }
 
@@ -327,13 +354,9 @@ watch(selectedGate, (gate) => {
   border-color: #3f8beb;
 }
 
-.decision-button.out.selected {
-  color: #ffffff;
-  background: #d93a32;
-  border-color: #f08b85;
-}
-
+.decision-button.out.selected,
 .process-button.out {
+  color: #ffffff;
   background: #d93a32;
   border-color: #d93a32;
 }
@@ -365,7 +388,7 @@ watch(selectedGate, (gate) => {
 
 .info-stack dl div {
   display: grid;
-  grid-template-columns: 88px 1fr;
+  grid-template-columns: 100px 1fr;
   gap: 10px;
 }
 
@@ -382,19 +405,22 @@ watch(selectedGate, (gate) => {
 }
 
 .log-panel {
+  min-height: 0;
   padding: 8px;
 }
 
 .compact-table {
   display: grid;
   gap: 3px;
-  overflow-x: auto;
+  min-height: 0;
+  max-height: 282px;
+  overflow: auto;
 }
 
 .compact-row {
   display: grid;
   min-width: 760px;
-  grid-template-columns: 80px 1fr 100px 90px 130px;
+  grid-template-columns: 160px 1fr 100px 100px 130px;
   gap: 6px;
   padding: 6px 8px;
   color: #dceaff;
