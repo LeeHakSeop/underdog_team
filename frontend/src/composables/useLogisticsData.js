@@ -5,7 +5,7 @@ import { useDriverStore } from '@/stores/driverStore'
 import { useVehicleStore } from '@/stores/vehicleStore'
 import { useContainerStore } from '@/stores/adminStore/containerStore'
 import { useGateLogStore } from '@/stores/adminStore/gateLogStore'
-import { useTaskStore } from '@/stores/adminStore/taskStore'
+import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
 import { useYardSectorStore } from '@/stores/adminStore/yardSectorStore'
 
 const driverActions = ['IN', 'LOAD_START', 'LOAD_DONE', 'UNLOAD_START', 'UNLOAD_DONE', 'OUT']
@@ -103,7 +103,7 @@ export const useLogisticsData = () => {
   const vehicleStore = useVehicleStore()
   const containerStore = useContainerStore()
   const gateLogStore = useGateLogStore()
-  const taskStore = useTaskStore()
+  const WorkOrderStore = useWorkOrderStore()
   const yardSectorStore = useYardSectorStore()
 
   const { carriers: rawCarriers } = storeToRefs(carrierStore)
@@ -111,7 +111,7 @@ export const useLogisticsData = () => {
   const { vehicles: rawVehicles } = storeToRefs(vehicleStore)
   const { containers: rawContainers } = storeToRefs(containerStore)
   const { gateLogs: rawGateLogs } = storeToRefs(gateLogStore)
-  const { tasks: rawTasks } = storeToRefs(taskStore)
+  const { workOrders: rawworkOrders } = storeToRefs(WorkOrderStore)
   const { yardSectors: rawYardSectors } = storeToRefs(yardSectorStore)
 
   const loadAll = () => {
@@ -120,7 +120,7 @@ export const useLogisticsData = () => {
     vehicleStore.loadVehicles()
     containerStore.loadContainers()
     gateLogStore.loadGateLogs()
-    taskStore.loadTasks()
+    WorkOrderStore.loadWorkOrders()
     yardSectorStore.loadYardSectors()
   }
 
@@ -133,7 +133,7 @@ export const useLogisticsData = () => {
   const gateLogs = computed(() => rawGateLogs.value.map(normalizeGateLog))
   const yardSectors = computed(() => rawYardSectors.value.map(normalizeSector))
   const vehicleById = computed(() => new Map(rawVehicles.value.map((vehicle) => [vehicle.vehicleId, vehicle])))
-  const workOrders = computed(() => rawTasks.value.map((order) => normalizeWorkOrder(order, vehicleById.value)))
+  const workOrders = computed(() => rawworkOrders.value.map((order) => normalizeWorkOrder(order, vehicleById.value)))
 
   const getCarrierName = (carrierId) => carriers.value.find((carrier) => carrier.carrier_id === carrierId)?.carrier_name || '-'
   const getDriverName = (driverId) => drivers.value.find((driver) => driver.driver_id === driverId)?.driver_name || '-'

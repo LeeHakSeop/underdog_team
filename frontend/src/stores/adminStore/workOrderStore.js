@@ -1,19 +1,18 @@
-// stores/taskStore.js
+import { createWorkOrder, fetchWorkOrders } from '@/api/adminApi/workOrderApi';
 import { defineStore } from 'pinia'
-import { fetchTasks, createTask } from '@/api/adminApi/taskApi'
 
-export const useTaskStore = defineStore('task', {
-  state: () => ({ tasks: [], loading: false, error: '' }),
+export const useWorkOrderStore = defineStore('workOrder', {
+  state: () => ({ workOrders: [], loading: false, error: '' }),
   actions: {
-    async loadTasks() {
+    async loadWorkOrders() {
       this.loading = true; this.error = ''
-      try { this.tasks = await fetchTasks() }
+      try { this.workOrders = await fetchWorkOrders() }
       catch (error) { this.error = '작업 목록을 불러오지 못했습니다.'; throw error }
       finally { this.loading = false }
     },
-    async addTask(task) {
+    async addWorkOrder(workOrder) {
       this.loading = true; this.error = ''
-      try { await createTask(task); await this.loadTasks() }
+      try { await createWorkOrder(workOrder); await this.loadWorkOrders() }
       catch (error) { this.error = '작업 등록에 실패했습니다.'; throw error }
       finally { this.loading = false }
     },

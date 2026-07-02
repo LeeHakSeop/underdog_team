@@ -11,11 +11,11 @@ const {
   workOrders,
 } = useLogisticsData()
 
-const task = computed(() => workOrders.value[0] || null)
+const workOrder = computed(() => workOrders.value[0] || null)
 const decision = ref('pending')
 
 const approved = computed(() => decision.value === 'approved')
-const taskSector = computed(() => getSectorByContainerId(task.value?.container_id))
+const workOrderSector = computed(() => getSectorByContainerId(workOrder.value?.container_id))
 </script>
 
 <template>
@@ -31,27 +31,27 @@ const taskSector = computed(() => getSectorByContainerId(task.value?.container_i
       <div class="request-summary">
         <div>
           <span>작업 ID</span>
-          <strong>{{ task?.work_order_id }}</strong>
+          <strong>{{ workOrder?.work_order_id }}</strong>
         </div>
         <div>
           <span>운송사</span>
-          <strong>{{ getCarrierName(task?.carrier_id) }}</strong>
+          <strong>{{ getCarrierName(workOrder?.carrier_id) }}</strong>
         </div>
         <div>
           <span>컨테이너</span>
-          <strong>{{ getContainerNumber(task?.container_id) }}</strong>
+          <strong>{{ getContainerNumber(workOrder?.container_id) }}</strong>
         </div>
         <div>
           <span>작업 유형</span>
-          <strong>{{ task?.work_type }}</strong>
+          <strong>{{ workOrder?.work_type }}</strong>
         </div>
         <div>
           <span>예약 시간</span>
-          <strong>{{ task?.reserved_time }}</strong>
+          <strong>{{ workOrder?.reserved_time }}</strong>
         </div>
         <div>
           <span>배정 섹터</span>
-          <strong>{{ taskSector?.sector_name || '-' }}</strong>
+          <strong>{{ workOrderSector?.sector_name || '-' }}</strong>
         </div>
       </div>
 
@@ -63,7 +63,7 @@ const taskSector = computed(() => getSectorByContainerId(task.value?.container_i
 
     <section v-if="approved" class="grid-2 driver-grid">
       <article class="panel map-panel">
-        <SectorMap :selected-code="taskSector?.sector_name" />
+        <SectorMap :selected-code="workOrderSector?.sector_name" />
       </article>
 
       <article class="panel">
