@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { loginApi } from '@/api/authApi'
 
 const router = useRouter()
 
@@ -8,9 +9,8 @@ const mode = ref('login')
 const submitMessage = ref('')
 
 const loginForm = ref({
-  username: 'admin',
+  loginId: 'admin',
   password: '1234',
-  roleCode: 'ADMIN',
 })
 
 const signupRole = ref('CARRIER')
@@ -55,10 +55,32 @@ const saveLoginUser = (role, username) => {
   )
 }
 
-const login = () => {
-  const role = roleOptions.find((item) => item.code === loginForm.value.roleCode) || roleOptions[2]
-  saveLoginUser(role, loginForm.value.username)
-  router.push(role.home)
+const login = async () => {
+  submitMessage.value = ''
+
+  try {
+    const user = await loginApi(loginForm.value)
+
+    localStorage.setItem(
+      'portGateUser',
+      JSON.stringify({
+        userId: user.userId,
+        loginId: user.loginId,
+        userName: user.userName,
+        roleCode: user.roleCode,
+      }),
+    )
+
+    const role = roleOptions.find((item) => item.code === user.roleCode)
+
+    if (role) {
+      router.push(role.home)
+    } else {
+      router.push('/login')
+    }
+  } catch (error) {
+    submitMessage.value = error.message || '로그인에 실패했습니다.'
+  }
 }
 
 const signup = () => {
@@ -119,17 +141,11 @@ const signup = () => {
             <p>역할을 선택하면 해당 업무 화면으로 이동합니다.</p>
           </div>
 
-          <div class="field">
-            <label for="loginRole">역할</label>
-            <select id="loginRole" v-model="loginForm.roleCode">
-              <option v-for="role in roleOptions" :key="role.code" :value="role.code">
-                {{ role.label }}
-              </option>
-            </select>
-          </div>
+        
           <div class="field">
             <label for="loginUsername">아이디</label>
-            <input id="loginUsername" v-model="loginForm.username" autocomplete="username" />
+            <input id="loginUsername" v-model="loginForm.loginId" autocomplete="username" />
+            <p v-if="submitMessage" class="form-message">{{ submitMessage }}</p>
           </div>
           <div class="field">
             <label for="loginPassword">비밀번호</label>
