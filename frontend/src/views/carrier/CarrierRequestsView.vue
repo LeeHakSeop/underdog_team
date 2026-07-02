@@ -1,10 +1,10 @@
 <script setup>
 import { ref } from 'vue'
 import { useLogisticsData } from '@/composables/useLogisticsData'
-import { useTaskStore } from '@/stores/adminStore/taskStore'
+import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
 
 const { availableDrivers, containers } = useLogisticsData()
-const taskStore = useTaskStore()
+const workOrderStore = useWorkOrderStore()
 
 const requestForm = ref({
   containerId: '',
@@ -15,8 +15,8 @@ const requestForm = ref({
   workStatus: 'DISPATCH_WAITING',
 })
 
-const submitRequest = async () => {
-  await taskStore.addTask({
+const submitRequest = async () => {  
+  await workOrderStore.addWorkOrder({
     ...requestForm.value,
     containerId: Number(requestForm.value.containerId),
     driverId: Number(requestForm.value.driverId) || null,

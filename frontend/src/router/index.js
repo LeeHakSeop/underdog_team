@@ -4,7 +4,6 @@ import authRoutes from './auth'
 import adminRoutes from './admin'
 import carrierRoutes from './carrier'
 import driverRoutes from './driver'
-import vehicleRoutes from './vehicle'
 
 import { authGuard } from './guard'
 
@@ -15,7 +14,6 @@ const router = createRouter({
     ...adminRoutes,
     ...carrierRoutes,
     ...driverRoutes,
-    ...vehicleRoutes,
   ],
 })
 

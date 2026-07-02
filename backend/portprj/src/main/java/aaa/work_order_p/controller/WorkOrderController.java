@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/task")
+@RequestMapping("/api/work-order")
 public class WorkOrderController {
 
     @Resource
@@ -20,7 +20,7 @@ public class WorkOrderController {
     }
 
     @PostMapping
-    public WorkOrderDTO reg(@RequestBody WorkOrderDTO dto) {
+    public WorkOrderDTO create(@RequestBody WorkOrderDTO dto) {
         service.insert(dto);
         return dto;
     }
