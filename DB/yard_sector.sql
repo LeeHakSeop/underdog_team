@@ -1,8 +1,12 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
 >>>>>>> origin/main
 -- 야드섹터
+=======
+
+>>>>>>> 0ae9e40994d2df34baf5c13f3bead6c9bb7d33bd
 CREATE TABLE yard_sector(sector_id BIGSERIAL PRIMARY KEY, sector_name VARCHAR(30), block_name VARCHAR(30),
 sector_status VARCHAR(30), waiting_vehicle_count INT, guide_message VARCHAR(255), alt_waiting_area VARCHAR(100));
 

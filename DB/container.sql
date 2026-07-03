@@ -1,8 +1,12 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
 >>>>>>> origin/main
 -- 컨테이너
+=======
+
+>>>>>>> 0ae9e40994d2df34baf5c13f3bead6c9bb7d33bd
 CREATE TABLE container(container_id BIGSERIAL PRIMARY KEY, container_number VARCHAR(30) UNIQUE,
 container_size VARCHAR(20), container_location VARCHAR(100), sector_id BIGINT REFERENCES yard_sector(sector_id),
 block VARCHAR(30), bay VARCHAR(30), row_no VARCHAR(30), can_exit BOOLEAN,
