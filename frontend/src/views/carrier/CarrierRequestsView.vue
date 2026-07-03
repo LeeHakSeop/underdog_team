@@ -1,5 +1,34 @@
 <script setup>
+<<<<<<< HEAD
 import { availableDrivers } from '../../data/mockData'
+=======
+import { ref } from 'vue'
+import { useLogisticsData } from '@/composables/useLogisticsData'
+import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
+
+const { availableDrivers, containers } = useLogisticsData()
+const workOrderStore = useWorkOrderStore()
+
+const requestForm = ref({
+  containerId: '',
+  driverId: '',
+  vehicleId: '',
+  workType: 'LOAD_OUT',
+  reservedTime: '2026-07-01T13:00',
+  workStatus: 'DISPATCH_WAITING',
+})
+
+const submitRequest = async () => {  
+  await workOrderStore.addWorkOrder({
+    ...requestForm.value,
+    containerId: Number(requestForm.value.containerId),
+    driverId: Number(requestForm.value.driverId) || null,
+    vehicleId: Number(requestForm.value.vehicleId) || null,
+    reservedTime: requestForm.value.reservedTime,
+    isApproved: false,
+  })
+}
+>>>>>>> origin/main
 </script>
 
 <template>

@@ -18,11 +18,11 @@ ADMIN
 
 import AdminMainView from '@/views/admin/AdminMainView.vue'
 import AdminDashboardView from '@/views/admin/AdminDashboardView.vue'
-import AdminTasksView from '@/views/admin/AdminTasksView.vue'
 import AdminGateLogsView from '@/views/admin/AdminGateLogsView.vue'
 import AdminContainersView from '@/views/admin/AdminContainersView.vue'
 import AdminEventsView from '@/views/admin/AdminEventsView.vue'
 import AdminMembersView from '@/views/admin/AdminMembersView.vue'
+import AdminWorkOrdersView from '@/views/admin/AdminWorkOrdersView.vue'
 
 export default [
   {
@@ -43,9 +43,9 @@ export default [
         meta: { role: 'ADMIN', title: '센터 현황' },
       },
       {
-        path: 'tasks',
-        name: 'admin-tasks',
-        component: AdminTasksView,
+        path: 'work-orders',
+        name: 'admin-work-orders',
+        component: AdminWorkOrdersView,
         meta: { role: 'ADMIN', title: '작업 관리' },
       },
       {

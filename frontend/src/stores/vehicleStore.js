@@ -69,3 +69,4 @@ export const useVehicleStore = defineStore('vehicle', {
     },
   },
 })
+

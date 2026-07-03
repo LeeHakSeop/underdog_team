@@ -65,7 +65,7 @@ const sectorOrders = computed(() => {
     <section class="panel">
       <div class="section-title">
         <h2>작업 현황</h2>
-        <RouterLink class="ghost-button" to="/admin/tasks">상세 보기</RouterLink>
+        <RouterLink class="ghost-button" to="/admin/work-orders">상세 보기</RouterLink>
       </div>
       <div class="table-wrap">
         <table class="data-table">

@@ -113,7 +113,12 @@ const menus = {
   admin: [
     { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
     { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
+<<<<<<< HEAD
     { label: '작업 관리', path: '/admin/tasks', icon: 'clipboard' },
+=======
+    { label: '가입 인원관리', path: '/admin/members', icon: 'users' },
+    { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
+>>>>>>> origin/main
     { label: '차량 출입 조회', path: '/admin/gate-logs', icon: 'truck' },
     { label: '컨테이너 조회', path: '/admin/containers', icon: 'container' },
     { label: '알림/이벤트', path: '/admin/events', icon: 'bell' },

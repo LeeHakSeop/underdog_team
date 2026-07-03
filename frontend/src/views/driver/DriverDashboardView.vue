@@ -3,10 +3,26 @@ import { computed, ref } from 'vue'
 import SectorMap from '../../components/yard/SectorMap.vue'
 import { driverActions, workOrders } from '../../data/mockData'
 
+<<<<<<< HEAD
 const task = workOrders[0]
 const decision = ref('pending')
 
 const approved = computed(() => decision.value === 'approved')
+=======
+const {
+  driverActions,
+  getCarrierName,
+  getContainerNumber,
+  getSectorByContainerId,
+  workOrders,
+} = useLogisticsData()
+
+const workOrder = computed(() => workOrders.value[0] || null)
+const decision = ref('pending')
+
+const approved = computed(() => decision.value === 'approved')
+const workOrderSector = computed(() => getSectorByContainerId(workOrder.value?.container_id))
+>>>>>>> origin/main
 </script>
 
 <template>
@@ -21,6 +37,7 @@ const approved = computed(() => decision.value === 'approved')
 
       <div class="request-summary">
         <div>
+<<<<<<< HEAD
           <span>작업번호</span>
           <strong>{{ task.orderNo }}</strong>
         </div>
@@ -43,6 +60,30 @@ const approved = computed(() => decision.value === 'approved')
         <div>
           <span>배정 섹터</span>
           <strong>{{ task.sectorCode }}</strong>
+=======
+          <span>작업 ID</span>
+          <strong>{{ workOrder?.work_order_id }}</strong>
+        </div>
+        <div>
+          <span>운송사</span>
+          <strong>{{ getCarrierName(workOrder?.carrier_id) }}</strong>
+        </div>
+        <div>
+          <span>컨테이너</span>
+          <strong>{{ getContainerNumber(workOrder?.container_id) }}</strong>
+        </div>
+        <div>
+          <span>작업 유형</span>
+          <strong>{{ workOrder?.work_type }}</strong>
+        </div>
+        <div>
+          <span>예약 시간</span>
+          <strong>{{ workOrder?.reserved_time }}</strong>
+        </div>
+        <div>
+          <span>배정 섹터</span>
+          <strong>{{ workOrderSector?.sector_name || '-' }}</strong>
+>>>>>>> origin/main
         </div>
       </div>
 
@@ -54,7 +95,11 @@ const approved = computed(() => decision.value === 'approved')
 
     <section v-if="approved" class="grid-2 driver-grid">
       <article class="panel map-panel">
+<<<<<<< HEAD
         <SectorMap :selected-code="task.sectorCode" />
+=======
+        <SectorMap :selected-code="workOrderSector?.sector_name" />
+>>>>>>> origin/main
       </article>
 
       <article class="panel">
