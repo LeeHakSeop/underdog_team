@@ -1,5 +1,4 @@
-<<<<<<< HEAD
--- 작업오더
+
 CREATE TABLE work_order(work_order_id BIGSERIAL PRIMARY KEY, work_type VARCHAR(30), 
 vehicle_id BIGINT REFERENCES vehicle(vehicle_id), driver_id BIGINT REFERENCES driver(driver_id),
 container_id BIGINT REFERENCES container(container_id), reserved_time TIMESTAMP, work_status VARCHAR(30),
