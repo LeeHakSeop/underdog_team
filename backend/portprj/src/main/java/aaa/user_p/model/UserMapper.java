@@ -1,6 +1,8 @@
 package aaa.user_p.model;
 
 import aaa.auth_p.model.LoginDTO;
+import aaa.auth_p.model.RegisterDTO;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
@@ -21,4 +23,20 @@ public interface UserMapper {
           AND status = 'ACTIVE'
     """)
     UserDTO login(LoginDTO dto);
+
+    @Select("""
+    SELECT count(*)
+    FROM users
+    WHERE login_id = #{loginId}
+    """)
+    int countByLoginId(String loginId);
+
+    @Insert("""
+    INSERT INTO users
+    (login_id, password, user_name, role_code, status)
+    VALUES
+    (#{loginId}, #{password}, #{userName}, #{roleCode}, 'ACTIVE')
+    """)
+    int insertUser(RegisterDTO dto);
 }
+

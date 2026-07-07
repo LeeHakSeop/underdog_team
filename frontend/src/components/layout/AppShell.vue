@@ -192,7 +192,7 @@ const logout = () => {
         </div>
         <button class="logout-button" type="button" title="로그아웃" @click="logout">
           <MenuIcon name="logout" />
-          <span class="logout-label">로그아웃</span>
+          <span class="logout-label" @click="logout">로그아웃</span>
         </button>
       </div>
     </aside>

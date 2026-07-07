@@ -2,6 +2,7 @@ package aaa.auth_p.service;
 
 import aaa.auth_p.model.LoginDTO;
 import aaa.auth_p.model.LoginResponseDTO;
+import aaa.auth_p.model.RegisterDTO;
 import aaa.user_p.model.UserDTO;
 import aaa.user_p.model.UserMapper;
 import jakarta.annotation.Resource;
@@ -28,5 +29,14 @@ public class AuthService {
         res.setRoleCode(user.getRoleCode());
 
         return res;
+    }
+
+    public int register(RegisterDTO dto) {
+
+        if (mapper.countByLoginId(dto.getLoginId()) > 0) {
+            throw new RuntimeException("이미 사용 중인 아이디입니다.");
+        }
+
+        return mapper.insertUser(dto);
     }
 }

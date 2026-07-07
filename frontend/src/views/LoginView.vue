@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { loginApi } from '@/api/authApi'
+import { loginApi, registerApi } from '@/api/authApi'
 
 const router = useRouter()
 
@@ -9,8 +9,8 @@ const mode = ref('login')
 const submitMessage = ref('')
 
 const loginForm = ref({
-  loginId: 'admin',
-  password: '1234',
+  loginId: '',
+  password: '',
 })
 
 const signupRole = ref('CARRIER')
@@ -54,6 +54,37 @@ const saveLoginUser = (role, username) => {
     }),
   )
 }
+
+const registerForm = ref({
+  loginId: '',
+  password: '',
+  userName: '',
+  roleCode: 'CARRIER',
+})
+
+const register = async () => {
+  submitMessage.value = ''
+
+  try {
+    await registerApi(registerForm.value)
+
+    submitMessage.value = '회원가입이 완료되었습니다. 로그인해주세요.'
+
+    loginForm.value.loginId = registerForm.value.loginId
+    loginForm.value.password = registerForm.value.password
+
+    registerForm.value = {
+      loginId: '',
+      password: '',
+      userName: '',
+      roleCode: 'CARRIER',
+    }
+  } catch (error) {
+    submitMessage.value = error.message || '회원가입에 실패했습니다.'
+  }
+}
+
+
 
 const login = async () => {
   submitMessage.value = ''
@@ -160,8 +191,8 @@ const signup = () => {
           <button class="submit-button" type="submit">로그인</button>
         </form>
 
-        <form v-else class="auth-form" @submit.prevent="signup">
-          <div class="form-head">
+        <form v-else class="auth-form" @submit.prevent="register">
+          <!-- <div class="form-head">
             <h2>회원가입</h2>
             <p>가입 정보는 DB 구조에 맞춰 저장되고, 승인과 권한은 관리자가 결정합니다.</p>
           </div>
@@ -223,7 +254,37 @@ const signup = () => {
           </div>
 
           <p v-if="submitMessage" class="form-message">{{ submitMessage }}</p>
-          <button class="submit-button" type="submit">가입 정보 저장</button>
+          <button class="submit-button" type="submit">가입 정보 저장</button> -->
+          <div class="form-head">
+          <h2>회원가입</h2>
+          <p>기본 계정을 생성합니다.</p>
+          </div>
+
+          <div class="field">
+            <label for="registerLoginId">아이디</label>
+            <input id="registerLoginId" v-model="registerForm.loginId" required />
+          </div>
+
+          <div class="field">
+            <label for="registerPassword">비밀번호</label>
+            <input id="registerPassword" v-model="registerForm.password" type="password" required />
+          </div>
+
+          <div class="field">
+            <label for="registerUserName">이름</label>
+            <input id="registerUserName" v-model="registerForm.userName" required />
+          </div>
+
+          <div class="field">
+            <label for="registerRole">가입 유형</label>
+            <select id="registerRole" v-model="registerForm.roleCode">
+              <option value="CARRIER">운송사</option>
+              <option value="DRIVER">화물 기사</option>
+            </select>
+          </div>
+
+          <p v-if="submitMessage" class="form-message">{{ submitMessage }}</p>
+          <button class="submit-button" type="submit">회원가입</button>
         </form>
       </div>
     </section>

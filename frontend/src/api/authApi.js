@@ -5,4 +5,12 @@ export const loginApi = (loginData) => {
     method: 'POST',
     body: JSON.stringify(loginData),
   })
+  
+}
+
+export const registerApi = (registerData) => {
+  return request('/api/register', {
+    method: 'POST',
+    body: JSON.stringify(registerData),
+  })
 }

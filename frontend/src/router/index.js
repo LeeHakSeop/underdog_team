@@ -18,6 +18,6 @@ const router = createRouter({
 })
 
 // 개발중에 OFF
-router.beforeEach(authGuard)
+// router.beforeEach(authGuard)
 
 export default router
