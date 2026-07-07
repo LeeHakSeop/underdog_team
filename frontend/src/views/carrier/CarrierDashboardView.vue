@@ -1,40 +1,31 @@
 <script setup>
-import { computed } from 'vue'
-import { useLogisticsData } from '@/composables/useLogisticsData'
+import { availableDrivers, workOrders } from '../../data/mockData'
 
-const {
-  availableDrivers,
-  containers,
-  getContainerNumber,
-  getSectorByContainerId,
-  workOrders,
-} = useLogisticsData()
-
-const carrierOrders = computed(() => workOrders.value.slice(0, 2))
+const carrierOrders = workOrders.slice(0, 2)
 </script>
 
 <template>
   <div class="page-stack">
     <section class="grid-4">
       <article class="metric-card">
-        <span>승인 대기 작업</span>
-        <strong>{{ workOrders.filter((order) => !order.is_approved).length }}</strong>
-        <small>관리자 승인 필요</small>
+        <span>승인 대기</span>
+        <strong>4</strong>
+        <small>관리자 검토 중</small>
       </article>
       <article class="metric-card">
         <span>출입 가능 기사</span>
-        <strong>{{ availableDrivers.length }}</strong>
-        <small>기사 출입 권한</small>
+        <strong>7</strong>
+        <small>등록 기사 기준</small>
       </article>
       <article class="metric-card">
-        <span>컨테이너</span>
-        <strong>{{ containers.length }}</strong>
-        <small>컨테이너 기준</small>
+        <span>오늘 반출</span>
+        <strong>12</strong>
+        <small>예약 기준</small>
       </article>
       <article class="metric-card">
-        <span>보류 컨테이너</span>
-        <strong>{{ containers.filter((container) => container.on_hold).length }}</strong>
-        <small>반출 보류</small>
+        <span>반려</span>
+        <strong>1</strong>
+        <small>보류 컨테이너</small>
       </article>
     </section>
 
@@ -47,20 +38,20 @@ const carrierOrders = computed(() => workOrders.value.slice(0, 2))
           <table class="data-table">
             <thead>
               <tr>
-                <th>작업 ID</th>
+                <th>작업번호</th>
                 <th>컨테이너</th>
                 <th>섹터</th>
-                <th>작업 상태</th>
-                <th>예약 시간</th>
+                <th>상태</th>
+                <th>예약</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="order in carrierOrders" :key="order.work_order_id">
-                <td>{{ order.work_order_id }}</td>
-                <td>{{ getContainerNumber(order.container_id) }}</td>
-                <td>{{ getSectorByContainerId(order.container_id)?.sector_name || '-' }}</td>
-                <td><span class="status-pill">{{ order.work_status }}</span></td>
-                <td>{{ order.reserved_time }}</td>
+              <tr v-for="order in carrierOrders" :key="order.orderNo">
+                <td>{{ order.orderNo }}</td>
+                <td>{{ order.containerNo }}</td>
+                <td>{{ order.sectorCode }}</td>
+                <td><span class="status-pill">{{ order.status }}</span></td>
+                <td>{{ order.time }}</td>
               </tr>
             </tbody>
           </table>
@@ -69,16 +60,16 @@ const carrierOrders = computed(() => workOrders.value.slice(0, 2))
 
       <article class="panel">
         <div class="section-title">
-          <h2>출입 가능 기사</h2>
-          <span class="status-pill green">출입 가능</span>
+          <h2>출입 가능 기사 후보</h2>
+          <span class="status-pill green">can_enter=Y</span>
         </div>
         <div class="driver-list">
-          <div v-for="driver in availableDrivers" :key="driver.driver_id" class="driver-row">
+          <div v-for="driver in availableDrivers" :key="driver.vehicleNo" class="driver-row">
             <div>
-              <b>{{ driver.driver_name }}</b>
-              <span>연락처 {{ driver.driver_contact }} / 운송사 ID {{ driver.carrier_id }}</span>
+              <b>{{ driver.name }}</b>
+              <span>{{ driver.vehicleNo }} · {{ driver.distance }}</span>
             </div>
-            <span class="status-pill green">{{ driver.can_enter }}</span>
+            <span class="status-pill green">{{ driver.status }}</span>
           </div>
         </div>
       </article>

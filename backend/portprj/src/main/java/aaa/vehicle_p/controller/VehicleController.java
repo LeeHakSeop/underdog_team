@@ -7,34 +7,38 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-
+@CrossOrigin(origins = "http://200.200.200.66:5173")
 @RestController
 @RequestMapping("/api/vehicle")
 public class VehicleController {
-
     @Resource
-    VehicleService service;
+    VehicleService vehicleService;
 
-    @GetMapping
-    public List<VehicleDTO> list() {return service.list();}
+    @GetMapping("/list")
+    public List<VehicleDTO> list() {
+        return vehicleService.list();
+    }
 
-    @GetMapping("/{vehicleId}")
-    public VehicleDTO detail(@PathVariable Long vehicleId) {return service.detail(vehicleId);}
+    @GetMapping("/detail/{vehicleId}")
+    public VehicleDTO detail(@PathVariable Long vehicleId) {
+        return vehicleService.detail(vehicleId);
+    }
 
-    @PostMapping
+    @PostMapping("/reg")
     public VehicleDTO reg(@RequestBody VehicleDTO dto) {
-        service.insert(dto);
+        vehicleService.insert(dto);
         return dto;
     }
 
-    @PutMapping("/{vehicleId}")
+    @PutMapping("/modify/{vehicleId}")
     public VehicleDTO modify(@PathVariable Long vehicleId, @RequestBody VehicleDTO dto) {
         dto.setVehicleId(vehicleId);
-        service.update(dto);
-        return service.detail(vehicleId);
+        vehicleService.update(dto);
+        return vehicleService.detail(vehicleId);
     }
 
-    @DeleteMapping("/{vehicleId}")
-    public int delete(@PathVariable Long vehicleId) {return service.delete(vehicleId);}
-
+    @DeleteMapping("/delete/{vehicleId}")
+    public int delete(@PathVariable Long vehicleId) {
+        return vehicleService.delete(vehicleId);
+    }
 }

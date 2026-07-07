@@ -4,14 +4,13 @@ import lombok.Data;
 
 @Data
 public class VehicleDTO {
-    Long vehicleId;
-    String plateNumber;
-    String vehicleType;
-    String tonnage;
-    Boolean isRegistered;
-    String vehicleStatus;
-    String tractorNo;
-    String chassisNo;
-    Long carrierId;
-
+    private Long vehicleId;
+    private String plateNumber;
+    private String vehicleType;
+    private String tonnage;
+    private Boolean isRegistered;
+    private String vehicleStatus;
+    private String tractorNo;
+    private String chassisNo;
+    private Long carrierId;
 }

@@ -25,12 +25,6 @@ const icons = {
     ['path', { d: 'M13 10h7v10h-7z' }],
     ['path', { d: 'M4 13h7v7H4z' }],
   ],
-  users: [
-    ['circle', { cx: '9', cy: '8', r: '3' }],
-    ['path', { d: 'M3 21a6 6 0 0 1 12 0' }],
-    ['circle', { cx: '17', cy: '9', r: '2.5' }],
-    ['path', { d: 'M15 16a5 5 0 0 1 6 5' }],
-  ],
   clipboard: [
     ['path', { d: 'M9 4h6l1 2h3v15H5V6h3z' }],
     ['path', { d: 'M9 4h6v4H9z' }],
@@ -107,21 +101,24 @@ const MenuIcon = (props) =>
   )
 
 const menus = {
-  CARRIER: [
+  carrier: [
     { label: '업무 홈', path: '/carrier/dashboard', icon: 'home' },
     { label: '운송 요청', path: '/carrier/requests', icon: 'request' },
     { label: '승인 현황', path: '/carrier/approvals', icon: 'approval' },
   ],
-  DRIVER: [
+  driver: [
     { label: '작업 홈', path: '/driver/dashboard', icon: 'driver' },
     { label: '작업 현황', path: '/driver/work-status', icon: 'list' },
-    { label: '차량 등록', path: '/driver/vehicles', icon: 'truck' },
   ],
-  ADMIN: [
+  admin: [
     { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
     { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
+<<<<<<< HEAD
+    { label: '작업 관리', path: '/admin/tasks', icon: 'clipboard' },
+=======
     { label: '가입 인원관리', path: '/admin/members', icon: 'users' },
     { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
+>>>>>>> origin/main
     { label: '차량 출입 조회', path: '/admin/gate-logs', icon: 'truck' },
     { label: '컨테이너 조회', path: '/admin/containers', icon: 'container' },
     { label: '알림/이벤트', path: '/admin/events', icon: 'bell' },
@@ -190,7 +187,7 @@ const logout = () => {
           <span>배차 대기 9건</span>
           <span>상차 진행 6건</span>
         </div>
-        <button class="logout-button" type="button" title="로그아웃" @click="logout">
+        <button class="logout-button" type="button" :title="'로그아웃'" @click="logout">
           <MenuIcon name="logout" />
           <span class="logout-label" @click="logout">로그아웃</span>
         </button>
@@ -225,10 +222,7 @@ const logout = () => {
 }
 
 .sidebar {
-  position: sticky;
-  top: 0;
   display: flex;
-  height: 100vh;
   min-width: 0;
   flex-direction: column;
   gap: 10px;
@@ -419,10 +413,7 @@ const logout = () => {
 }
 
 .main-area {
-  display: flex;
-  min-height: 100vh;
   min-width: 0;
-  flex-direction: column;
 }
 
 .topbar {
@@ -449,8 +440,6 @@ const logout = () => {
 }
 
 .content {
-  min-height: 0;
-  flex: 1;
   padding: 10px;
 }
 

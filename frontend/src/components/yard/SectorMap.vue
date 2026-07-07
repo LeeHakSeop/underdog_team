@@ -1,7 +1,6 @@
 <script setup>
-import { computed, onMounted } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useYardSectorStore } from '@/stores/adminStore/yardSectorStore'
+import { computed } from 'vue'
+import { yardSectors } from '../../data/mockData'
 
 const props = defineProps({
   selectedCode: {
@@ -11,28 +10,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select'])
-const yardSectorStore = useYardSectorStore()
-const { yardSectors } = storeToRefs(yardSectorStore)
 
-onMounted(() => {
-  if (!yardSectors.value.length) yardSectorStore.loadYardSectors()
-})
-
-const positions = {
-  'A-01': { x: 24, y: 30, className: 'available' },
-  'B-07': { x: 58, y: 46, className: 'working' },
-  'C-03': { x: 36, y: 70, className: 'congested' },
-}
-
-const sectors = computed(() =>
-  yardSectors.value.map((sector) => ({
-    ...sector,
-    ...(positions[sector.sectorName] || { x: 50, y: 50, className: 'available' }),
-  })),
-)
-
+const gate = { x: 8, y: 86 }
 const selectedSector = computed(() => {
-  return sectors.value.find((sector) => sector.sectorName === props.selectedCode) || sectors.value[0]
+  return yardSectors.find((sector) => sector.code === props.selectedCode) || yardSectors[0]
 })
 </script>
 
@@ -40,32 +21,37 @@ const selectedSector = computed(() => {
   <div class="sector-map">
     <div class="map-header">
       <div>
-        <b>야드 섹터 안내</b>
-        <span>섹터별 대기 차량 현황을 확인합니다.</span>
+        <b>섹터 안내</b>
+        <span>섹터를 선택하면 진행 중인 작업이 표시됩니다.</span>
       </div>
-      <span class="status-pill green">{{ selectedSector?.sectorName }}</span>
+      <span class="status-pill green">{{ selectedSector?.code }}</span>
     </div>
 
     <div class="yard-canvas">
-      <div class="gate-marker">GATE</div>
+      <div class="gate-marker" :style="{ left: `${gate.x}%`, top: `${gate.y}%` }">GATE</div>
+      <div class="route-line route-line-a"></div>
+      <div class="route-line route-line-b"></div>
       <button
-        v-for="sector in sectors"
-        :key="sector.sectorId"
+        v-for="sector in yardSectors"
+        :key="sector.code"
         class="sector-node"
-        :class="[sector.className, { selected: sector.sectorName === selectedSector?.sectorName }]"
+        :class="[sector.status, { selected: sector.code === selectedSector?.code }]"
         type="button"
         :style="{ left: `${sector.x}%`, top: `${sector.y}%` }"
-        @click="emit('select', sector.sectorName)"
+        @click="emit('select', sector.code)"
       >
-        <strong>{{ sector.sectorName }}</strong>
-        <small>대기 {{ sector.waitingVehicleCount }}대</small>
+        <strong>{{ sector.code }}</strong>
+        <small>{{ sector.count }}대</small>
       </button>
+      <div class="truck-dot current">차량</div>
+      <div class="truck-dot other one">대기</div>
+      <div class="truck-dot other two">작업</div>
     </div>
 
     <div class="map-footer">
-      <span>블록: {{ selectedSector?.blockName }}</span>
-      <span>상태: {{ selectedSector?.sectorStatus }}</span>
-      <span>대체 대기장: {{ selectedSector?.altWaitingArea }}</span>
+      <span>선택 섹터: {{ selectedSector?.code }}</span>
+      <span>{{ selectedSector?.statusText }}</span>
+      <span>대기 차량: {{ selectedSector?.count }}대</span>
     </div>
   </div>
 </template>
@@ -109,26 +95,37 @@ const selectedSector = computed(() => {
   border-radius: 2px;
 }
 
-.yard-canvas::before {
+.yard-canvas::before,
+.yard-canvas::after {
   position: absolute;
+  content: '';
+  background: rgba(38, 56, 77, 0.18);
+  border-radius: 1px;
+}
+
+.yard-canvas::before {
   left: 8%;
   right: 8%;
   top: 54%;
   height: 18px;
-  content: '';
-  background: rgba(38, 56, 77, 0.18);
+}
+
+.yard-canvas::after {
+  left: 48%;
+  top: 12%;
+  width: 18px;
+  bottom: 12%;
 }
 
 .gate-marker,
-.sector-node {
+.sector-node,
+.truck-dot {
   position: absolute;
   z-index: 2;
   transform: translate(-50%, -50%);
 }
 
 .gate-marker {
-  left: 8%;
-  top: 86%;
   padding: 5px 8px;
   color: #ffffff;
   background: #26384d;
@@ -139,13 +136,14 @@ const selectedSector = computed(() => {
 
 .sector-node {
   display: grid;
-  width: 104px;
-  height: 64px;
+  width: 86px;
+  height: 62px;
   place-items: center;
   color: var(--ink-900);
   background: #ffffff;
   border: 1px solid #9fb0c0;
   border-radius: 2px;
+  box-shadow: none;
 }
 
 .sector-node strong {
@@ -155,31 +153,96 @@ const selectedSector = computed(() => {
 
 .sector-node small {
   color: var(--ink-500);
-  font-size: 11px;
   font-weight: 700;
 }
 
-.sector-node.working {
-  border-color: var(--amber-500);
+.sector-node.target {
+  color: #ffffff;
+  background: var(--blue-700);
+  border-color: var(--blue-700);
+}
+
+.sector-node.target small {
+  color: #dceaff;
 }
 
 .sector-node.congested {
   border-color: var(--red-500);
 }
 
-.sector-node.selected {
-  color: #ffffff;
-  background: var(--blue-700);
-  border-color: var(--blue-700);
+.sector-node.working {
+  border-color: var(--amber-500);
 }
 
-.sector-node.selected small {
-  color: #dceaff;
+.sector-node.selected {
+  outline: 2px solid #23639c;
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.route-line {
+  position: absolute;
+  z-index: 1;
+  background: #6b879f;
+  box-shadow: none;
+}
+
+.route-line-a {
+  left: 8%;
+  top: 84%;
+  width: 50%;
+  height: 5px;
+}
+
+.route-line-b {
+  left: 56%;
+  top: 43%;
+  width: 5px;
+  height: 42%;
+}
+
+.truck-dot {
+  display: inline-flex;
+  min-width: 54px;
+  min-height: 23px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  color: #ffffff;
+  background: #2f7d57;
+  border: 1px solid #73a087;
+  border-radius: 1px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.truck-dot.current {
+  left: 38%;
+  top: 84%;
+}
+
+.truck-dot.other {
+  background: var(--ink-500);
+}
+
+.truck-dot.one {
+  left: 62%;
+  top: 56%;
+}
+
+.truck-dot.two {
+  left: 72%;
+  top: 68%;
 }
 
 @media (max-width: 760px) {
   .yard-canvas {
     min-height: 320px;
+  }
+
+  .sector-node {
+    width: 70px;
+    height: 54px;
   }
 
   .map-header,

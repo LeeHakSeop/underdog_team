@@ -1,5 +1,4 @@
 .venv/
-.tools/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -33,4 +32,3 @@ frontend/node_modules/
 *.heic
 *.ico
 *.svg
-*.docx

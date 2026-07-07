@@ -1,6 +1,11 @@
 package aaa.carrier_p.model;
 
-import org.apache.ibatis.annotations.*;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -43,7 +48,7 @@ public interface CarrierMapper {
                 #{managerName},
                 #{carrierStatus}
             )
-    """)
+            """)
     @Options(useGeneratedKeys = true, keyProperty = "carrierId", keyColumn = "carrier_id")
     int insert(CarrierDTO dto);
 
@@ -58,6 +63,9 @@ public interface CarrierMapper {
             """)
     int update(CarrierDTO dto);
 
-    @Delete("DELETE FROM carrier WHERE carrier_id = #{carrierId}")
+    @Delete("""
+            DELETE FROM carrier
+            WHERE carrier_id = #{carrierId}
+            """)
     int delete(Long carrierId);
 }

@@ -7,6 +7,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+<<<<<<< HEAD
+@CrossOrigin(origins = "http://200.200.200.66:5173")
+=======
+>>>>>>> origin/main
 @RestController
 @RequestMapping("/api/carrier")
 public class CarrierController {
@@ -14,31 +18,31 @@ public class CarrierController {
     @Resource
     CarrierService carrierService;
 
-    @GetMapping
+    @GetMapping("/list")
     public List<CarrierDTO> list(){
         return carrierService.list();
     }
 
-    @GetMapping("/{carrierId}")
-    public CarrierDTO detail(@PathVariable Long carrierId){
+    @GetMapping("/detail/{carrierId}")
+    public CarrierDTO detail(@PathVariable Long carrierId) {
         return carrierService.detail(carrierId);
     }
 
-    @PostMapping
+    @PostMapping("/reg")
     public CarrierDTO reg(@RequestBody CarrierDTO dto){
         carrierService.insert(dto);
         return dto;
     }
 
-    @PutMapping("/{carrierId}")
-    public CarrierDTO modify(@PathVariable Long carrierId, @RequestBody CarrierDTO dto){
+    @PutMapping("/modify/{carrierId}")
+    public CarrierDTO modify(@PathVariable Long carrierId, @RequestBody CarrierDTO dto) {
         dto.setCarrierId(carrierId);
         carrierService.update(dto);
         return carrierService.detail(carrierId);
     }
 
-    @DeleteMapping("/{carrierId}")
-    public int delete(@PathVariable Long carrierId){
+    @DeleteMapping("/delete/{carrierId}")
+    public int delete(@PathVariable Long carrierId) {
         return carrierService.delete(carrierId);
     }
 }
