@@ -1,7 +1,4 @@
 <script setup>
-<<<<<<< HEAD
-import { availableDrivers } from '../../data/mockData'
-=======
 import { ref } from 'vue'
 import { useLogisticsData } from '@/composables/useLogisticsData'
 import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
@@ -18,7 +15,7 @@ const requestForm = ref({
   workStatus: 'DISPATCH_WAITING',
 })
 
-const submitRequest = async () => {  
+const submitRequest = async () => {
   await workOrderStore.addWorkOrder({
     ...requestForm.value,
     containerId: Number(requestForm.value.containerId),
@@ -28,7 +25,6 @@ const submitRequest = async () => {
     isApproved: false,
   })
 }
->>>>>>> origin/main
 </script>
 
 <template>
@@ -38,61 +34,63 @@ const submitRequest = async () => {
         <div class="section-title">
           <h2>요청 정보</h2>
         </div>
-        <form class="form-grid">
+        <form class="form-grid" @submit.prevent="submitRequest">
           <div class="field">
-            <label for="containerNo">컨테이너 번호</label>
-            <input id="containerNo" value="KDTU1234567" />
+            <label for="containerId">컨테이너</label>
+            <select id="containerId" v-model="requestForm.containerId" required>
+              <option value="">선택</option>
+              <option v-for="container in containers" :key="container.container_id" :value="container.container_id">
+                {{ container.container_number }}
+              </option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="driverId">기사</label>
+            <select id="driverId" v-model="requestForm.driverId">
+              <option value="">미배정</option>
+              <option v-for="driver in availableDrivers" :key="driver.driver_id" :value="driver.driver_id">
+                {{ driver.driver_name }}
+              </option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="vehicleId">차량 ID</label>
+            <input id="vehicleId" v-model="requestForm.vehicleId" inputmode="numeric" />
           </div>
           <div class="field">
             <label for="workType">작업 유형</label>
-            <select id="workType">
-              <option>반출 상차</option>
-              <option>반입 하차</option>
+            <select id="workType" v-model="requestForm.workType">
+              <option value="LOAD_OUT">반출 상차</option>
+              <option value="LOAD_IN">반입 하차</option>
             </select>
           </div>
           <div class="field">
-            <label for="cargoSize">화물 규격</label>
-            <select id="cargoSize">
-              <option>20FT</option>
-              <option selected>40FT</option>
+            <label for="reservation">예약 방문 시간</label>
+            <input id="reservation" v-model="requestForm.reservedTime" type="datetime-local" />
+          </div>
+          <div class="field">
+            <label for="workStatus">작업 상태</label>
+            <select id="workStatus" v-model="requestForm.workStatus">
+              <option value="DISPATCH_WAITING">배차 대기</option>
+              <option value="APPROVAL_WAITING">승인 대기</option>
             </select>
           </div>
-          <div class="field">
-            <label for="cargoType">화물 종류</label>
-            <select id="cargoType">
-              <option selected>DRY</option>
-              <option>REEFER</option>
-              <option>TANK</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="reservation">희망 방문 시간</label>
-            <input id="reservation" type="datetime-local" value="2026-06-30T13:00" />
-          </div>
-          <div class="field">
-            <label for="destination">도착지</label>
-            <input id="destination" value="부산 물류센터 2Hub" />
-          </div>
-          <div class="field full">
-            <label for="memo">요청 메모</label>
-            <textarea id="memo">냉동 컨테이너 우선 배차 요청</textarea>
-          </div>
-          <button class="primary-button full request-button" type="button">요청 등록</button>
+          <button class="primary-button full request-button" type="submit">요청 등록</button>
         </form>
       </article>
 
       <article class="panel">
         <div class="section-title">
           <h2>출입 가능 기사 후보</h2>
-          <span class="status-pill green">3명</span>
+          <span class="status-pill green">{{ availableDrivers.length }}명</span>
         </div>
         <div class="match-list">
-          <button v-for="driver in availableDrivers" :key="driver.vehicleNo" class="match-card" type="button">
+          <button v-for="driver in availableDrivers" :key="driver.driver_id" class="match-card" type="button">
             <span>
-              <b>{{ driver.name }}</b>
-              <small>{{ driver.vehicleNo }} · 현재 위치 {{ driver.distance }}</small>
+              <b>{{ driver.driver_name }}</b>
+              <small>연락처 {{ driver.driver_contact || '-' }}</small>
             </span>
-            <strong>{{ driver.status }}</strong>
+            <strong>{{ driver.can_enter ? '출입 가능' : '출입 제한' }}</strong>
           </button>
         </div>
       </article>

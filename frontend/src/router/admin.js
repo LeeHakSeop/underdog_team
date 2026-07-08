@@ -67,14 +67,11 @@ export default [
         meta: { role: 'ADMIN', title: '알림/이벤트' },
       },
       {
-  path: 'members',
-  name: 'admin-members',
-  component: AdminMembersView,
-  meta: {
-    role: 'ADMIN',
-    title: '가입 인원관리',
-  },
-},
+        path: 'members',
+        name: 'admin-members',
+        component: AdminMembersView,
+        meta: { role: 'ADMIN', title: '가입 회원 관리' },
+      },
     ],
   },
 ]

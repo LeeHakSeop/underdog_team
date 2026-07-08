@@ -23,9 +23,9 @@ export const roleCards = [
 ]
 
 export const operationStats = [
-  { label: '센터 내부 차량', value: 18, hint: '현재 입차 기준' },
+  { label: '센터 내 차량', value: 18, hint: '현재 입차 기준' },
   { label: '배차 대기', value: 9, hint: '운송사 요청' },
-  { label: '기사 승낙', value: 4, hint: '섹터 배정 대상' },
+  { label: '기사 배정', value: 4, hint: '섹터 배정 대기' },
   { label: '상차 진행', value: 6, hint: '장비 작업 중' },
 ]
 
@@ -56,20 +56,20 @@ export const workOrders = [
   },
   {
     orderNo: 'WO-20260630-003',
-    vehicleNo: '98바2211',
+    vehicleNo: '98바1211',
     driverName: '박민재',
     carrierName: '동해운송',
     containerNo: 'KDTU3321904',
     sectorCode: 'A-01',
-    status: '기사 승낙',
+    status: '기사 배정',
     time: '14:30',
     workType: '반입 하차',
     cargoType: 'TANK',
   },
   {
     orderNo: 'WO-20260630-004',
-    vehicleNo: '67다5581',
-    driverName: '정하늘',
+    vehicleNo: '67다4581',
+    driverName: '정하윤',
     carrierName: '항만익스프레스',
     containerNo: 'KDTU8842109',
     sectorCode: 'A-02',
@@ -82,8 +82,8 @@ export const workOrders = [
 
 export const availableDrivers = [
   { name: '김도현', vehicleNo: '12가3456', distance: '1.8km', status: '대기 가능', score: 96 },
-  { name: '오지훈', vehicleNo: '67다5581', distance: '3.2km', status: '30분 내 가능', score: 88 },
-  { name: '정하늘', vehicleNo: '41마9027', distance: '4.6km', status: '대기 가능', score: 84 },
+  { name: '오지훈', vehicleNo: '67다4581', distance: '3.2km', status: '30분 내 가능', score: 88 },
+  { name: '정하윤', vehicleNo: '41마1027', distance: '4.6km', status: '대기 가능', score: 84 },
 ]
 
 export const containers = [
@@ -140,7 +140,7 @@ export const gateLogs = [
   },
   {
     logNo: 'GL-003',
-    vehicleNo: '98바2211',
+    vehicleNo: '98바1211',
     gate: '게이트 03',
     type: '출차',
     time: '15:10',
@@ -148,7 +148,7 @@ export const gateLogs = [
   },
   {
     logNo: 'GL-004',
-    vehicleNo: '67다5581',
+    vehicleNo: '67다4581',
     gate: '게이트 02',
     type: '입차',
     time: '15:22',
@@ -178,7 +178,7 @@ export const gateCameras = [
     name: '게이트 03',
     gateType: 'OUT',
     status: '대기',
-    recognizedVehicleNo: '98바2211',
+    recognizedVehicleNo: '98바1211',
     matchedOrderNo: 'WO-20260630-003',
   },
   {
@@ -206,17 +206,17 @@ export const events = [
   { time: '13:02', type: '입차 승인', target: '12가3456', message: '작업 오더 WO-20260630-001 조회 완료' },
   { time: '13:50', type: '섹터 대기', target: 'C-03', message: '대체 대기구역 WAIT-C 안내 필요' },
   { time: '14:12', type: '상차 시작', target: 'B-07', message: '필드 장비 RS-02 작업 시작' },
-  { time: '15:10', type: '출차 완료', target: '98바2211', message: '반출 이력 저장 완료' },
+  { time: '15:10', type: '출차 완료', target: '98바1211', message: '반출 이력 저장 완료' },
 ]
 
 export const exceptions = [
   { type: '섹터 대기', vehicleNo: '34나7890', message: 'C-03 대기 차량 5대', status: '처리 중' },
-  { type: '작업 없음', vehicleNo: '77라0910', message: '예약 정보 없음', status: '미처리' },
-  { type: '컨테이너 보류', vehicleNo: '98바2211', message: '반출 보류 컨테이너 확인', status: '확인 필요' },
+  { type: '작업 없음', vehicleNo: '77라9910', message: '예약 정보 없음', status: '미처리' },
+  { type: '컨테이너 보류', vehicleNo: '98바1211', message: '반출 보류 컨테이너 확인', status: '확인 필요' },
 ]
 
 export const users = [
-  { name: '배지홍', role: '관리자', area: '전체 시스템', status: '사용' },
+  { name: '배지환', role: '관리자', area: '전체 시스템', status: '사용' },
   { name: '김도현', role: '화물 기사', area: 'B-07', status: '사용' },
   { name: '부산로지스', role: '운송사 담당자', area: '운송 요청', status: '사용' },
 ]

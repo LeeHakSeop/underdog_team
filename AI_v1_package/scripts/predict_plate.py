@@ -175,6 +175,8 @@ def predict_plate(image_path):
     # 우선순위: 정상 번호판 형식 > confidence 높은 것
     valid = [c for c in candidates if c["needReview"] is False]
 
+    valid = [c for c in candidates if c["needReview"] is False]
+
     if valid:
         best = sorted(valid, key=lambda x: x["confidence"], reverse=True)[0]
     else:
