@@ -1,5 +1,6 @@
 package aaa.work_order_p.service;
 
+import aaa.work_order_p.model.TrailerWorkInfoDTO;
 import aaa.work_order_p.model.WorkOrderDTO;
 import aaa.work_order_p.model.WorkOrderMapper;
 import jakarta.annotation.Resource;
@@ -25,5 +26,9 @@ public class WorkOrderService {
             dto.setIsApproved(false);
         }
         return mapper.insert(dto);
+    }
+
+    public TrailerWorkInfoDTO findTrailerWorkInfo(Long vehicleId) {
+        return mapper.findTrailerWorkInfoByVehicleId(vehicleId);
     }
 }

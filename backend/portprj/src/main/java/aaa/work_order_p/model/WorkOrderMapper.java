@@ -30,4 +30,23 @@ public interface WorkOrderMapper {
             """)
     @Options(useGeneratedKeys = true, keyProperty = "workOrderId", keyColumn = "work_order_id")
     int insert(WorkOrderDTO dto);
+
+    @Select("""
+    SELECT
+        wo.work_order_id AS workOrderId,
+        wo.work_type AS workType,
+        wo.vehicle_id AS vehicleId,
+        wo.container_id AS containerId,
+        c.container_number AS containerNumber,
+        c.sector_id AS sectorId,
+        ys.sector_name AS sectorName,
+        ys.guide_message AS guideMessage
+    FROM work_order wo
+    JOIN container c ON wo.container_id = c.container_id
+    JOIN yard_sector ys ON c.sector_id = ys.sector_id
+    WHERE wo.vehicle_id = #{vehicleId}
+    ORDER BY wo.reserved_time DESC
+    LIMIT 1
+""")
+    TrailerWorkInfoDTO findTrailerWorkInfoByVehicleId(Long vehicleId);
 }
