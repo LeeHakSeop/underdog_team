@@ -22,32 +22,32 @@ const workOrderSector = computed(() => getSectorByContainerId(workOrder.value?.c
   <div class="page-stack driver-page">
     <section class="panel request-panel">
       <div class="section-title">
-        <h2>배정 작업</h2>
+        <h2>운송사 요청 작업</h2>
         <span class="status-pill" :class="{ green: approved }">
           {{ approved ? '승인 완료' : '승인 대기' }}
         </span>
       </div>
 
-      <div class="request-summary">
+      <div v-if="workOrder" class="request-summary">
         <div>
           <span>작업 ID</span>
-          <strong>{{ workOrder?.work_order_id }}</strong>
+          <strong>{{ workOrder.work_order_id }}</strong>
         </div>
         <div>
           <span>운송사</span>
-          <strong>{{ getCarrierName(workOrder?.carrier_id) }}</strong>
+          <strong>{{ getCarrierName(workOrder.carrier_id) }}</strong>
         </div>
         <div>
           <span>컨테이너</span>
-          <strong>{{ getContainerNumber(workOrder?.container_id) }}</strong>
+          <strong>{{ getContainerNumber(workOrder.container_id) }}</strong>
         </div>
         <div>
           <span>작업 유형</span>
-          <strong>{{ workOrder?.work_type }}</strong>
+          <strong>{{ workOrder.work_type }}</strong>
         </div>
         <div>
           <span>예약 시간</span>
-          <strong>{{ workOrder?.reserved_time }}</strong>
+          <strong>{{ workOrder.reserved_time }}</strong>
         </div>
         <div>
           <span>배정 섹터</span>
@@ -55,8 +55,15 @@ const workOrderSector = computed(() => getSectorByContainerId(workOrder.value?.c
         </div>
       </div>
 
+      <div v-else class="request-summary">
+        <div>
+          <span>작업</span>
+          <strong>대기 중</strong>
+        </div>
+      </div>
+
       <div class="decision-actions">
-        <button class="primary-button" type="button" @click="decision = 'approved'">수락</button>
+        <button class="primary-button" type="button" @click="decision = 'approved'">승인</button>
         <button class="danger-button" type="button" @click="decision = 'rejected'">거절</button>
       </div>
     </section>
@@ -68,7 +75,7 @@ const workOrderSector = computed(() => getSectorByContainerId(workOrder.value?.c
 
       <article class="panel">
         <div class="section-title">
-          <h2>작업 상태 입력</h2>
+          <h2>작업 관리</h2>
           <span class="status-pill green">기사 입력</span>
         </div>
         <div class="action-grid">
@@ -81,7 +88,7 @@ const workOrderSector = computed(() => getSectorByContainerId(workOrder.value?.c
 
     <section v-else-if="decision === 'rejected'" class="panel rejected-panel">
       <strong>거절 처리됨</strong>
-      <span>해당 작업은 기사 화면에서 거절 상태로 표시됩니다.</span>
+      <span>운송사 요청 작업을 기사 화면에서 거절 상태로 표시합니다.</span>
     </section>
   </div>
 </template>

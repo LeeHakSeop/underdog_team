@@ -1,3 +1,5 @@
+@import './base.css';
+
 :root {
   --navy-900: #1f3652;
   --navy-800: #28496d;
@@ -23,7 +25,6 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  overflow-y: auto;
   color: var(--ink-900);
   background: var(--page);
   font-family:
@@ -64,7 +65,6 @@ a {
 
 .page-stack {
   display: grid;
-  min-height: 0;
   gap: 10px;
 }
 
@@ -117,11 +117,7 @@ a {
 }
 
 .panel {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
   padding: 10px;
-  overflow: visible;
 }
 
 .metric-card {
@@ -174,17 +170,14 @@ a {
 
 .table-wrap {
   max-width: 100%;
-  min-height: 0;
-  overflow: auto;
-  max-height: 340px;
-  border: 1px solid var(--line);
+  overflow-x: auto;
 }
 
 .data-table {
   width: 100%;
   min-width: 760px;
   border-collapse: collapse;
-  border: 0;
+  border: 1px solid var(--line);
   background: #ffffff;
 }
 
@@ -197,9 +190,6 @@ a {
 }
 
 .data-table th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
   color: #20364f;
   font-size: 12px;
   font-weight: 700;
@@ -272,42 +262,9 @@ a {
 }
 
 .form-grid {
-  min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-}
-
-.page-stack > .grid-2,
-.page-stack > .grid-3,
-.page-stack > .grid-4 {
-  min-height: 0;
-}
-
-.page-stack > .panel:only-child .table-wrap {
-  max-height: 430px;
-}
-
-.page-stack > .panel:nth-child(n + 2) .table-wrap,
-.page-stack > .grid-2 .table-wrap {
-  max-height: 330px;
-}
-
-.driver-list,
-.match-list,
-.timeline,
-.sector-work-list,
-.info-stack,
-.action-grid {
-  min-height: 0;
-  overflow: auto;
-}
-
-.driver-list,
-.match-list,
-.timeline,
-.sector-work-list {
-  max-height: 360px;
 }
 
 .field {

@@ -22,12 +22,12 @@ public class CarrierService {
     }
 
     public int insert(CarrierDTO dto) {
-        setDefaultValues(dto);
+        setDefaultStatus(dto);
         return carrierMapper.insert(dto);
     }
 
     public int update(CarrierDTO dto) {
-        setDefaultValues(dto);
+        setDefaultStatus(dto);
         return carrierMapper.update(dto);
     }
 
@@ -35,7 +35,7 @@ public class CarrierService {
         return carrierMapper.delete(carrierId);
     }
 
-    private void setDefaultValues(CarrierDTO dto) {
+    private void setDefaultStatus(CarrierDTO dto) {
         if (dto.getCarrierStatus() == null || dto.getCarrierStatus().isBlank()) {
             dto.setCarrierStatus("ACTIVE");
         }

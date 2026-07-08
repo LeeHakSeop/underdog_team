@@ -1,6 +1,6 @@
 // .env.development에 작성한 서버 기본 주소를 가져옵니다.
 // 현재 값: http://localhost
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost'
+const BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 // 다른 파일에서 사용할 수 있도록 request 함수를 export합니다.
 // path: 세부 API 주소

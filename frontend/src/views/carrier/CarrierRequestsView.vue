@@ -15,7 +15,7 @@ const requestForm = ref({
   workStatus: 'DISPATCH_WAITING',
 })
 
-const submitRequest = async () => {  
+const submitRequest = async () => {
   await workOrderStore.addWorkOrder({
     ...requestForm.value,
     containerId: Number(requestForm.value.containerId),
@@ -32,13 +32,13 @@ const submitRequest = async () => {
     <section class="grid-2">
       <article class="panel">
         <div class="section-title">
-          <h2>운송 요청 등록</h2>
+          <h2>요청 정보</h2>
         </div>
         <form class="form-grid" @submit.prevent="submitRequest">
           <div class="field">
             <label for="containerId">컨테이너</label>
             <select id="containerId" v-model="requestForm.containerId" required>
-              <option value="" disabled>컨테이너 선택</option>
+              <option value="">선택</option>
               <option v-for="container in containers" :key="container.container_id" :value="container.container_id">
                 {{ container.container_number }}
               </option>
@@ -55,45 +55,42 @@ const submitRequest = async () => {
           </div>
           <div class="field">
             <label for="vehicleId">차량 ID</label>
-            <input id="vehicleId" v-model="requestForm.vehicleId" min="1" type="number" />
+            <input id="vehicleId" v-model="requestForm.vehicleId" inputmode="numeric" />
           </div>
           <div class="field">
             <label for="workType">작업 유형</label>
             <select id="workType" v-model="requestForm.workType">
-              <option value="LOAD_OUT">반출 적재</option>
-              <option value="UNLOAD_IN">반입 하차</option>
+              <option value="LOAD_OUT">반출 상차</option>
+              <option value="LOAD_IN">반입 하차</option>
             </select>
           </div>
           <div class="field">
-            <label for="reservedTime">예약 시간</label>
-            <input id="reservedTime" v-model="requestForm.reservedTime" type="datetime-local" />
+            <label for="reservation">예약 방문 시간</label>
+            <input id="reservation" v-model="requestForm.reservedTime" type="datetime-local" />
           </div>
           <div class="field">
             <label for="workStatus">작업 상태</label>
-            <input id="workStatus" v-model="requestForm.workStatus" />
+            <select id="workStatus" v-model="requestForm.workStatus">
+              <option value="DISPATCH_WAITING">배차 대기</option>
+              <option value="APPROVAL_WAITING">승인 대기</option>
+            </select>
           </div>
-          <button class="primary-button full request-button" type="submit">운송 요청 등록</button>
+          <button class="primary-button full request-button" type="submit">요청 등록</button>
         </form>
       </article>
 
       <article class="panel">
         <div class="section-title">
-          <h2>출입 가능 기사</h2>
+          <h2>출입 가능 기사 후보</h2>
           <span class="status-pill green">{{ availableDrivers.length }}명</span>
         </div>
         <div class="match-list">
-          <button
-            v-for="driver in availableDrivers"
-            :key="driver.driver_id"
-            class="match-card"
-            type="button"
-            @click="requestForm.driverId = driver.driver_id"
-          >
+          <button v-for="driver in availableDrivers" :key="driver.driver_id" class="match-card" type="button">
             <span>
               <b>{{ driver.driver_name }}</b>
-              <small>기사 ID {{ driver.driver_id }} / 운송사 ID {{ driver.carrier_id }}</small>
+              <small>연락처 {{ driver.driver_contact || '-' }}</small>
             </span>
-            <strong>출입 가능 {{ driver.can_enter }}</strong>
+            <strong>{{ driver.can_enter ? '출입 가능' : '출입 제한' }}</strong>
           </button>
         </div>
       </article>

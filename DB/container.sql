@@ -1,5 +1,4 @@
--- 컨테이너
-CREATE TABLE container(container_id BIGSERIAL PRIMARY KEY, container_number VARCHAR(30) UNIQUE,
+﻿CREATE TABLE container(container_id BIGSERIAL PRIMARY KEY, container_number VARCHAR(30) UNIQUE,
 container_size VARCHAR(20), container_location VARCHAR(100), sector_id BIGINT REFERENCES yard_sector(sector_id),
 block VARCHAR(30), bay VARCHAR(30), row_no VARCHAR(30), can_exit BOOLEAN,
 seal_number VARCHAR(50), shipping_line VARCHAR(100));
