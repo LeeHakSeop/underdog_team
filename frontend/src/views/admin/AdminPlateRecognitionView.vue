@@ -1,12 +1,17 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { usePlateRecognitionStore } from '@/stores/adminStore/plateRecognitionStore'
 
 const plateRecognitionStore = usePlateRecognitionStore()
 const selectedFile = ref(null)
 const previewUrl = ref('')
+const selectedOcrType = ref('paddle')
 
 const result = computed(() => plateRecognitionStore.result)
+
+onMounted(() => {
+  plateRecognitionStore.reset()
+})
 
 const selectFile = (event) => {
   const file = event.target.files?.[0]
@@ -20,7 +25,7 @@ const submitRecognize = async () => {
     return
   }
 
-  await plateRecognitionStore.recognize(selectedFile.value)
+  await plateRecognitionStore.recognize(selectedFile.value, selectedOcrType.value)
 }
 </script>
 
@@ -34,6 +39,14 @@ const submitRecognize = async () => {
 
       <div class="recognition-layout">
         <div class="upload-area">
+          <label class="model-select">
+            <span>OCR 모델</span>
+            <select v-model="selectedOcrType">
+              <option value="paddle">PaddleOCR</option>
+              <option value="crnn">CRNN</option>
+            </select>
+          </label>
+
           <label class="file-box" for="plateImage">
             <span>차량 이미지 선택</span>
             <input id="plateImage" accept="image/*" type="file" @change="selectFile" />
@@ -60,6 +73,10 @@ const submitRecognize = async () => {
             <div>
               <span>인식 번호판</span>
               <strong>{{ result?.aiResult?.plateNumber || '-' }}</strong>
+            </div>
+            <div>
+              <span>OCR 모델</span>
+              <strong>{{ result?.aiResult?.ocrType || selectedOcrType }}</strong>
             </div>
             <div>
               <span>인식 성공</span>
@@ -127,6 +144,26 @@ const submitRecognize = async () => {
   background: #f4f9ff;
   border: 1px dashed #8db5dc;
   border-radius: 4px;
+  font-weight: 800;
+}
+
+.model-select {
+  display: grid;
+  gap: 6px;
+}
+
+.model-select span {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.model-select select {
+  height: 36px;
+  padding: 0 10px;
+  color: var(--ink-900);
+  background: #fff;
+  border: 1px solid var(--line);
   font-weight: 800;
 }
 

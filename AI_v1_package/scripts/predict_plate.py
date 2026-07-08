@@ -6,14 +6,12 @@ from pathlib import Path
 import cv2
 import numpy as np
 from ultralytics import YOLO
-from paddleocr import PaddleOCR
 
 from ocr_postprocess import (
-    clean_plate_text,
-    normalize_plate_pattern,
-    correct_plate_korean,
     PLATE_KOREAN,
 )
+from paddle_ocr_predict import predict_paddle_ocr
+from crnn_ocr_predict import predict_crnn_ocr
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 MODEL_PATH = BASE_DIR / "models" / "team_yolo_best.pt"
@@ -25,7 +23,6 @@ MIN_OCR_CONFIDENCE = 0.70
 MIN_FINAL_CONFIDENCE = 0.60
 
 model = YOLO(MODEL_PATH)
-ocr = PaddleOCR(lang="korean", use_angle_cls=True, show_log=False)
 
 
 def imread_korean(path):
@@ -81,43 +78,39 @@ def add_confidence_review_reasons(reasons, detection_confidence, ocr_confidence,
     return reasons
 
 
-def run_ocr(crop_path):
-    result = ocr.ocr(str(crop_path), cls=True)
+def run_ocr(crop_path, ocr_type):
+    if ocr_type == "crnn":
+        return predict_crnn_ocr(crop_path)
 
-    raw_texts = []
-    ocr_confidences = []
-
-    if result and result[0]:
-        for line in result[0]:
-            raw_texts.append(line[1][0])
-            ocr_confidences.append(float(line[1][1]))
-
-    ocr_raw = "".join(raw_texts)
-    ocr_confidence = sum(ocr_confidences) / len(ocr_confidences) if ocr_confidences else 0.0
-
-    ocr_clean = clean_plate_text(ocr_raw)
-    ocr_clean = normalize_plate_pattern(ocr_clean)
-    ocr_clean = correct_plate_korean(ocr_clean)
-
-    return ocr_raw, ocr_clean, ocr_confidence
+    return predict_paddle_ocr(crop_path)
 
 
-def predict_plate(image_path):
+def make_empty_result(ocr_type, reasons):
+    return {
+        "detected": False,
+        "plateNumber": "",
+        "ocrRaw": "",
+        "confidence": 0.0,
+        "detectionConfidence": 0.0,
+        "ocrConfidence": 0.0,
+        "needReview": True,
+        "reviewReasons": reasons,
+        "cropPath": "",
+        "candidates": [],
+        "ocrType": ocr_type,
+    }
+
+
+def predict_plate(image_path, ocr_type="paddle"):
+    ocr_type = (ocr_type or "paddle").lower()
+
+    if ocr_type not in ["paddle", "crnn"]:
+        ocr_type = "paddle"
+
     img = imread_korean(image_path)
 
     if img is None:
-        return {
-            "detected": False,
-            "plateNumber": "",
-            "ocrRaw": "",
-            "confidence": 0.0,
-            "detectionConfidence": 0.0,
-            "ocrConfidence": 0.0,
-            "needReview": True,
-            "reviewReasons": ["IMAGE_READ_FAIL"],
-            "cropPath": "",
-            "candidates": [],
-        }
+        return make_empty_result(ocr_type, ["IMAGE_READ_FAIL"])
 
     results = model.predict(source=str(image_path), conf=0.25, verbose=False)
 
@@ -136,7 +129,7 @@ def predict_plate(image_path):
             crop_path = SAVE_DIR / f"{Path(image_path).stem}_plate_{i}.jpg"
             imwrite_korean(crop_path, crop)
 
-            ocr_raw, ocr_clean, ocr_confidence = run_ocr(crop_path)
+            ocr_raw, ocr_clean, ocr_confidence = run_ocr(crop_path, ocr_type)
             final_confidence = detection_confidence * ocr_confidence
             need_review, reasons = need_review_check(ocr_clean)
             reasons = add_confidence_review_reasons(
@@ -156,25 +149,13 @@ def predict_plate(image_path):
                 "needReview": need_review,
                 "reviewReasons": reasons,
                 "cropPath": crop_path.as_posix(),
+                "ocrType": ocr_type,
             })
 
     if not candidates:
-        return {
-            "detected": False,
-            "plateNumber": "",
-            "ocrRaw": "",
-            "confidence": 0.0,
-            "detectionConfidence": 0.0,
-            "ocrConfidence": 0.0,
-            "needReview": True,
-            "reviewReasons": ["PLATE_NOT_DETECTED"],
-            "cropPath": "",
-            "candidates": [],
-        }
+        return make_empty_result(ocr_type, ["PLATE_NOT_DETECTED"])
 
     # 우선순위: 정상 번호판 형식 > confidence 높은 것
-    valid = [c for c in candidates if c["needReview"] is False]
-
     valid = [c for c in candidates if c["needReview"] is False]
 
     if valid:
@@ -193,6 +174,7 @@ def predict_plate(image_path):
         "reviewReasons": best["reviewReasons"],
         "cropPath": best["cropPath"],
         "candidates": candidates,
+        "ocrType": ocr_type,
     }
 
 

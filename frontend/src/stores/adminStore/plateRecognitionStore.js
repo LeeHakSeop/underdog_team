@@ -8,13 +8,18 @@ export const usePlateRecognitionStore = defineStore('plateRecognition', {
     error: '',
   }),
   actions: {
-    async recognize(file) {
+    reset() {
+      this.result = null
+      this.loading = false
+      this.error = ''
+    },
+    async recognize(file, ocrType = 'paddle') {
       this.loading = true
       this.error = ''
       this.result = null
 
       try {
-        this.result = await recognizePlate(file)
+        this.result = await recognizePlate(file, ocrType)
       } catch (error) {
         this.error = error.message || '번호판 인식 요청에 실패했습니다.'
         throw error

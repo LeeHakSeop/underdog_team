@@ -11,7 +11,7 @@ sys.path.append(str(SCRIPTS_DIR))
 from predict_plate import predict_plate
 
 
-async def predict_upload_file(file: UploadFile):
+async def predict_upload_file(file: UploadFile, ocr_type: str = "paddle"):
     file_name = file.filename or "upload.jpg"
     save_path = UPLOAD_DIR / file_name
 
@@ -20,6 +20,6 @@ async def predict_upload_file(file: UploadFile):
     with open(save_path, "wb") as buffer:
         buffer.write(contents)
 
-    result = predict_plate(save_path)
+    result = predict_plate(save_path, ocr_type)
 
     return result

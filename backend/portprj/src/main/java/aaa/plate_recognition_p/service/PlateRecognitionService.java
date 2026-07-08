@@ -31,7 +31,7 @@ public class PlateRecognitionService {
     @Resource
     PlateRecognitionMapper plateRecognitionMapper;
 
-    public PlateRecognitionResultDTO recognize(MultipartFile file) throws IOException {
+    public PlateRecognitionResultDTO recognize(MultipartFile file, String ocrType) throws IOException {
         RestTemplate restTemplate = new RestTemplate();
 
         ByteArrayResource imageResource = new ByteArrayResource(file.getBytes()) {
@@ -43,6 +43,7 @@ public class PlateRecognitionService {
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", imageResource);
+        body.add("ocrType", ocrType);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
