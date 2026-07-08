@@ -7,9 +7,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+<<<<<<< HEAD
 
 @CrossOrigin(origins = "http://200.200.200.66:5173")
 
+=======
+>>>>>>> origin/hakseop
 @RestController
 @RequestMapping("/api/carrier")
 public class CarrierController {

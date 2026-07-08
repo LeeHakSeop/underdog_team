@@ -1,34 +1,23 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCarrierStore } from '@/stores/carrierStore'
+import { loginApi, registerApi } from '@/api/authApi'
 
 const router = useRouter()
-const carrierStore = useCarrierStore()
 
 const mode = ref('login')
 const submitMessage = ref('')
 
 const loginForm = ref({
-  username: 'admin',
-  password: '1234',
-  roleCode: 'ADMIN',
+  loginId: '',
+  password: '',
 })
 
-const signupForm = ref({
-  username: '',
+const registerForm = ref({
+  loginId: '',
   password: '',
-  name: '',
-  email: '',
-  phone: '',
+  userName: '',
   roleCode: 'CARRIER',
-  carrierName: '',
-  businessNo: '',
-  managerName: '',
-  driverName: '',
-  driverCarrierName: '',
-  driverCanEnter: 'Y',
-  adminArea: '전체 운영',
 })
 
 const roleOptions = [
@@ -37,61 +26,59 @@ const roleOptions = [
   { code: 'ADMIN', label: '관리자', home: '/admin/main' },
 ]
 
-const selectedRole = computed(() =>
-  roleOptions.find((role) => role.code === signupForm.value.roleCode)
-)
-
-const login = () => {
-  const role =
-    roleOptions.find((item) => item.code === loginForm.value.roleCode) ||
-    roleOptions[2]
-
-  localStorage.setItem(
-    'portGateUser',
-    JSON.stringify({
-      username: loginForm.value.username,
-      roleCode: role.code,
-      roleName: role.label,
-    }),
-  )
-
-  router.push(role.home)
-}
-
-const saveLoginUser = (role) => {
-  localStorage.setItem(
-    'portGateUser',
-    JSON.stringify({
-      username: signupForm.value.username,
-      name: signupForm.value.name,
-      roleCode: role.code,
-      roleName: role.label,
-    }),
-  )
-}
-
-const signup = async () => {
-  const role =
-    roleOptions.find((item) => item.code === signupForm.value.roleCode) ||
-    roleOptions[0]
-
+const login = async () => {
   submitMessage.value = ''
 
   try {
-    if (role.code === 'CARRIER') {
-      await carrierStore.addCarrier({
-        carrierName: signupForm.value.carrierName || signupForm.value.name,
-        carrierContact: signupForm.value.phone,
-        managerName: signupForm.value.managerName || signupForm.value.name,
-        carrierStatus: 'ACTIVE',
-      })
+    const user = await loginApi(loginForm.value)
+
+    localStorage.setItem(
+      'portGateUser',
+      JSON.stringify({
+        userId: user.userId,
+        loginId: user.loginId,
+        userName: user.userName,
+        roleCode: user.roleCode,
+      }),
+    )
+
+    if (user.token) {
+      localStorage.setItem('token', user.token)
     }
 
-    saveLoginUser(role)
-    router.push(role.home)
+    const role = roleOptions.find((item) => item.code === user.roleCode)
+
+    if (role) {
+      router.push(role.home)
+    } else {
+      router.push('/login')
+    }
   } catch (error) {
-    submitMessage.value =
-      carrierStore.error || '회원가입 처리 중 오류가 발생했습니다.'
+    submitMessage.value = error.message || '로그인에 실패했습니다.'
+  }
+}
+
+const register = async () => {
+  submitMessage.value = ''
+
+  try {
+    await registerApi(registerForm.value)
+
+    submitMessage.value = '회원가입이 완료되었습니다. 로그인해주세요.'
+
+    loginForm.value.loginId = registerForm.value.loginId
+    loginForm.value.password = registerForm.value.password
+
+    registerForm.value = {
+      loginId: '',
+      password: '',
+      userName: '',
+      roleCode: 'CARRIER',
+    }
+
+    mode.value = 'login'
+  } catch (error) {
+    submitMessage.value = error.message || '회원가입에 실패했습니다.'
   }
 }
 </script>
@@ -120,20 +107,12 @@ const signup = async () => {
         <form v-if="mode === 'login'" class="auth-form" @submit.prevent="login">
           <div class="form-head">
             <h2>로그인</h2>
-            <p>역할을 선택하면 해당 업무 화면으로 이동합니다.</p>
+            <p>계정 정보를 입력하면 해당 업무 화면으로 이동합니다.</p>
           </div>
 
           <div class="field">
-            <label for="loginRole">역할</label>
-            <select id="loginRole" v-model="loginForm.roleCode">
-              <option v-for="role in roleOptions" :key="role.code" :value="role.code">
-                {{ role.label }}
-              </option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="loginUsername">사용자 ID</label>
-            <input id="loginUsername" v-model="loginForm.username" autocomplete="username" />
+            <label for="loginId">아이디</label>
+            <input id="loginId" v-model="loginForm.loginId" autocomplete="username" required />
           </div>
           <div class="field">
             <label for="loginPassword">비밀번호</label>
@@ -141,98 +120,47 @@ const signup = async () => {
               id="loginPassword"
               v-model="loginForm.password"
               autocomplete="current-password"
+              required
               type="password"
             />
           </div>
 
+          <p v-if="submitMessage" class="form-message">{{ submitMessage }}</p>
           <button class="submit-button" type="submit">로그인</button>
         </form>
 
-        <form v-else class="auth-form" @submit.prevent="signup">
+        <form v-else class="auth-form" @submit.prevent="register">
           <div class="form-head">
             <h2>회원가입</h2>
-            <p>역할과 DB 기준 정보를 입력합니다.</p>
+            <p>기본 계정을 생성합니다.</p>
           </div>
 
-          <div class="form-grid">
-            <div class="field">
-              <label for="signupRole">역할</label>
-              <select id="signupRole" v-model="signupForm.roleCode">
-                <option v-for="role in roleOptions" :key="role.code" :value="role.code">
-                  {{ role.label }}
-                </option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="signupUsername">사용자 ID</label>
-              <input id="signupUsername" v-model="signupForm.username" required />
-            </div>
-            <div class="field">
-              <label for="signupPassword">비밀번호</label>
-              <input id="signupPassword" v-model="signupForm.password" required type="password" />
-            </div>
-            <div class="field">
-              <label for="signupName">이름</label>
-              <input id="signupName" v-model="signupForm.name" required />
-            </div>
-            <div class="field">
-              <label for="signupEmail">이메일</label>
-              <input id="signupEmail" v-model="signupForm.email" type="email" />
-            </div>
-            <div class="field">
-              <label for="signupPhone">연락처</label>
-              <input id="signupPhone" v-model="signupForm.phone" />
-            </div>
+          <div class="field">
+            <label for="registerLoginId">아이디</label>
+            <input id="registerLoginId" v-model="registerForm.loginId" required />
           </div>
 
-          <div class="role-fields">
-            <h3>{{ selectedRole?.label }} 추가 정보</h3>
+          <div class="field">
+            <label for="registerPassword">비밀번호</label>
+            <input id="registerPassword" v-model="registerForm.password" required type="password" />
+          </div>
 
-            <div v-if="signupForm.roleCode === 'CARRIER'" class="form-grid">
-              <div class="field">
-                <label for="carrierName">운송사명</label>
-                <input id="carrierName" v-model="signupForm.carrierName" required />
-              </div>
-              <div class="field">
-                <label for="businessNo">사업자번호</label>
-                <input id="businessNo" v-model="signupForm.businessNo" />
-              </div>
-              <div class="field">
-                <label for="managerName">담당자명</label>
-                <input id="managerName" v-model="signupForm.managerName" />
-              </div>
-            </div>
+          <div class="field">
+            <label for="registerUserName">이름</label>
+            <input id="registerUserName" v-model="registerForm.userName" required />
+          </div>
 
-            <div v-else-if="signupForm.roleCode === 'DRIVER'" class="form-grid">
-              <div class="field">
-                <label for="driverName">기사명</label>
-                <input id="driverName" v-model="signupForm.driverName" />
-              </div>
-              <div class="field">
-                <label for="driverCarrierName">소속 운송사</label>
-                <input id="driverCarrierName" v-model="signupForm.driverCarrierName" />
-              </div>
-              <div class="field">
-                <label for="driverCanEnter">출입 가능 여부</label>
-                <select id="driverCanEnter" v-model="signupForm.driverCanEnter">
-                  <option value="Y">Y - 가능</option>
-                  <option value="N">N - 제한</option>
-                </select>
-              </div>
-            </div>
-
-            <div v-else class="form-grid">
-              <div class="field">
-                <label for="adminArea">관리 영역</label>
-                <input id="adminArea" v-model="signupForm.adminArea" />
-              </div>
-            </div>
+          <div class="field">
+            <label for="registerRole">가입 유형</label>
+            <select id="registerRole" v-model="registerForm.roleCode">
+              <option value="CARRIER">운송사 담당자</option>
+              <option value="DRIVER">화물 기사</option>
+              <option value="ADMIN">관리자</option>
+            </select>
           </div>
 
           <p v-if="submitMessage" class="form-message">{{ submitMessage }}</p>
-          <button class="submit-button" :disabled="carrierStore.loading" type="submit">
-            {{ carrierStore.loading ? '처리 중' : '회원가입 후 시작' }}
-          </button>
+          <button class="submit-button" type="submit">회원가입</button>
         </form>
       </div>
     </section>
@@ -334,21 +262,6 @@ const signup = async () => {
   line-height: 1.5;
 }
 
-.role-fields {
-  display: grid;
-  gap: 10px;
-  padding: 10px;
-  background: #f6f9fd;
-  border: 1px solid var(--line);
-  border-radius: 2px;
-}
-
-.role-fields h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-}
-
 .form-message {
   margin: 0;
   padding: 8px 10px;
@@ -393,10 +306,6 @@ const signup = async () => {
   .auth-panel,
   .brand-panel {
     padding: 22px;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>

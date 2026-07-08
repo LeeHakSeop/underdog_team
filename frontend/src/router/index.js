@@ -5,12 +5,15 @@ import CarrierRequestsView from '../views/carrier/CarrierRequestsView.vue'
 import CarrierApprovalsView from '../views/carrier/CarrierApprovalsView.vue'
 import DriverDashboardView from '../views/driver/DriverDashboardView.vue'
 import DriverGateStatusView from '../views/driver/DriverGateStatusView.vue'
+import DriverVehiclesView from '../views/driver/DriverVehiclesView.vue'
 import AdminMainView from '../views/admin/AdminMainView.vue'
 import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
-import AdminTasksView from '../views/admin/AdminTasksView.vue'
+import AdminMembersView from '../views/admin/AdminMembersView.vue'
+import AdminWorkOrdersView from '../views/admin/AdminWorkOrdersView.vue'
 import AdminGateLogsView from '../views/admin/AdminGateLogsView.vue'
 import AdminContainersView from '../views/admin/AdminContainersView.vue'
 import AdminEventsView from '../views/admin/AdminEventsView.vue'
+import AdminPlateRecognitionView from '../views/admin/AdminPlateRecognitionView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -75,6 +78,12 @@ const router = createRouter({
           path: 'sector-guide',
           redirect: '/driver/dashboard',
         },
+        {
+          path: 'vehicles',
+          name: 'driver-vehicles',
+          component: DriverVehiclesView,
+          meta: { role: 'driver', title: '차량 등록' },
+        },
       ],
     },
     {
@@ -95,9 +104,21 @@ const router = createRouter({
           meta: { role: 'admin', title: '센터 현황' },
         },
         {
-          path: 'tasks',
-          name: 'admin-tasks',
-          component: AdminTasksView,
+          path: 'plate-recognition',
+          name: 'admin-plate-recognition',
+          component: AdminPlateRecognitionView,
+          meta: { role: 'admin', title: 'AI 번호판 인식' },
+        },
+        {
+          path: 'members',
+          name: 'admin-members',
+          component: AdminMembersView,
+          meta: { role: 'admin', title: '가입 회원 관리' },
+        },
+        {
+          path: 'work-orders',
+          name: 'admin-work-orders',
+          component: AdminWorkOrdersView,
           meta: { role: 'admin', title: '작업 관리' },
         },
         {
@@ -123,15 +144,21 @@ const router = createRouter({
   ],
 })
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/hakseop
 router.beforeEach((to) => {
   if (to.path === '/login') {
     return true
   }
+<<<<<<< HEAD
 
 // 개발중에 OFF
 // router.beforeEach(authGuard)
 
+=======
+>>>>>>> origin/hakseop
 
   const user = JSON.parse(localStorage.getItem('portGateUser') || 'null')
   if (!user) {

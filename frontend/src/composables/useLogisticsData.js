@@ -72,6 +72,7 @@ const normalizeGateLog = (log) => ({
 
 const normalizeWorkOrder = (order, vehicleById) => {
   const vehicle = vehicleById.get(order.vehicleId)
+
   return {
     ...order,
     work_order_id: order.workOrderId,
@@ -103,7 +104,7 @@ export const useLogisticsData = () => {
   const vehicleStore = useVehicleStore()
   const containerStore = useContainerStore()
   const gateLogStore = useGateLogStore()
-  const WorkOrderStore = useWorkOrderStore()
+  const workOrderStore = useWorkOrderStore()
   const yardSectorStore = useYardSectorStore()
 
   const { carriers: rawCarriers } = storeToRefs(carrierStore)
@@ -111,7 +112,7 @@ export const useLogisticsData = () => {
   const { vehicles: rawVehicles } = storeToRefs(vehicleStore)
   const { containers: rawContainers } = storeToRefs(containerStore)
   const { gateLogs: rawGateLogs } = storeToRefs(gateLogStore)
-  const { workOrders: rawworkOrders } = storeToRefs(WorkOrderStore)
+  const { workOrders: rawWorkOrders } = storeToRefs(workOrderStore)
   const { yardSectors: rawYardSectors } = storeToRefs(yardSectorStore)
 
   const loadAll = () => {
@@ -120,7 +121,7 @@ export const useLogisticsData = () => {
     vehicleStore.loadVehicles()
     containerStore.loadContainers()
     gateLogStore.loadGateLogs()
-    WorkOrderStore.loadWorkOrders()
+    workOrderStore.loadWorkOrders()
     yardSectorStore.loadYardSectors()
   }
 
@@ -133,7 +134,7 @@ export const useLogisticsData = () => {
   const gateLogs = computed(() => rawGateLogs.value.map(normalizeGateLog))
   const yardSectors = computed(() => rawYardSectors.value.map(normalizeSector))
   const vehicleById = computed(() => new Map(rawVehicles.value.map((vehicle) => [vehicle.vehicleId, vehicle])))
-  const workOrders = computed(() => rawworkOrders.value.map((order) => normalizeWorkOrder(order, vehicleById.value)))
+  const workOrders = computed(() => rawWorkOrders.value.map((order) => normalizeWorkOrder(order, vehicleById.value)))
 
   const getCarrierName = (carrierId) => carriers.value.find((carrier) => carrier.carrier_id === carrierId)?.carrier_name || '-'
   const getDriverName = (driverId) => drivers.value.find((driver) => driver.driver_id === driverId)?.driver_name || '-'

@@ -45,14 +45,11 @@ export default [
         redirect: '/driver/dashboard',
       },
       {
-  path: 'vehicles',
-  name: 'driver-vehicles',
-  component: DriverVehiclesView,
-  meta: {
-    role: 'DRIVER',
-    title: '차량 등록',
-  },
-},
+        path: 'vehicles',
+        name: 'driver-vehicles',
+        component: DriverVehiclesView,
+        meta: { role: 'DRIVER', title: '차량 등록' },
+      },
     ],
   },
 ]
