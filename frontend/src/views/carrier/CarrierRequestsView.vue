@@ -1,7 +1,7 @@
 <script setup>
-<<<<<<< HEAD
+
 import { availableDrivers } from '../../data/mockData'
-=======
+
 import { ref } from 'vue'
 import { useLogisticsData } from '@/composables/useLogisticsData'
 import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
@@ -28,7 +28,7 @@ const submitRequest = async () => {
     isApproved: false,
   })
 }
->>>>>>> origin/main
+
 </script>
 
 <template>
