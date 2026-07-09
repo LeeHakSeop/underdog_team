@@ -144,10 +144,18 @@ const router = createRouter({
   ],
 })
 
+
+
 router.beforeEach((to) => {
   if (to.path === '/login') {
     return true
   }
+
+
+// 개발중에 OFF
+// router.beforeEach(authGuard)
+
+
 
   const user = JSON.parse(localStorage.getItem('portGateUser') || 'null')
   if (!user) {

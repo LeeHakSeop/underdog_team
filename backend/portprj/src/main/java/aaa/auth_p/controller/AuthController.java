@@ -24,3 +24,4 @@ public class AuthController {
         return service.register(dto);
     }
 }
+

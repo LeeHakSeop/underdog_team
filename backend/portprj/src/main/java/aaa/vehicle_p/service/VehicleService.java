@@ -1,5 +1,6 @@
 package aaa.vehicle_p.service;
 
+import aaa.vehicle_p.model.TractorVehicleInfoDTO;
 import aaa.vehicle_p.model.VehicleDTO;
 import aaa.vehicle_p.model.VehicleMapper;
 import jakarta.annotation.Resource;
@@ -19,6 +20,10 @@ public class VehicleService {
 
     public VehicleDTO detail(Long vehicleId) {
         return vehicleMapper.detail(vehicleId);
+    }
+
+    public TractorVehicleInfoDTO findTractorInfo(String plateNumber) {
+        return vehicleMapper.findTractorInfoByPlateNumber(plateNumber);
     }
 
     public int insert(VehicleDTO dto) {

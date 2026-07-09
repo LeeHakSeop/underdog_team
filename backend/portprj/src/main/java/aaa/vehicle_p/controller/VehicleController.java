@@ -1,5 +1,6 @@
 package aaa.vehicle_p.controller;
 
+import aaa.vehicle_p.model.TractorVehicleInfoDTO;
 import aaa.vehicle_p.model.VehicleDTO;
 import aaa.vehicle_p.service.VehicleService;
 import jakarta.annotation.Resource;
@@ -7,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://200.200.200.66:5173")
 @RestController
 @RequestMapping("/api/vehicle")
 public class VehicleController {
@@ -22,6 +22,11 @@ public class VehicleController {
     @GetMapping("/detail/{vehicleId}")
     public VehicleDTO detail(@PathVariable Long vehicleId) {
         return vehicleService.detail(vehicleId);
+    }
+
+    @GetMapping("/tractor-info/{plateNumber}")
+    public TractorVehicleInfoDTO tractorInfo(@PathVariable String plateNumber) {
+        return vehicleService.findTractorInfo(plateNumber);
     }
 
     @PostMapping("/reg")
