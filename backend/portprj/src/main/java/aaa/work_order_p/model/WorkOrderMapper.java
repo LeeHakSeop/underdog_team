@@ -38,9 +38,22 @@ public interface WorkOrderMapper {
         wo.vehicle_id AS vehicleId,
         wo.container_id AS containerId,
         c.container_number AS containerNumber,
+        c.container_location AS containerLocation,
+        CONCAT(c.block, '-', c.bay, '-', c.row_no) AS yardLocation,
+        c.block AS block,
+        c.bay AS bay,
+        c.row_no AS rowNo,
         c.sector_id AS sectorId,
         ys.sector_name AS sectorName,
-        ys.guide_message AS guideMessage
+        ys.block_name AS blockName,
+        ys.guide_message AS guideMessage,
+        CONCAT(
+            '컨테이너 번호는 ', c.container_number,
+            '이고, 해야 할 작업은 ', wo.work_type,
+            ', 야드 위치는 ', COALESCE(c.container_location, ys.sector_name),
+            ' / ', c.block, '-', c.bay, '-', c.row_no,
+            ' 입니다.'
+        ) AS workGuideMessage
     FROM work_order wo
     JOIN container c ON wo.container_id = c.container_id
     JOIN yard_sector ys ON c.sector_id = ys.sector_id
