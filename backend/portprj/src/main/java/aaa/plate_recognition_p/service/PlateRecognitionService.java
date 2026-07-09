@@ -1,5 +1,7 @@
 package aaa.plate_recognition_p.service;
 
+import aaa.exception_log_p.model.ExceptionLogDTO;
+import aaa.exception_log_p.service.ExceptionLogService;
 import aaa.gate_log_p.model.GateLogDTO;
 import aaa.plate_recognition_p.model.FastApiPlateResponseDTO;
 import aaa.plate_recognition_p.model.PlateRecognitionDTO;
@@ -13,7 +15,10 @@ import aaa.work_order_p.service.WorkOrderService;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -37,44 +42,29 @@ public class PlateRecognitionService {
     @Resource
     PlateRecognitionMapper plateRecognitionMapper;
 
-<<<<<<< HEAD
     @Resource
     WorkOrderService workOrderService;
 
+    @Resource
+    ExceptionLogService exceptionLogService;
+
     public PlateRecognitionResultDTO recognize(MultipartFile file) throws IOException {
-=======
+        return recognize(file, "paddle", "TRAILER");
+    }
+
     public PlateRecognitionResultDTO recognize(MultipartFile file, String ocrType, String plateType) throws IOException {
->>>>>>> origin/main
-        RestTemplate restTemplate = new RestTemplate();
+        return recognize(file, ocrType, plateType, "G01", "AI_GATE", "IN");
+    }
 
-        ByteArrayResource imageResource = new ByteArrayResource(file.getBytes()) {
-            @Override
-            public String getFilename() {
-                return file.getOriginalFilename();
-            }
-        };
-
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", imageResource);
-        body.add("ocrType", ocrType);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-
-        FastApiPlateResponseDTO aiResult;
-
-        try {
-            ResponseEntity<FastApiPlateResponseDTO> response = restTemplate.postForEntity(
-                    fastApiUrl,
-                    requestEntity,
-                    FastApiPlateResponseDTO.class
-            );
-            aiResult = response.getBody();
-        } catch (ResourceAccessException e) {
-            aiResult = null;
-        }
+    public PlateRecognitionResultDTO recognize(
+            MultipartFile file,
+            String ocrType,
+            String plateType,
+            String gateNumber,
+            String gateName,
+            String inOutType
+    ) throws IOException {
+        FastApiPlateResponseDTO aiResult = requestPlateRecognition(file, ocrType);
 
         VehicleDTO vehicle = null;
         TractorVehicleInfoDTO tractorVehicleInfo = null;
@@ -84,6 +74,7 @@ public class PlateRecognitionService {
             vehicle = vehicleMapper.findByPlateNumber(aiResult.getPlateNumber());
         }
 
+        boolean matched = vehicle != null;
         boolean isTractor = vehicle != null && "TRACTOR".equalsIgnoreCase(vehicle.getVehicleType());
         boolean isTrailer = vehicle != null && "TRAILER".equalsIgnoreCase(vehicle.getVehicleType());
 
@@ -95,53 +86,42 @@ public class PlateRecognitionService {
             trailerWorkInfo = workOrderService.findTrailerWorkInfo(vehicle.getVehicleId());
         }
 
-        printRecognitionCheckLog(aiResult, vehicle, tractorVehicleInfo, trailerWorkInfo);
-
-        boolean matched = vehicle != null;
-        boolean hasTractorInfo = tractorVehicleInfo != null;
-        boolean hasTrailerWorkOrder = trailerWorkInfo != null;
-        boolean hasRequiredInfo = (isTractor && hasTractorInfo) || (isTrailer && hasTrailerWorkOrder);
+        boolean hasRequiredInfo = (isTractor && tractorVehicleInfo != null) || (isTrailer && trailerWorkInfo != null);
         boolean needReview = !matched || !hasRequiredInfo;
 
         if (aiResult == null || Boolean.TRUE.equals(aiResult.getNeedReview())) {
             needReview = true;
         }
 
-        GateLogDTO gateLog = new GateLogDTO();
-        gateLog.setVehicleId(vehicle == null ? null : vehicle.getVehicleId());
-        gateLog.setTractorVehicleId(getPlateVehicleId(vehicle, plateType, "TRACTOR"));
-        gateLog.setTrailerVehicleId(getPlateVehicleId(vehicle, plateType, "TRAILER"));
-        gateLog.setGateNumber("G01");
-        gateLog.setGateName("AI_GATE");
-        gateLog.setEntryTime(LocalDateTime.now());
-        gateLog.setInOutType("IN");
-        gateLog.setProcessResult(needReview ? "NEED_REVIEW" : "SUCCESS");
-        gateLog.setManagerCheck(!needReview);
+        printRecognitionCheckLog(aiResult, vehicle, tractorVehicleInfo, trailerWorkInfo);
+
+        GateLogDTO gateLog = createGateLog(vehicle, plateType, needReview, gateNumber, gateName, inOutType);
         plateRecognitionMapper.insertGateLog(gateLog);
 
-        PlateRecognitionDTO plateRecognition = new PlateRecognitionDTO();
-        plateRecognition.setGateLogId(gateLog.getGateLogId());
-        plateRecognition.setRecognitionTime(LocalDateTime.now());
-
-        if (aiResult != null) {
-            plateRecognition.setVehicleImage(aiResult.getCropPath());
-            plateRecognition.setRecognizedPlate(aiResult.getPlateNumber());
-<<<<<<< HEAD
-            plateRecognition.setIsSuccess(Boolean.TRUE.equals(aiResult.getDetected()) && matched && hasRequiredInfo);
-=======
-            plateRecognition.setPlateType(plateType);
-            plateRecognition.setIsSuccess(Boolean.TRUE.equals(aiResult.getDetected()) && matched);
->>>>>>> origin/main
-            plateRecognition.setConfidence(BigDecimal.valueOf(aiResult.getConfidence() == null ? 0.0 : aiResult.getConfidence()));
-            plateRecognition.setErrorMessage(makeErrorMessage(aiResult, matched, isTractor, isTrailer, hasRequiredInfo));
-        } else {
-            plateRecognition.setIsSuccess(false);
-            plateRecognition.setPlateType(plateType);
-            plateRecognition.setConfidence(BigDecimal.valueOf(0.0));
-            plateRecognition.setErrorMessage("FAST_API_ERROR");
-        }
-
+        PlateRecognitionDTO plateRecognition = createPlateRecognition(
+                gateLog,
+                aiResult,
+                plateType,
+                matched,
+                hasRequiredInfo,
+                isTractor,
+                isTrailer
+        );
         plateRecognitionMapper.insertPlateRecognition(plateRecognition);
+
+        ExceptionLogDTO exceptionLog = createExceptionLog(
+                gateLog,
+                aiResult,
+                vehicle,
+                matched,
+                isTractor,
+                isTrailer,
+                hasRequiredInfo
+        );
+
+        if (exceptionLog != null) {
+            exceptionLogService.insert(exceptionLog);
+        }
 
         PlateRecognitionResultDTO result = new PlateRecognitionResultDTO();
         result.setAiResult(aiResult);
@@ -166,6 +146,162 @@ public class PlateRecognitionService {
         return result;
     }
 
+    private FastApiPlateResponseDTO requestPlateRecognition(MultipartFile file, String ocrType) throws IOException {
+        RestTemplate restTemplate = new RestTemplate();
+
+        ByteArrayResource imageResource = new ByteArrayResource(file.getBytes()) {
+            @Override
+            public String getFilename() {
+                return file.getOriginalFilename();
+            }
+        };
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", imageResource);
+        body.add("ocrType", ocrType);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        try {
+            ResponseEntity<FastApiPlateResponseDTO> response = restTemplate.postForEntity(
+                    fastApiUrl,
+                    requestEntity,
+                    FastApiPlateResponseDTO.class
+            );
+            return response.getBody();
+        } catch (ResourceAccessException e) {
+            return null;
+        }
+    }
+
+    private GateLogDTO createGateLog(
+            VehicleDTO vehicle,
+            String plateType,
+            boolean needReview,
+            String gateNumber,
+            String gateName,
+            String inOutType
+    ) {
+        String normalizedInOutType = normalizeInOutType(inOutType);
+
+        GateLogDTO gateLog = new GateLogDTO();
+        gateLog.setVehicleId(vehicle == null ? null : vehicle.getVehicleId());
+        gateLog.setTractorVehicleId(getPlateVehicleId(vehicle, plateType, "TRACTOR"));
+        gateLog.setTrailerVehicleId(getPlateVehicleId(vehicle, plateType, "TRAILER"));
+        gateLog.setGateNumber(gateNumber);
+        gateLog.setGateName(gateName);
+        gateLog.setInOutType(normalizedInOutType);
+        gateLog.setProcessResult(needReview ? "NEED_REVIEW" : "SUCCESS");
+        gateLog.setManagerCheck(!needReview);
+
+        if ("OUT".equals(normalizedInOutType)) {
+            gateLog.setExitTime(LocalDateTime.now());
+        } else {
+            gateLog.setEntryTime(LocalDateTime.now());
+        }
+
+        return gateLog;
+    }
+
+    private String normalizeInOutType(String inOutType) {
+        if (inOutType != null && "OUT".equalsIgnoreCase(inOutType)) {
+            return "OUT";
+        }
+
+        return "IN";
+    }
+
+    private PlateRecognitionDTO createPlateRecognition(
+            GateLogDTO gateLog,
+            FastApiPlateResponseDTO aiResult,
+            String plateType,
+            boolean matched,
+            boolean hasRequiredInfo,
+            boolean isTractor,
+            boolean isTrailer
+    ) {
+        PlateRecognitionDTO plateRecognition = new PlateRecognitionDTO();
+        plateRecognition.setGateLogId(gateLog.getGateLogId());
+        plateRecognition.setRecognitionTime(LocalDateTime.now());
+        plateRecognition.setPlateType(plateType);
+
+        if (aiResult == null) {
+            plateRecognition.setIsSuccess(false);
+            plateRecognition.setConfidence(BigDecimal.valueOf(0.0));
+            plateRecognition.setErrorMessage("FAST_API_ERROR");
+            return plateRecognition;
+        }
+
+        plateRecognition.setVehicleImage(aiResult.getCropPath());
+        plateRecognition.setRecognizedPlate(aiResult.getPlateNumber());
+        plateRecognition.setIsSuccess(Boolean.TRUE.equals(aiResult.getDetected()) && matched && hasRequiredInfo);
+        plateRecognition.setConfidence(BigDecimal.valueOf(aiResult.getConfidence() == null ? 0.0 : aiResult.getConfidence()));
+        plateRecognition.setErrorMessage(makeErrorMessage(aiResult, matched, isTractor, isTrailer, hasRequiredInfo));
+        return plateRecognition;
+    }
+
+    private Long getPlateVehicleId(VehicleDTO vehicle, String plateType, String targetType) {
+        if (vehicle == null || plateType == null) {
+            return null;
+        }
+
+        if (plateType.equalsIgnoreCase(targetType)) {
+            return vehicle.getVehicleId();
+        }
+
+        return null;
+    }
+
+    private ExceptionLogDTO createExceptionLog(
+            GateLogDTO gateLog,
+            FastApiPlateResponseDTO aiResult,
+            VehicleDTO vehicle,
+            boolean matched,
+            boolean isTractor,
+            boolean isTrailer,
+            boolean hasRequiredInfo
+    ) {
+        String exceptionType = null;
+        String exceptionMessage = null;
+
+        if (aiResult == null) {
+            exceptionType = "AI_SERVER_ERROR";
+            exceptionMessage = "AI server response is empty.";
+        } else if (!Boolean.TRUE.equals(aiResult.getDetected())) {
+            exceptionType = "PLATE_NOT_RECOGNIZED";
+            exceptionMessage = "Plate was not recognized.";
+        } else if (!matched) {
+            exceptionType = "VEHICLE_NOT_REGISTERED";
+            exceptionMessage = "Recognized plate is not registered.";
+        } else if (isTrailer && !hasRequiredInfo) {
+            exceptionType = "WORK_ORDER_NOT_FOUND";
+            exceptionMessage = "Assigned work order was not found for trailer.";
+        } else if (isTractor && !hasRequiredInfo) {
+            exceptionType = "TRACTOR_INFO_NOT_FOUND";
+            exceptionMessage = "Tractor detail information was not found.";
+        } else if (matched && !isTractor && !isTrailer) {
+            exceptionType = "UNKNOWN_VEHICLE_TYPE";
+            exceptionMessage = "Vehicle type must be TRACTOR or TRAILER.";
+        }
+
+        if (exceptionType == null) {
+            return null;
+        }
+
+        ExceptionLogDTO exceptionLog = new ExceptionLogDTO();
+        exceptionLog.setGateLogId(gateLog.getGateLogId());
+        exceptionLog.setVehicleId(vehicle == null ? null : vehicle.getVehicleId());
+        exceptionLog.setPlateNumber(aiResult == null ? null : aiResult.getPlateNumber());
+        exceptionLog.setExceptionType(exceptionType);
+        exceptionLog.setExceptionMessage(exceptionMessage);
+        exceptionLog.setOccurredTime(LocalDateTime.now());
+        exceptionLog.setProcessStatus("UNPROCESSED");
+        return exceptionLog;
+    }
+
     private String makeErrorMessage(
             FastApiPlateResponseDTO aiResult,
             boolean matched,
@@ -173,102 +309,35 @@ public class PlateRecognitionService {
             boolean isTrailer,
             boolean hasRequiredInfo
     ) {
-        String message = "";
+        StringBuilder message = new StringBuilder();
 
         if (aiResult.getReviewReasons() != null) {
             for (String reason : aiResult.getReviewReasons()) {
-                message += reason + ",";
+                message.append(reason).append(",");
             }
         }
 
         if (!matched) {
-            message += "VEHICLE_NOT_REGISTERED,";
+            message.append("VEHICLE_NOT_REGISTERED,");
         }
 
         if (matched && isTractor && !hasRequiredInfo) {
-            message += "TRACTOR_INFO_NOT_FOUND,";
+            message.append("TRACTOR_INFO_NOT_FOUND,");
         }
 
         if (matched && isTrailer && !hasRequiredInfo) {
-            message += "WORK_ORDER_NOT_FOUND,";
+            message.append("WORK_ORDER_NOT_FOUND,");
         }
 
-        if (message.endsWith(",")) {
-            message = message.substring(0, message.length() - 1);
+        if (matched && !isTractor && !isTrailer) {
+            message.append("UNKNOWN_VEHICLE_TYPE,");
         }
 
-        return message.isBlank() ? null : message;
-    }
-
-<<<<<<< HEAD
-    private void printRecognitionCheckLog(
-            FastApiPlateResponseDTO aiResult,
-            VehicleDTO vehicle,
-            TractorVehicleInfoDTO tractorVehicleInfo,
-            TrailerWorkInfoDTO trailerWorkInfo
-    ) {
-        System.out.println("========== 번호판 인식 DB 조회 결과 ==========");
-
-        if (aiResult == null) {
-            System.out.println("AI 서버 응답: 없음");
-            System.out.println("==========================================");
-            return;
+        if (message.length() > 0 && message.charAt(message.length() - 1) == ',') {
+            message.deleteCharAt(message.length() - 1);
         }
 
-        System.out.println("인식 번호판: " + aiResult.getPlateNumber());
-
-        if (vehicle == null) {
-            System.out.println("등록차량: 아니오");
-            System.out.println("차량 조회 결과: 없음");
-            System.out.println("==========================================");
-            return;
-        }
-
-        System.out.println("차량구분: " + vehicle.getVehicleType());
-
-        if ("TRACTOR".equalsIgnoreCase(vehicle.getVehicleType())) {
-            printTractorLog(tractorVehicleInfo);
-        } else if ("TRAILER".equalsIgnoreCase(vehicle.getVehicleType())) {
-            printTrailerLog(trailerWorkInfo);
-        } else {
-            System.out.println("차량 번호: " + vehicle.getPlateNumber());
-            System.out.println("등록차량: " + (Boolean.TRUE.equals(vehicle.getIsRegistered()) ? "예" : "아니오"));
-            System.out.println("차량상태: " + vehicle.getVehicleStatus());
-        }
-
-        System.out.println("==========================================");
-    }
-
-    private void printTractorLog(TractorVehicleInfoDTO tractorVehicleInfo) {
-        if (tractorVehicleInfo == null) {
-            System.out.println("트랙터 조회 결과: 없음");
-            return;
-        }
-
-        System.out.println("번호판: " + tractorVehicleInfo.getPlateNumber());
-        System.out.println("등록차량: " + tractorVehicleInfo.getRegisteredText());
-        System.out.println("운송사: " + valueOrDash(tractorVehicleInfo.getCarrierName()));
-        System.out.println("기사명: " + valueOrDash(tractorVehicleInfo.getDriverName()));
-        System.out.println("차량상태: " + valueOrDash(tractorVehicleInfo.getVehicleStatus()));
-        System.out.println("트랙터번호: " + valueOrDash(tractorVehicleInfo.getTractorNo()));
-    }
-
-    private void printTrailerLog(TrailerWorkInfoDTO trailerWorkInfo) {
-        if (trailerWorkInfo == null) {
-            System.out.println("트레일러 작업 조회 결과: 없음");
-            return;
-        }
-
-        System.out.println("트레일러 작업오더: " + trailerWorkInfo.getWorkOrderId());
-        System.out.println("컨테이너 번호: " + valueOrDash(trailerWorkInfo.getContainerNumber()));
-        System.out.println("해야할 작업: " + valueOrDash(trailerWorkInfo.getWorkType()));
-        System.out.println("컨테이너 위치: " + valueOrDash(trailerWorkInfo.getContainerLocation()));
-        System.out.println("야드 위치: " + valueOrDash(trailerWorkInfo.getYardLocation()));
-        System.out.println("야드 섹터: " + valueOrDash(trailerWorkInfo.getSectorName()));
-    }
-
-    private String valueOrDash(String value) {
-        return value == null || value.isBlank() ? "-" : value;
+        return message.isEmpty() ? null : message.toString();
     }
 
     private String makeMessage(
@@ -281,61 +350,112 @@ public class PlateRecognitionService {
             TractorVehicleInfoDTO tractorVehicleInfo,
             TrailerWorkInfoDTO trailerWorkInfo
     ) {
-=======
-    private Long getPlateVehicleId(VehicleDTO vehicle, String plateType, String targetType) {
-        if (vehicle == null) {
-            return null;
-        }
-
-        if (plateType == null) {
-            return null;
-        }
-
-        if (plateType.equalsIgnoreCase(targetType)) {
-            return vehicle.getVehicleId();
-        }
-
-        return null;
-    }
-
-    private String makeMessage(FastApiPlateResponseDTO aiResult, boolean matched, boolean needReview) {
->>>>>>> origin/main
         if (aiResult == null) {
-            return "FastAPI 응답이 없습니다.";
+            return "FastAPI response is empty.";
         }
 
         if (!Boolean.TRUE.equals(aiResult.getDetected())) {
-            return "번호판을 인식하지 못했습니다.";
+            return "Plate was not detected.";
         }
 
         if (!matched) {
-            return "번호판은 인식했지만 등록 차량이 아닙니다.";
+            return "Plate recognized, but vehicle is not registered.";
         }
 
         if (isTractor && !hasRequiredInfo) {
-            return "등록 트랙터 차량이지만 상세 조회 정보가 없습니다.";
+            return "Registered tractor found, but tractor detail information is missing.";
         }
 
         if (isTrailer && !hasRequiredInfo) {
-            return "등록 트레일러 차량이지만 배정된 작업오더가 없습니다.";
+            return "Registered trailer found, but assigned work order is missing.";
         }
 
         if (!isTractor && !isTrailer) {
-            return "등록 차량이지만 트랙터/트레일러 구분이 필요합니다.";
+            return "Vehicle is registered, but vehicle type must be TRACTOR or TRAILER.";
         }
 
         if (needReview) {
-            return "번호판 인식 결과 검토가 필요합니다.";
+            return "Plate recognition result needs review.";
         }
 
         if (tractorVehicleInfo != null) {
-            return "트랙터 차량 조회가 완료되었습니다.";
+            return "Tractor vehicle lookup completed.";
         }
 
-        if (trailerWorkInfo.getWorkGuideMessage() != null) {
+        if (trailerWorkInfo != null && trailerWorkInfo.getWorkGuideMessage() != null) {
             return trailerWorkInfo.getWorkGuideMessage();
         }
 
-        return "번호판 인식 및 작업오더 조회가 완료되었습니다.";
+        return "Plate recognition and work order lookup completed.";
+    }
+
+    private void printRecognitionCheckLog(
+            FastApiPlateResponseDTO aiResult,
+            VehicleDTO vehicle,
+            TractorVehicleInfoDTO tractorVehicleInfo,
+            TrailerWorkInfoDTO trailerWorkInfo
+    ) {
+        System.out.println("========== Plate recognition DB check ==========");
+
+        if (aiResult == null) {
+            System.out.println("AI response: empty");
+            System.out.println("===============================================");
+            return;
+        }
+
+        System.out.println("recognizedPlate: " + aiResult.getPlateNumber());
+
+        if (vehicle == null) {
+            System.out.println("registeredVehicle: false");
+            System.out.println("vehicleLookup: empty");
+            System.out.println("===============================================");
+            return;
+        }
+
+        System.out.println("vehicleType: " + vehicle.getVehicleType());
+
+        if ("TRACTOR".equalsIgnoreCase(vehicle.getVehicleType())) {
+            printTractorLog(tractorVehicleInfo);
+        } else if ("TRAILER".equalsIgnoreCase(vehicle.getVehicleType())) {
+            printTrailerLog(trailerWorkInfo);
+        } else {
+            System.out.println("plateNumber: " + vehicle.getPlateNumber());
+            System.out.println("registeredVehicle: " + Boolean.TRUE.equals(vehicle.getIsRegistered()));
+            System.out.println("vehicleStatus: " + valueOrDash(vehicle.getVehicleStatus()));
+        }
+
+        System.out.println("===============================================");
+    }
+
+    private void printTractorLog(TractorVehicleInfoDTO tractorVehicleInfo) {
+        if (tractorVehicleInfo == null) {
+            System.out.println("tractorLookup: empty");
+            return;
+        }
+
+        System.out.println("plateNumber: " + tractorVehicleInfo.getPlateNumber());
+        System.out.println("registeredVehicle: " + tractorVehicleInfo.getRegisteredText());
+        System.out.println("carrierName: " + valueOrDash(tractorVehicleInfo.getCarrierName()));
+        System.out.println("driverName: " + valueOrDash(tractorVehicleInfo.getDriverName()));
+        System.out.println("vehicleStatus: " + valueOrDash(tractorVehicleInfo.getVehicleStatus()));
+        System.out.println("tractorNo: " + valueOrDash(tractorVehicleInfo.getTractorNo()));
+    }
+
+    private void printTrailerLog(TrailerWorkInfoDTO trailerWorkInfo) {
+        if (trailerWorkInfo == null) {
+            System.out.println("trailerWorkLookup: empty");
+            return;
+        }
+
+        System.out.println("workOrderId: " + trailerWorkInfo.getWorkOrderId());
+        System.out.println("containerNumber: " + valueOrDash(trailerWorkInfo.getContainerNumber()));
+        System.out.println("workType: " + valueOrDash(trailerWorkInfo.getWorkType()));
+        System.out.println("containerLocation: " + valueOrDash(trailerWorkInfo.getContainerLocation()));
+        System.out.println("yardLocation: " + valueOrDash(trailerWorkInfo.getYardLocation()));
+        System.out.println("sectorName: " + valueOrDash(trailerWorkInfo.getSectorName()));
+    }
+
+    private String valueOrDash(String value) {
+        return value == null || value.isBlank() ? "-" : value;
     }
 }
