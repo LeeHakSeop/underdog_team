@@ -8,8 +8,8 @@ public class RegisterDTO {
     private String password;
     private String userName;
     private String roleCode;
-<<<<<<< HEAD
+
 }
-=======
-}
->>>>>>> origin/hakseop
+
+
+

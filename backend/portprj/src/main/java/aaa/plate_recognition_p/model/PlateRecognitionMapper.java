@@ -9,6 +9,8 @@ public interface PlateRecognitionMapper {
     @Insert("""
             INSERT INTO gate_log (
                 vehicle_id,
+                tractor_vehicle_id,
+                trailer_vehicle_id,
                 gate_number,
                 gate_name,
                 entry_time,
@@ -18,6 +20,8 @@ public interface PlateRecognitionMapper {
                 manager_check
             ) VALUES (
                 #{vehicleId},
+                #{tractorVehicleId},
+                #{trailerVehicleId},
                 #{gateNumber},
                 #{gateName},
                 #{entryTime},
@@ -35,6 +39,7 @@ public interface PlateRecognitionMapper {
                 gate_log_id,
                 vehicle_image,
                 recognized_plate,
+                plate_type,
                 is_success,
                 confidence,
                 manual_correction,
@@ -44,6 +49,7 @@ public interface PlateRecognitionMapper {
                 #{gateLogId},
                 #{vehicleImage},
                 #{recognizedPlate},
+                #{plateType},
                 #{isSuccess},
                 #{confidence},
                 #{manualCorrection},

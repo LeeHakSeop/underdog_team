@@ -23,8 +23,5 @@ public class AuthController {
     public int register(@RequestBody RegisterDTO dto) {
         return service.register(dto);
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> origin/hakseop
+

@@ -114,15 +114,6 @@ const MenuIcon = (props) =>
   )
 
 const menus = {
-<<<<<<< HEAD
-  CARRIER: [
-    { label: '업무 홈', path: '/carrier/dashboard', icon: 'home' },
-    { label: '운송 요청', path: '/carrier/requests', icon: 'request' },
-    { label: '승인 현황', path: '/carrier/approvals', icon: 'approval' },
-  ],
-  DRIVER: [
-    { label: '작업 홈', path: '/driver/dashboard', icon: 'driver' },
-=======
   carrier: [
     { label: '운송사 업무', path: '/carrier/dashboard', icon: 'home' },
     { label: '운송 요청', path: '/carrier/requests', icon: 'request' },
@@ -130,20 +121,15 @@ const menus = {
   ],
   driver: [
     { label: '기사 작업', path: '/driver/dashboard', icon: 'driver' },
->>>>>>> origin/hakseop
     { label: '작업 현황', path: '/driver/work-status', icon: 'list' },
     { label: '차량 등록', path: '/driver/vehicles', icon: 'truck' },
   ],
-  ADMIN: [
+  admin: [
     { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
     { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
-<<<<<<< HEAD
-    { label: '작업 관리', path: '/admin/tasks', icon: 'clipboard' },
-=======
     { label: 'AI 번호판 인식', path: '/admin/plate-recognition', icon: 'scan' },
     { label: '가입 회원 관리', path: '/admin/members', icon: 'users' },
     { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
->>>>>>> origin/hakseop
     { label: '차량 출입 조회', path: '/admin/gate-logs', icon: 'truck' },
     { label: '컨테이너 조회', path: '/admin/containers', icon: 'container' },
     { label: '알림/이벤트', path: '/admin/events', icon: 'bell' },
@@ -219,7 +205,7 @@ const logout = () => {
       </div>
     </aside>
 
-     <div class="main-area">
+    <div class="main-area">
       <header class="topbar">
         <div>
           <small>항만 게이트 차량 출입 및 컨테이너 상차 섹터 안내</small>

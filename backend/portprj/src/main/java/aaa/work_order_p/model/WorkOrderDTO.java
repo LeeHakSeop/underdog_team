@@ -9,6 +9,8 @@ public class WorkOrderDTO {
     private Long workOrderId;
     private String workType;
     private Long vehicleId;
+    private Long tractorVehicleId;
+    private Long trailerVehicleId;
     private Long driverId;
     private Long containerId;
     private LocalDateTime reservedTime;

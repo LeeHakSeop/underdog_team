@@ -144,21 +144,18 @@ const router = createRouter({
   ],
 })
 
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/hakseop
+
 router.beforeEach((to) => {
   if (to.path === '/login') {
     return true
   }
-<<<<<<< HEAD
+
 
 // 개발중에 OFF
 // router.beforeEach(authGuard)
 
-=======
->>>>>>> origin/hakseop
+
 
   const user = JSON.parse(localStorage.getItem('portGateUser') || 'null')
   if (!user) {

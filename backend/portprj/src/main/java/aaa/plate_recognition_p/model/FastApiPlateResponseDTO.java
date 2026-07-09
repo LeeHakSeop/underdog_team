@@ -16,4 +16,5 @@ public class FastApiPlateResponseDTO {
     private List<String> reviewReasons;
     private String cropPath;
     private List<FastApiPlateCandidateDTO> candidates;
+    private String ocrType;
 }

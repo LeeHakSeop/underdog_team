@@ -1,10 +1,8 @@
 <script setup>
-<<<<<<< HEAD
 
-import { availableDrivers } from '../../data/mockData'
 
-=======
->>>>>>> origin/hakseop
+
+
 import { ref } from 'vue'
 import { useLogisticsData } from '@/composables/useLogisticsData'
 import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
@@ -31,10 +29,9 @@ const submitRequest = async () => {
     isApproved: false,
   })
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/hakseop
+
+
 </script>
 
 <template>
