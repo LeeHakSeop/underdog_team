@@ -1,6 +1,7 @@
 package aaa.driver_p.controller;
 
 import aaa.driver_p.model.DriverDTO;
+import aaa.driver_p.model.DriverWorkOrderDTO;
 import aaa.driver_p.service.DriverService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
@@ -41,5 +42,10 @@ public class DriverController {
     @DeleteMapping("/delete/{driverId}")
     public int delete(@PathVariable Long driverId) {
         return driverService.delete(driverId);
+    }
+
+    @GetMapping("/my-work-orders")
+    public List<DriverWorkOrderDTO> myWorkOrders(@RequestParam String userName) {
+        return driverService.myWorkOrders(userName);
     }
 }

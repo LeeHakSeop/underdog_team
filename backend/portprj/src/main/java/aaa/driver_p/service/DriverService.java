@@ -2,6 +2,7 @@ package aaa.driver_p.service;
 
 import aaa.driver_p.model.DriverDTO;
 import aaa.driver_p.model.DriverMapper;
+import aaa.driver_p.model.DriverWorkOrderDTO;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +34,10 @@ public class DriverService {
 
     public int delete(Long driverId) {
         return driverMapper.delete(driverId);
+    }
+
+    public List<DriverWorkOrderDTO> myWorkOrders(String userName) {
+        return driverMapper.findWorkOrdersByUserName(userName);
     }
 
     private void setDefaultValues(DriverDTO dto) {

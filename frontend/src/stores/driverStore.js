@@ -1,10 +1,11 @@
 // stores/driverStore.js
 import { defineStore } from 'pinia'
-import { createDriver, deleteDriver, fetchDrivers, updateDriver } from '@/api/driverApi'
+import { createDriver, deleteDriver, fetchDrivers, fetchMyWorkOrders, updateDriver } from '@/api/driverApi'
 
 export const useDriverStore = defineStore('driver', {
   state: () => ({
     drivers: [],
+    myWorkOrders: [],
     loading: false,
     error: '',
   }),
@@ -18,6 +19,20 @@ export const useDriverStore = defineStore('driver', {
         this.drivers = await fetchDrivers()
       } catch (error) {
         this.error = '기사 목록을 불러오지 못했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async loadMyWorkOrders(userName) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        this.myWorkOrders = await fetchMyWorkOrders(userName)
+      } catch (error) {
+        this.error = '작업정보를 불러오지 못했습니다.'
         throw error
       } finally {
         this.loading = false

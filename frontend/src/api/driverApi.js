@@ -27,3 +27,7 @@ export const deleteDriver = (driverId) => {
     method: 'DELETE',
   })
 }
+
+export const fetchMyWorkOrders = (userName) => {
+  return request(`/api/driver/my-work-orders?userName=${encodeURIComponent(userName)}`)
+}
