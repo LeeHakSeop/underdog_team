@@ -7,6 +7,7 @@ import aaa.plate_recognition_p.model.PlateRecognitionMapper;
 import aaa.plate_recognition_p.model.PlateRecognitionResultDTO;
 import aaa.vehicle_p.model.VehicleDTO;
 import aaa.vehicle_p.model.VehicleMapper;
+import aaa.work_order_p.model.WorkOrderDTO;
 import jakarta.annotation.Resource;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
@@ -112,6 +113,10 @@ public class PlateRecognitionService {
         result.setNeedReview(needReview);
         result.setMessage(makeMessage(aiResult, matched, needReview));
 
+        if (matched) {
+            setWorkData(result, vehicle, plateType);
+        }
+
         return result;
     }
 
@@ -149,6 +154,52 @@ public class PlateRecognitionService {
         }
 
         return null;
+    }
+
+    private void setWorkData(PlateRecognitionResultDTO result, VehicleDTO vehicle, String plateType) {
+        if (plateType == null) {
+            return;
+        }
+
+        if (plateType.equalsIgnoreCase("TRACTOR")) {
+            setTractorData(result, vehicle);
+        }
+
+        if (plateType.equalsIgnoreCase("TRAILER")) {
+            setTrailerData(result, vehicle);
+        }
+    }
+
+    private void setTractorData(PlateRecognitionResultDTO result, VehicleDTO vehicle) {
+        result.setCarrier(plateRecognitionMapper.findCarrier(vehicle.getCarrierId()));
+
+        WorkOrderDTO workOrder = plateRecognitionMapper.findLatestWorkOrderByTractor(vehicle.getVehicleId());
+        result.setWorkOrder(workOrder);
+
+        if (workOrder != null) {
+            result.setDriver(plateRecognitionMapper.findDriver(workOrder.getDriverId()));
+        }
+    }
+
+    private void setTrailerData(PlateRecognitionResultDTO result, VehicleDTO vehicle) {
+        WorkOrderDTO workOrder = plateRecognitionMapper.findLatestWorkOrderByTrailer(vehicle.getVehicleId());
+        result.setWorkOrder(workOrder);
+
+        if (workOrder == null) {
+            return;
+        }
+
+        result.setDriver(plateRecognitionMapper.findDriver(workOrder.getDriverId()));
+
+        if (workOrder.getContainerId() == null) {
+            return;
+        }
+
+        result.setContainer(plateRecognitionMapper.findContainer(workOrder.getContainerId()));
+
+        if (result.getContainer() != null) {
+            result.setYardSector(plateRecognitionMapper.findYardSector(result.getContainer().getSectorId()));
+        }
     }
 
     private String makeMessage(FastApiPlateResponseDTO aiResult, boolean matched, boolean needReview) {

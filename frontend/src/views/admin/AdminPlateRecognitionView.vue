@@ -17,6 +17,18 @@ const getVehicleType = (result) => {
   return result?.vehicle?.vehicleType || ''
 }
 
+const getBooleanText = (value) => {
+  if (value === true) {
+    return '가능'
+  }
+
+  if (value === false) {
+    return '불가'
+  }
+
+  return '-'
+}
+
 const getPassText = (result, expectedType) => {
   if (!result) {
     return '-'
@@ -79,6 +91,37 @@ const trailerAlertMessage = computed(() => {
 
 const isReadyForGateProcess = computed(() => {
   return tractorPassText.value === '가능' && trailerPassText.value === '가능'
+})
+
+const tractorSummaryText = computed(() => {
+  if (!tractorResult.value) {
+    return '트랙터 번호판 인식 후 기사와 운송사 정보가 표시됩니다.'
+  }
+
+  if (tractorPassText.value !== '가능') {
+    return tractorAlertMessage.value
+  }
+
+  const driverName = tractorResult.value.driver?.driverName || '기사 정보 없음'
+  const carrierName = tractorResult.value.carrier?.carrierName || '운송사 정보 없음'
+
+  return `${driverName} / ${carrierName}`
+})
+
+const trailerSummaryText = computed(() => {
+  if (!trailerResult.value) {
+    return '트레일러 번호판 인식 후 작업정보와 야드 안내가 표시됩니다.'
+  }
+
+  if (trailerPassText.value !== '가능') {
+    return trailerAlertMessage.value
+  }
+
+  const workType = trailerResult.value.workOrder?.workType || '작업 유형 없음'
+  const containerNumber = trailerResult.value.container?.containerNumber || '컨테이너 정보 없음'
+  const sectorName = trailerResult.value.yardSector?.sectorName || '야드 정보 없음'
+
+  return `${workType} / ${containerNumber} / ${sectorName}`
 })
 
 onMounted(() => {
@@ -194,6 +237,15 @@ const submitTrailerRecognize = async () => {
             </div>
           </div>
 
+          <div class="summary-panel">
+            <span>기사/운송사 조회 요약</span>
+            <strong>{{ tractorSummaryText }}</strong>
+            <p>
+              기사 출입 가능: {{ getBooleanText(tractorResult?.driver?.canEnter) }}
+              / 운송사 상태: {{ tractorResult?.carrier?.carrierStatus || '-' }}
+            </p>
+          </div>
+
           <table class="data-table">
             <tbody>
               <tr>
@@ -206,11 +258,43 @@ const submitTrailerRecognize = async () => {
               </tr>
               <tr>
                 <th>등록 여부</th>
-                <td>{{ tractorResult?.vehicle?.isRegistered ?? '-' }}</td>
+                <td>{{ getBooleanText(tractorResult?.vehicle?.isRegistered) }}</td>
               </tr>
               <tr>
                 <th>차량 상태</th>
                 <td>{{ tractorResult?.vehicle?.vehicleStatus || '-' }}</td>
+              </tr>
+              <tr>
+                <th>기사 이름</th>
+                <td>{{ tractorResult?.driver?.driverName || '-' }}</td>
+              </tr>
+              <tr>
+                <th>기사 연락처</th>
+                <td>{{ tractorResult?.driver?.driverContact || '-' }}</td>
+              </tr>
+              <tr>
+                <th>기사 출입 가능</th>
+                <td>{{ getBooleanText(tractorResult?.driver?.canEnter) }}</td>
+              </tr>
+              <tr>
+                <th>기사 등록 여부</th>
+                <td>{{ getBooleanText(tractorResult?.driver?.isRegistered) }}</td>
+              </tr>
+              <tr>
+                <th>운송사</th>
+                <td>{{ tractorResult?.carrier?.carrierName || '-' }}</td>
+              </tr>
+              <tr>
+                <th>운송사 연락처</th>
+                <td>{{ tractorResult?.carrier?.carrierContact || '-' }}</td>
+              </tr>
+              <tr>
+                <th>운송사 담당자</th>
+                <td>{{ tractorResult?.carrier?.managerName || '-' }}</td>
+              </tr>
+              <tr>
+                <th>운송사 상태</th>
+                <td>{{ tractorResult?.carrier?.carrierStatus || '-' }}</td>
               </tr>
             </tbody>
           </table>
@@ -261,6 +345,15 @@ const submitTrailerRecognize = async () => {
             </div>
           </div>
 
+          <div class="summary-panel">
+            <span>작업정보 조회 요약</span>
+            <strong>{{ trailerSummaryText }}</strong>
+            <p>
+              작업 승인: {{ getBooleanText(trailerResult?.workOrder?.isApproved) }}
+              / 안내: {{ trailerResult?.yardSector?.guideMessage || '-' }}
+            </p>
+          </div>
+
           <table class="data-table">
             <tbody>
               <tr>
@@ -273,11 +366,63 @@ const submitTrailerRecognize = async () => {
               </tr>
               <tr>
                 <th>등록 여부</th>
-                <td>{{ trailerResult?.vehicle?.isRegistered ?? '-' }}</td>
+                <td>{{ getBooleanText(trailerResult?.vehicle?.isRegistered) }}</td>
               </tr>
               <tr>
                 <th>차량 상태</th>
                 <td>{{ trailerResult?.vehicle?.vehicleStatus || '-' }}</td>
+              </tr>
+              <tr>
+                <th>작업 유형</th>
+                <td>{{ trailerResult?.workOrder?.workType || '-' }}</td>
+              </tr>
+              <tr>
+                <th>작업 상태</th>
+                <td>{{ trailerResult?.workOrder?.workStatus || '-' }}</td>
+              </tr>
+              <tr>
+                <th>작업 승인</th>
+                <td>{{ getBooleanText(trailerResult?.workOrder?.isApproved) }}</td>
+              </tr>
+              <tr>
+                <th>작업 예약 시간</th>
+                <td>{{ trailerResult?.workOrder?.reservedTime || '-' }}</td>
+              </tr>
+              <tr>
+                <th>컨테이너 번호</th>
+                <td>{{ trailerResult?.container?.containerNumber || '-' }}</td>
+              </tr>
+              <tr>
+                <th>컨테이너 크기</th>
+                <td>{{ trailerResult?.container?.containerSize || '-' }}</td>
+              </tr>
+              <tr>
+                <th>컨테이너 위치</th>
+                <td>{{ trailerResult?.container?.containerLocation || '-' }}</td>
+              </tr>
+              <tr>
+                <th>블록 / 베이 / 로우</th>
+                <td>
+                  {{ trailerResult?.container?.block || '-' }}
+                  / {{ trailerResult?.container?.bay || '-' }}
+                  / {{ trailerResult?.container?.rowNo || '-' }}
+                </td>
+              </tr>
+              <tr>
+                <th>야드 섹터</th>
+                <td>{{ trailerResult?.yardSector?.sectorName || '-' }}</td>
+              </tr>
+              <tr>
+                <th>섹터 상태</th>
+                <td>{{ trailerResult?.yardSector?.sectorStatus || '-' }}</td>
+              </tr>
+              <tr>
+                <th>대체 대기장소</th>
+                <td>{{ trailerResult?.yardSector?.altWaitingArea || '-' }}</td>
+              </tr>
+              <tr>
+                <th>안내 메시지</th>
+                <td>{{ trailerResult?.yardSector?.guideMessage || '-' }}</td>
               </tr>
             </tbody>
           </table>
@@ -424,6 +569,34 @@ const submitTrailerRecognize = async () => {
   padding: 10px;
   background: #f6f9fd;
   border: 1px solid var(--line);
+}
+
+.summary-panel {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  background: #eef6ff;
+  border: 1px solid #b6cfe8;
+}
+
+.summary-panel span {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.summary-panel strong {
+  color: var(--ink-900);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.summary-panel p {
+  margin: 0;
+  color: var(--ink-700);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .result-grid span,
