@@ -19,8 +19,9 @@ public class PlateRecognitionController {
     @PostMapping(value = "/recognize", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public PlateRecognitionResultDTO recognize(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "ocrType", defaultValue = "paddle") String ocrType
+            @RequestParam(value = "ocrType", defaultValue = "paddle") String ocrType,
+            @RequestParam(value = "plateType", defaultValue = "TRAILER") String plateType
     ) throws IOException {
-        return plateRecognitionService.recognize(file, ocrType);
+        return plateRecognitionService.recognize(file, ocrType, plateType);
     }
 }

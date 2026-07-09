@@ -1,6 +1,8 @@
 ﻿CREATE TABLE gate_log(
 gate_log_id BIGSERIAL PRIMARY KEY,
 vehicle_id BIGINT REFERENCES vehicle(vehicle_id),
+tractor_vehicle_id BIGINT REFERENCES vehicle(vehicle_id),
+trailer_vehicle_id BIGINT REFERENCES vehicle(vehicle_id),
 gate_number VARCHAR(20),
 gate_name VARCHAR(50),
 entry_time TIMESTAMP,

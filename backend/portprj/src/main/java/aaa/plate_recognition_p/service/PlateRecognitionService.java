@@ -31,7 +31,7 @@ public class PlateRecognitionService {
     @Resource
     PlateRecognitionMapper plateRecognitionMapper;
 
-    public PlateRecognitionResultDTO recognize(MultipartFile file, String ocrType) throws IOException {
+    public PlateRecognitionResultDTO recognize(MultipartFile file, String ocrType, String plateType) throws IOException {
         RestTemplate restTemplate = new RestTemplate();
 
         ByteArrayResource imageResource = new ByteArrayResource(file.getBytes()) {
@@ -73,6 +73,8 @@ public class PlateRecognitionService {
 
         GateLogDTO gateLog = new GateLogDTO();
         gateLog.setVehicleId(vehicle == null ? null : vehicle.getVehicleId());
+        gateLog.setTractorVehicleId(getPlateVehicleId(vehicle, plateType, "TRACTOR"));
+        gateLog.setTrailerVehicleId(getPlateVehicleId(vehicle, plateType, "TRAILER"));
         gateLog.setGateNumber("G01");
         gateLog.setGateName("AI_GATE");
         gateLog.setEntryTime(LocalDateTime.now());
@@ -88,11 +90,13 @@ public class PlateRecognitionService {
         if (aiResult != null) {
             plateRecognition.setVehicleImage(aiResult.getCropPath());
             plateRecognition.setRecognizedPlate(aiResult.getPlateNumber());
+            plateRecognition.setPlateType(plateType);
             plateRecognition.setIsSuccess(Boolean.TRUE.equals(aiResult.getDetected()) && matched);
             plateRecognition.setConfidence(BigDecimal.valueOf(aiResult.getConfidence() == null ? 0.0 : aiResult.getConfidence()));
             plateRecognition.setErrorMessage(makeErrorMessage(aiResult, matched));
         } else {
             plateRecognition.setIsSuccess(false);
+            plateRecognition.setPlateType(plateType);
             plateRecognition.setConfidence(BigDecimal.valueOf(0.0));
             plateRecognition.setErrorMessage("FAST_API_ERROR");
         }
@@ -129,6 +133,22 @@ public class PlateRecognitionService {
         }
 
         return message.isBlank() ? null : message;
+    }
+
+    private Long getPlateVehicleId(VehicleDTO vehicle, String plateType, String targetType) {
+        if (vehicle == null) {
+            return null;
+        }
+
+        if (plateType == null) {
+            return null;
+        }
+
+        if (plateType.equalsIgnoreCase(targetType)) {
+            return vehicle.getVehicleId();
+        }
+
+        return null;
     }
 
     private String makeMessage(FastApiPlateResponseDTO aiResult, boolean matched, boolean needReview) {
