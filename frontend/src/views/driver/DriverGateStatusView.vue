@@ -1,7 +1,13 @@
 <script setup>
-import { gateLogs, workOrders } from '../../data/mockData'
+import {
+  gateLogs,
+  getContainerNumber,
+  getPlateNumber,
+  getSectorByContainerId,
+  workOrders,
+} from '../../data/dbData'
 
-const driverOrders = workOrders.filter((order) => order.driverName === '김도현' || order.driverName === '박민재')
+const driverOrders = workOrders.filter((order) => [1, 3].includes(order.driver_id))
 </script>
 
 <template>
@@ -15,22 +21,22 @@ const driverOrders = workOrders.filter((order) => order.driverName === '김도�
         <table class="data-table">
           <thead>
             <tr>
-              <th>작업번호</th>
+              <th>작업 ID</th>
               <th>컨테이너</th>
               <th>작업 유형</th>
               <th>섹터</th>
-              <th>예약</th>
-              <th>상태</th>
+              <th>예약 시간</th>
+              <th>작업 상태</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in driverOrders" :key="order.orderNo">
-              <td>{{ order.orderNo }}</td>
-              <td>{{ order.containerNo }}</td>
-              <td>{{ order.workType }}</td>
-              <td>{{ order.sectorCode }}</td>
-              <td>{{ order.time }}</td>
-              <td><span class="status-pill">{{ order.status }}</span></td>
+            <tr v-for="order in driverOrders" :key="order.work_order_id">
+              <td>{{ order.work_order_id }}</td>
+              <td>{{ getContainerNumber(order.container_id) }}</td>
+              <td>{{ order.work_type }}</td>
+              <td>{{ getSectorByContainerId(order.container_id)?.sector_name || '-' }}</td>
+              <td>{{ order.reserved_time }}</td>
+              <td><span class="status-pill">{{ order.work_status }}</span></td>
             </tr>
           </tbody>
         </table>
@@ -39,26 +45,26 @@ const driverOrders = workOrders.filter((order) => order.driverName === '김도�
 
     <section class="panel">
       <div class="section-title">
-        <h2>기록 로그</h2>
+        <h2>게이트 기록</h2>
       </div>
       <div class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
               <th>시간</th>
-              <th>차량번호</th>
+              <th>차량</th>
               <th>게이트</th>
               <th>구분</th>
-              <th>결과</th>
+              <th>처리 결과</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="log in gateLogs" :key="log.logNo">
-              <td>{{ log.time }}</td>
-              <td>{{ log.vehicleNo }}</td>
-              <td>{{ log.gate }}</td>
-              <td>{{ log.type }}</td>
-              <td><span class="status-pill">{{ log.result }}</span></td>
+            <tr v-for="log in gateLogs" :key="log.gate_log_id">
+              <td>{{ log.entry_time || log.exit_time }}</td>
+              <td>{{ getPlateNumber(log.vehicle_id) }}</td>
+              <td>{{ log.gate_name }}</td>
+              <td>{{ log.in_out_type }}</td>
+              <td><span class="status-pill">{{ log.process_result }}</span></td>
             </tr>
           </tbody>
         </table>

@@ -7,7 +7,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://200.200.200.66:5173")
+@CrossOrigin(origins = {
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://200.200.200.66:5173"
+})
 @RestController
 @RequestMapping("/api/driver")
 public class DriverController {
@@ -29,6 +33,11 @@ public class DriverController {
     public DriverDTO reg(@RequestBody DriverDTO dto) {
         driverService.insert(dto);
         return dto;
+    }
+
+    @PatchMapping("/{userId}/carrier-approve")
+    public void carrierApprove(@PathVariable Long userId) {
+        driverService.approveByCarrier(userId);
     }
 
     @PutMapping("/modify/{driverId}")

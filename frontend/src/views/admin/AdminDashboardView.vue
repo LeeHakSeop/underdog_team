@@ -1,12 +1,22 @@
 <script setup>
 import { computed, ref } from 'vue'
 import SectorMap from '../../components/yard/SectorMap.vue'
-import { operationStats, workOrders } from '../../data/mockData'
+import {
+  getCarrierName,
+  getContainerNumber,
+  getDriverName,
+  getPlateNumber,
+  getSectorByContainerId,
+  operationStats,
+  workOrders,
+} from '../../data/dbData'
 
 const selectedSectorCode = ref('B-07')
 
 const sectorOrders = computed(() => {
-  return workOrders.filter((order) => order.sectorCode === selectedSectorCode.value)
+  return workOrders.filter((order) => {
+    return getSectorByContainerId(order.container_id)?.sector_name === selectedSectorCode.value
+  })
 })
 </script>
 
@@ -32,61 +42,61 @@ const sectorOrders = computed(() => {
         </div>
 
         <div v-if="sectorOrders.length" class="sector-work-list">
-          <article v-for="order in sectorOrders" :key="order.orderNo" class="sector-work-card">
+          <article v-for="order in sectorOrders" :key="order.work_order_id" class="sector-work-card">
             <div>
-              <b>{{ order.orderNo }}</b>
-              <span>{{ order.vehicleNo }} · {{ order.driverName }}</span>
+              <b>작업 ID: {{ order.work_order_id }}</b>
+              <span>{{ getPlateNumber(order.vehicle_id) }} / {{ getDriverName(order.driver_id) }}</span>
             </div>
             <dl>
               <div>
                 <dt>컨테이너</dt>
-                <dd>{{ order.containerNo }}</dd>
+                <dd>{{ getContainerNumber(order.container_id) }}</dd>
               </div>
               <div>
                 <dt>작업 유형</dt>
-                <dd>{{ order.workType }}</dd>
+                <dd>{{ order.work_type }}</dd>
               </div>
               <div>
                 <dt>예약 시간</dt>
-                <dd>{{ order.time }}</dd>
+                <dd>{{ order.reserved_time }}</dd>
               </div>
               <div>
                 <dt>작업 상태</dt>
-                <dd><span class="status-pill">{{ order.status }}</span></dd>
+                <dd><span class="status-pill">{{ order.work_status }}</span></dd>
               </div>
             </dl>
           </article>
         </div>
 
-        <div v-else class="empty-state">선택한 섹터에서 진행 중인 작업이 없습니다.</div>
+        <div v-else class="empty-state">선택한 섹터에 진행 중인 작업이 없습니다.</div>
       </article>
     </section>
 
     <section class="panel">
       <div class="section-title">
         <h2>작업 현황</h2>
-        <RouterLink class="ghost-button" to="/admin/work-orders">상세 보기</RouterLink>
+        <RouterLink class="ghost-button" to="/admin/tasks">상세 보기</RouterLink>
       </div>
       <div class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
-              <th>작업번호</th>
-              <th>차량번호</th>
+              <th>작업 ID</th>
+              <th>운송사</th>
+              <th>차량</th>
               <th>기사</th>
               <th>컨테이너</th>
-              <th>섹터</th>
-              <th>상태</th>
+              <th>작업 상태</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in workOrders" :key="order.orderNo">
-              <td>{{ order.orderNo }}</td>
-              <td>{{ order.vehicleNo }}</td>
-              <td>{{ order.driverName }}</td>
-              <td>{{ order.containerNo }}</td>
-              <td>{{ order.sectorCode }}</td>
-              <td><span class="status-pill">{{ order.status }}</span></td>
+            <tr v-for="order in workOrders" :key="order.work_order_id">
+              <td>{{ order.work_order_id }}</td>
+              <td>{{ getCarrierName(order.carrier_id) }}</td>
+              <td>{{ getPlateNumber(order.vehicle_id) }}</td>
+              <td>{{ getDriverName(order.driver_id) }}</td>
+              <td>{{ getContainerNumber(order.container_id) }}</td>
+              <td><span class="status-pill">{{ order.work_status }}</span></td>
             </tr>
           </tbody>
         </table>
@@ -134,7 +144,7 @@ const sectorOrders = computed(() => {
 
 .sector-work-card dl div {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
+  grid-template-columns: 110px minmax(0, 1fr);
   gap: 10px;
 }
 

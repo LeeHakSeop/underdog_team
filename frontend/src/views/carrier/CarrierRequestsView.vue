@@ -1,96 +1,133 @@
 <script setup>
-import { ref } from 'vue'
-import { useLogisticsData } from '@/composables/useLogisticsData'
-import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
+import { computed, onMounted, ref } from 'vue'
+import { readCurrentUser } from '@/stores/authStore'
+import { fetchCarriers } from '@/api/carrierApi'
+import { fetchDrivers } from '@/api/driverApi'
+import { containers } from '../../data/dbData'
 
-const { availableDrivers, containers } = useLogisticsData()
-const workOrderStore = useWorkOrderStore()
+const loading = ref(false)
+const errorMessage = ref('')
 
-const requestForm = ref({
-  containerId: '',
-  driverId: '',
-  vehicleId: '',
-  workType: 'LOAD_OUT',
-  reservedTime: '2026-07-01T13:00',
-  workStatus: 'DISPATCH_WAITING',
+const carriers = ref([])
+const drivers = ref([])
+
+const currentUser = readCurrentUser()
+
+const myCarrier = computed(() =>
+  carriers.value.find((carrier) => carrier.userId === currentUser?.userId),
+)
+
+const myDrivers = computed(() => {
+  if (!myCarrier.value) return []
+  return drivers.value.filter((driver) => driver.carrierId === myCarrier.value.carrierId)
 })
 
-const submitRequest = async () => {
-  await workOrderStore.addWorkOrder({
-    ...requestForm.value,
-    containerId: Number(requestForm.value.containerId),
-    driverId: Number(requestForm.value.driverId) || null,
-    vehicleId: Number(requestForm.value.vehicleId) || null,
-    reservedTime: requestForm.value.reservedTime,
-    isApproved: false,
-  })
+const availableMyDrivers = computed(() =>
+  myDrivers.value.filter((driver) => driver.canEnter === true),
+)
+
+const loadData = async () => {
+  loading.value = true
+  errorMessage.value = ''
+
+  try {
+    const [carrierData, driverData] = await Promise.all([
+      fetchCarriers(),
+      fetchDrivers(),
+    ])
+
+    carriers.value = carrierData || []
+    drivers.value = driverData || []
+  } catch (error) {
+    errorMessage.value = error.message || '운송 요청 데이터를 불러오지 못했습니다.'
+  } finally {
+    loading.value = false
+  }
 }
+
+onMounted(loadData)
 </script>
 
 <template>
   <div class="page-stack">
+    <section v-if="errorMessage" class="panel error-panel">
+      {{ errorMessage }}
+    </section>
+
     <section class="grid-2">
       <article class="panel">
         <div class="section-title">
-          <h2>요청 정보</h2>
+          <h2>운송 요청 등록</h2>
+          <span class="status-pill">
+            {{ myCarrier?.carrierName || '운송사 조회 중' }}
+          </span>
         </div>
-        <form class="form-grid" @submit.prevent="submitRequest">
+
+        <form class="form-grid">
           <div class="field">
             <label for="containerId">컨테이너</label>
-            <select id="containerId" v-model="requestForm.containerId" required>
-              <option value="">선택</option>
+            <select id="containerId">
               <option v-for="container in containers" :key="container.container_id" :value="container.container_id">
                 {{ container.container_number }}
               </option>
             </select>
           </div>
-          <div class="field">
-            <label for="driverId">기사</label>
-            <select id="driverId" v-model="requestForm.driverId">
-              <option value="">미배정</option>
-              <option v-for="driver in availableDrivers" :key="driver.driver_id" :value="driver.driver_id">
-                {{ driver.driver_name }}
-              </option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="vehicleId">차량 ID</label>
-            <input id="vehicleId" v-model="requestForm.vehicleId" inputmode="numeric" />
-          </div>
+
           <div class="field">
             <label for="workType">작업 유형</label>
-            <select id="workType" v-model="requestForm.workType">
+            <select id="workType">
               <option value="LOAD_OUT">반출 상차</option>
-              <option value="LOAD_IN">반입 하차</option>
+              <option value="UNLOAD_IN">반입 하차</option>
             </select>
           </div>
+
           <div class="field">
-            <label for="reservation">예약 방문 시간</label>
-            <input id="reservation" v-model="requestForm.reservedTime" type="datetime-local" />
+            <label for="reservedTime">예약 시간</label>
+            <input id="reservedTime" type="datetime-local" value="2026-07-01T13:00" />
           </div>
+
           <div class="field">
             <label for="workStatus">작업 상태</label>
-            <select id="workStatus" v-model="requestForm.workStatus">
-              <option value="DISPATCH_WAITING">배차 대기</option>
-              <option value="APPROVAL_WAITING">승인 대기</option>
-            </select>
+            <input id="workStatus" value="DISPATCH_WAITING" />
           </div>
-          <button class="primary-button full request-button" type="submit">요청 등록</button>
+
+          <button class="primary-button full request-button" type="button">
+            운송 요청 등록
+          </button>
         </form>
       </article>
 
       <article class="panel">
         <div class="section-title">
-          <h2>출입 가능 기사 후보</h2>
-          <span class="status-pill green">{{ availableDrivers.length }}명</span>
+          <h2>출입 가능 기사</h2>
+          <span class="status-pill green">{{ availableMyDrivers.length }}명</span>
         </div>
-        <div class="match-list">
-          <button v-for="driver in availableDrivers" :key="driver.driver_id" class="match-card" type="button">
+
+        <div v-if="loading" class="empty-box">
+          불러오는 중...
+        </div>
+
+        <div v-else-if="availableMyDrivers.length === 0" class="empty-box">
+          출입 가능한 소속 기사가 없습니다.
+        </div>
+
+        <div v-else class="match-list">
+          <button
+            v-for="driver in availableMyDrivers"
+            :key="driver.driverId"
+            class="match-card"
+            type="button"
+          >
             <span>
-              <b>{{ driver.driver_name }}</b>
-              <small>연락처 {{ driver.driver_contact || '-' }}</small>
+              <b>{{ driver.driverName }}</b>
+              <small>
+                연락처 {{ driver.driverContact || '-' }} /
+                기사 ID {{ driver.driverId }} /
+                운송사 ID {{ driver.carrierId }}
+              </small>
             </span>
-            <strong>{{ driver.can_enter ? '출입 가능' : '출입 제한' }}</strong>
+
+            <strong>출입 가능</strong>
           </button>
         </div>
       </article>
@@ -146,5 +183,19 @@ const submitRequest = async () => {
 
 .match-card strong {
   color: var(--green-600);
+}
+
+.empty-box {
+  padding: 24px;
+  color: var(--ink-500);
+  text-align: center;
+  background: #f8fbfe;
+  border: 1px solid var(--line);
+}
+
+.error-panel {
+  color: #991b1b;
+  background: #fff1f1;
+  border-color: #fecaca;
 }
 </style>

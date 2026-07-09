@@ -7,10 +7,15 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://200.200.200.66:5173")
+@CrossOrigin(origins = {
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://200.200.200.66:5173"
+})
 @RestController
 @RequestMapping("/api/vehicle")
 public class VehicleController {
+
     @Resource
     VehicleService vehicleService;
 
@@ -24,10 +29,29 @@ public class VehicleController {
         return vehicleService.detail(vehicleId);
     }
 
+    @GetMapping("/carrier/{carrierId}")
+    public List<VehicleDTO> listByCarrier(@PathVariable Long carrierId) {
+        return vehicleService.findByCarrierId(carrierId);
+    }
+
+    @GetMapping("/driver/{driverId}")
+    public VehicleDTO findByDriver(@PathVariable Long driverId) {
+        return vehicleService.findByDriverId(driverId);
+    }
+
     @PostMapping("/reg")
     public VehicleDTO reg(@RequestBody VehicleDTO dto) {
         vehicleService.insert(dto);
         return dto;
+    }
+
+    @PatchMapping("/{vehicleId}/approval")
+    public VehicleDTO updateApproval(
+            @PathVariable Long vehicleId,
+            @RequestBody VehicleDTO dto
+    ) {
+        vehicleService.updateApproval(vehicleId, dto);
+        return vehicleService.detail(vehicleId);
     }
 
     @PutMapping("/modify/{vehicleId}")

@@ -1,51 +1,105 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useCarrierStore } from '@/stores/carrierStore'
-import { useDriverStore } from '@/stores/driverStore'
-import { useVehicleStore } from '@/stores/vehicleStore'
+import { getUsers, updateUserStatus } from '@/api/authApi'
+import { fetchCarriers } from '@/api/carrierApi'
+import { fetchDrivers } from '@/api/driverApi'
+import { fetchVehicles, updateVehicleApproval } from '@/api/vehicleApi'
 
-const activeTab = ref('carrier')
-const carrierStore = useCarrierStore()
-const driverStore = useDriverStore()
-const vehicleStore = useVehicleStore()
-const { carriers } = storeToRefs(carrierStore)
-const { drivers } = storeToRefs(driverStore)
-const { vehicles } = storeToRefs(vehicleStore)
+const activeTab = ref('user')
+const loading = ref(false)
+const errorMessage = ref('')
 
-onMounted(() => {
-  carrierStore.loadCarriers()
-  driverStore.loadDrivers()
-  vehicleStore.loadVehicles()
-})
+const users = ref([])
+const carriers = ref([])
+const drivers = ref([])
+const vehicles = ref([])
+
+const carrierPendingUsers = computed(() =>
+  users.value.filter(
+    (user) => user.roleCode === 'CARRIER' && user.status === 'PENDING',
+  ),
+)
+
+const finalApprovalVehicles = computed(() =>
+  vehicles.value.filter(
+    (vehicle) => vehicle.vehicleStatus === '승인대기' || vehicle.vehicleStatus === 'PENDING',
+  ),
+)
 
 const tabs = computed(() => [
+  { key: 'user', label: '운송사 가입승인', count: carrierPendingUsers.value.length },
   { key: 'carrier', label: '운송사', count: carriers.value.length },
   { key: 'driver', label: '기사', count: drivers.value.length },
-  { key: 'vehicle', label: '차량', count: vehicles.value.length },
+  { key: 'vehicle', label: '최종 승인', count: finalApprovalVehicles.value.length },
 ])
 
-const updateCarrierStatus = (carrier, carrierStatus) => {
-  return carrierStore.editCarrier(carrier.carrierId, { ...carrier, carrierStatus })
+const getDriver = (driverId) => {
+  return drivers.value.find((driver) => driver.driverId === driverId)
 }
 
-const updateDriverPermission = (driver, changes) => {
-  return driverStore.editDriver(driver.driverId, { ...driver, ...changes })
+const getCarrier = (carrierId) => {
+  return carriers.value.find((carrier) => carrier.carrierId === carrierId)
 }
 
-const updateVehicleApproval = (vehicle, changes) => {
-  return vehicleStore.editVehicle(vehicle.vehicleId, { ...vehicle, ...changes })
+const loadData = async () => {
+  loading.value = true
+  errorMessage.value = ''
+
+  try {
+    const [userData, carrierData, driverData, vehicleData] = await Promise.all([
+      getUsers(),
+      fetchCarriers(),
+      fetchDrivers(),
+      fetchVehicles(),
+    ])
+
+    users.value = userData || []
+    carriers.value = carrierData || []
+    drivers.value = driverData || []
+    vehicles.value = vehicleData || []
+  } catch (error) {
+    errorMessage.value = error.message || '데이터를 불러오지 못했습니다.'
+  } finally {
+    loading.value = false
+  }
 }
+
+const approveCarrier = async (userId) => {
+  await updateUserStatus(userId, 'ACTIVE')
+  await loadData()
+}
+
+const rejectCarrier = async (userId) => {
+  await updateUserStatus(userId, 'REJECTED')
+  await loadData()
+}
+
+const approveVehicle = async (vehicleId) => {
+  await updateVehicleApproval(vehicleId, true)
+  await loadData()
+}
+
+const rejectVehicle = async (vehicleId) => {
+  await updateVehicleApproval(vehicleId, false)
+  await loadData()
+}
+
+onMounted(loadData)
 </script>
 
 <template>
   <div class="page-stack">
     <section class="panel">
       <div class="section-title">
-        <h2>가입 및 권한 승인 관리</h2>
+        <h2>관리자 승인 관리</h2>
         <span class="status-pill">
-          운송사 {{ carriers.length }} / 기사 {{ drivers.length }} / 차량 {{ vehicles.length }}
+          운송사 승인대기 {{ carrierPendingUsers.length }} /
+          최종 승인대기 {{ finalApprovalVehicles.length }}
         </span>
+      </div>
+
+      <div v-if="errorMessage" class="form-message error">
+        {{ errorMessage }}
       </div>
 
       <div class="member-tabs">
@@ -59,13 +113,66 @@ const updateVehicleApproval = (vehicle, changes) => {
           {{ tab.label }}
           <b>{{ tab.count }}</b>
         </button>
+
+        <button class="refresh-button" type="button" @click="loadData">
+          새로고침
+        </button>
       </div>
     </section>
 
-    <section v-if="activeTab === 'carrier'" class="panel">
+    <section v-if="activeTab === 'user'" class="panel">
       <div class="section-title">
-        <h2>운송사 승인</h2>
-        <span class="status-pill green">관리자가 가입 상태를 결정</span>
+        <h2>운송사 가입 승인</h2>
+        <span class="status-pill amber">운송사 PENDING 계정</span>
+      </div>
+
+      <div v-if="loading" class="empty-box">불러오는 중...</div>
+
+      <div v-else-if="carrierPendingUsers.length === 0" class="empty-box">
+        승인 대기 중인 운송사가 없습니다.
+      </div>
+
+      <div v-else class="approval-grid">
+        <article v-for="user in carrierPendingUsers" :key="user.userId" class="approval-card">
+          <div class="approval-head">
+            <div>
+              <h3>{{ user.userName || user.loginId }}</h3>
+              <p>{{ user.loginId }}</p>
+            </div>
+            <span class="status-pill amber">{{ user.status }}</span>
+          </div>
+
+          <dl>
+            <div>
+              <dt>회원번호</dt>
+              <dd>{{ user.userId }}</dd>
+            </div>
+            <div>
+              <dt>역할</dt>
+              <dd>{{ user.roleCode }}</dd>
+            </div>
+            <div>
+              <dt>가입일</dt>
+              <dd>{{ user.createdAt || '-' }}</dd>
+            </div>
+          </dl>
+
+          <div class="action-row">
+            <button class="ghost-button approve" type="button" @click="approveCarrier(user.userId)">
+              승인
+            </button>
+            <button class="ghost-button reject" type="button" @click="rejectCarrier(user.userId)">
+              반려
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section v-else-if="activeTab === 'carrier'" class="panel">
+      <div class="section-title">
+        <h2>운송사 목록</h2>
+        <span class="status-pill green">DB 조회</span>
       </div>
 
       <div class="table-wrap">
@@ -77,7 +184,6 @@ const updateVehicleApproval = (vehicle, changes) => {
               <th>연락처</th>
               <th>담당자명</th>
               <th>가입 상태</th>
-              <th>관리</th>
             </tr>
           </thead>
           <tbody>
@@ -87,19 +193,16 @@ const updateVehicleApproval = (vehicle, changes) => {
               <td>{{ carrier.carrierContact || '-' }}</td>
               <td>{{ carrier.managerName || '-' }}</td>
               <td>
-                <span class="status-pill" :class="{ green: carrier.carrierStatus === 'APPROVED', amber: carrier.carrierStatus === 'PENDING' }">
+                <span
+                  class="status-pill"
+                  :class="{
+                    green: carrier.carrierStatus === 'APPROVED' || carrier.carrierStatus === 'ACTIVE',
+                    amber: carrier.carrierStatus === 'PENDING',
+                    red: carrier.carrierStatus === 'REJECTED',
+                  }"
+                >
                   {{ carrier.carrierStatus }}
                 </span>
-              </td>
-              <td>
-                <div class="action-row">
-                  <button class="ghost-button" type="button" @click="updateCarrierStatus(carrier, 'APPROVED')">
-                    승인
-                  </button>
-                  <button class="ghost-button" type="button" @click="updateCarrierStatus(carrier, 'REJECTED')">
-                    반려
-                  </button>
-                </div>
               </td>
             </tr>
           </tbody>
@@ -109,8 +212,8 @@ const updateVehicleApproval = (vehicle, changes) => {
 
     <section v-else-if="activeTab === 'driver'" class="panel">
       <div class="section-title">
-        <h2>기사 권한 승인</h2>
-        <span class="status-pill amber">관리자가 등록 여부와 출입 권한을 결정</span>
+        <h2>기사 목록</h2>
+        <span class="status-pill green">DB 조회</span>
       </div>
 
       <div class="table-wrap">
@@ -120,10 +223,9 @@ const updateVehicleApproval = (vehicle, changes) => {
               <th>기사 ID</th>
               <th>기사명</th>
               <th>연락처</th>
-              <th>등록 승인</th>
+              <th>운송사 승인</th>
               <th>운송사 ID</th>
               <th>출입 가능</th>
-              <th>관리</th>
             </tr>
           </thead>
           <tbody>
@@ -132,33 +234,15 @@ const updateVehicleApproval = (vehicle, changes) => {
               <td>{{ driver.driverName }}</td>
               <td>{{ driver.driverContact || '-' }}</td>
               <td>
-                <span class="status-pill" :class="driver.isRegistered ? 'green' : 'red'">
-                  {{ driver.isRegistered }}
+                <span class="status-pill" :class="driver.isRegistered ? 'green' : 'amber'">
+                  {{ driver.isRegistered ? '운송사 승인 완료' : '운송사 승인 대기' }}
                 </span>
               </td>
               <td>{{ driver.carrierId || '-' }}</td>
               <td>
                 <span class="status-pill" :class="driver.canEnter ? 'green' : 'red'">
-                  {{ driver.canEnter }}
+                  {{ driver.canEnter ? '가능' : '불가' }}
                 </span>
-              </td>
-              <td>
-                <div class="action-row">
-                  <button
-                    class="ghost-button"
-                    type="button"
-                    @click="updateDriverPermission(driver, { isRegistered: true, canEnter: true })"
-                  >
-                    승인
-                  </button>
-                  <button
-                    class="ghost-button"
-                    type="button"
-                    @click="updateDriverPermission(driver, { isRegistered: false, canEnter: false })"
-                  >
-                    차단
-                  </button>
-                </div>
               </td>
             </tr>
           </tbody>
@@ -168,56 +252,62 @@ const updateVehicleApproval = (vehicle, changes) => {
 
     <section v-else class="panel">
       <div class="section-title">
-        <h2>차량 등록 승인</h2>
-        <span class="status-pill amber">관리자가 차량 등록 여부와 상태를 결정</span>
+        <h2>관리자 최종 승인</h2>
+        <span class="status-pill amber">운송사 차량 배정 후 승인대기</span>
       </div>
 
-      <div class="table-wrap">
+      <div v-if="loading" class="empty-box">불러오는 중...</div>
+
+      <div v-else-if="finalApprovalVehicles.length === 0" class="empty-box">
+        최종 승인 대기 중인 차량 배정 내역이 없습니다.
+      </div>
+
+      <div v-else class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
               <th>차량 ID</th>
+              <th>기사</th>
+              <th>운송사</th>
               <th>차량 번호</th>
               <th>차량 유형</th>
               <th>톤수</th>
-              <th>등록 승인</th>
-              <th>차량 상태</th>
               <th>트랙터 번호</th>
               <th>샤시 번호</th>
-              <th>운송사 ID</th>
-              <th>관리</th>
+              <th>상태</th>
+              <th>최종 승인</th>
             </tr>
           </thead>
+
           <tbody>
-            <tr v-for="vehicle in vehicles" :key="vehicle.vehicleId">
+            <tr v-for="vehicle in finalApprovalVehicles" :key="vehicle.vehicleId">
               <td>{{ vehicle.vehicleId }}</td>
+              <td>{{ getDriver(vehicle.driverId)?.driverName || '-' }}</td>
+              <td>{{ getCarrier(vehicle.carrierId)?.carrierName || '-' }}</td>
               <td>{{ vehicle.plateNumber }}</td>
               <td>{{ vehicle.vehicleType }}</td>
               <td>{{ vehicle.tonnage }}</td>
-              <td>
-                <span class="status-pill" :class="vehicle.isRegistered ? 'green' : 'red'">
-                  {{ vehicle.isRegistered }}
-                </span>
-              </td>
-              <td>{{ vehicle.vehicleStatus }}</td>
               <td>{{ vehicle.tractorNo || '-' }}</td>
               <td>{{ vehicle.chassisNo || '-' }}</td>
-              <td>{{ vehicle.carrierId }}</td>
+              <td>
+                <span class="status-pill amber">{{ vehicle.vehicleStatus }}</span>
+              </td>
               <td>
                 <div class="action-row">
                   <button
-                    class="ghost-button"
+                    class="ghost-button approve"
                     type="button"
-                    @click="updateVehicleApproval(vehicle, { isRegistered: true, vehicleStatus: 'NORMAL' })"
+                    @click="approveVehicle(vehicle.vehicleId)"
                   >
-                    승인
+                    최종 승인
                   </button>
+
                   <button
-                    class="ghost-button"
+                    class="ghost-button reject"
                     type="button"
-                    @click="updateVehicleApproval(vehicle, { isRegistered: false, vehicleStatus: 'RESTRICTED' })"
+                    @click="rejectVehicle(vehicle.vehicleId)"
                   >
-                    제한
+                    반려
                   </button>
                 </div>
               </td>
@@ -263,5 +353,96 @@ const updateVehicleApproval = (vehicle, changes) => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.form-message.error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  color: #7f1d1d;
+  background: #fff1f1;
+  border: 1px solid #fecaca;
+}
+
+.refresh-button {
+  min-height: 32px;
+  margin-left: auto;
+  padding: 0 12px;
+  color: #ffffff;
+  background: var(--blue-700);
+  border: 1px solid var(--blue-700);
+  border-radius: 2px;
+  font-weight: 700;
+}
+
+.empty-box {
+  padding: 24px;
+  color: var(--ink-500);
+  text-align: center;
+  background: #f8fbfe;
+  border: 1px solid var(--line);
+}
+
+.approval-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.approval-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+
+.approval-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.approval-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.approval-head p {
+  margin: 4px 0 0;
+  color: var(--ink-500);
+}
+
+.approval-card dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.approval-card dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.approval-card dt {
+  color: var(--ink-500);
+}
+
+.approval-card dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.ghost-button.approve {
+  color: #166534;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.ghost-button.reject {
+  color: #991b1b;
+  background: #fff1f2;
+  border-color: #fecaca;
 }
 </style>

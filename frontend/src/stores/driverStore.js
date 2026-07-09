@@ -1,6 +1,6 @@
 // stores/driverStore.js
 import { defineStore } from 'pinia'
-import { createDriver, deleteDriver, fetchDrivers, updateDriver } from '@/api/driverApi'
+import { fetchDrivers, createDriver } from '@/api/driverApi'
 
 export const useDriverStore = defineStore('driver', {
   state: () => ({
@@ -33,36 +33,6 @@ export const useDriverStore = defineStore('driver', {
         await this.loadDrivers()
       } catch (error) {
         this.error = '기사 등록에 실패했습니다.'
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async editDriver(driverId, driver) {
-      this.loading = true
-      this.error = ''
-
-      try {
-        await updateDriver(driverId, driver)
-        await this.loadDrivers()
-      } catch (error) {
-        this.error = '기사 수정에 실패했습니다.'
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async removeDriver(driverId) {
-      this.loading = true
-      this.error = ''
-
-      try {
-        await deleteDriver(driverId)
-        await this.loadDrivers()
-      } catch (error) {
-        this.error = '기사 삭제에 실패했습니다.'
         throw error
       } finally {
         this.loading = false
