@@ -1,10 +1,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { usePlateRecognitionStore } from '@/stores/adminStore/plateRecognitionStore'
+import { useGateLogStore } from '@/stores/adminStore/gateLogStore'
 
 const plateRecognitionStore = usePlateRecognitionStore()
+const gateLogStore = useGateLogStore()
 
 const selectedOcrType = ref('paddle')
+const selectedInOutType = ref('IN')
 const tractorFile = ref(null)
 const trailerFile = ref(null)
 const tractorPreviewUrl = ref('')
@@ -93,6 +96,50 @@ const isReadyForGateProcess = computed(() => {
   return tractorPassText.value === '가능' && trailerPassText.value === '가능'
 })
 
+const gateProcessPayload = computed(() => {
+  return {
+    tractorVehicleId: tractorResult.value?.vehicle?.vehicleId || null,
+    trailerVehicleId: trailerResult.value?.vehicle?.vehicleId || null,
+    workOrderId: trailerResult.value?.workOrder?.workOrderId || trailerResult.value?.trailerWorkInfo?.workOrderId || null,
+    containerId: trailerResult.value?.workOrder?.containerId || trailerResult.value?.trailerWorkInfo?.containerId || null,
+    sectorId: trailerResult.value?.container?.sectorId || trailerResult.value?.trailerWorkInfo?.sectorId || null,
+    gateNumber: 'G01',
+    gateName: 'AI_GATE',
+    inOutType: selectedInOutType.value,
+  }
+})
+
+const gateProcessMissingItems = computed(() => {
+  const payload = gateProcessPayload.value
+  const missingItems = []
+
+  if (!payload.tractorVehicleId) {
+    missingItems.push('트랙터 차량')
+  }
+
+  if (!payload.trailerVehicleId) {
+    missingItems.push('트레일러 차량')
+  }
+
+  if (!payload.workOrderId) {
+    missingItems.push('작업정보')
+  }
+
+  if (!payload.containerId) {
+    missingItems.push('컨테이너')
+  }
+
+  if (!payload.sectorId) {
+    missingItems.push('야드 섹터')
+  }
+
+  return missingItems
+})
+
+const canProcessGate = computed(() => {
+  return isReadyForGateProcess.value && gateProcessMissingItems.value.length === 0
+})
+
 const tractorSummaryText = computed(() => {
   if (!tractorResult.value) {
     return '트랙터 번호판 인식 후 기사와 운송사 정보가 표시됩니다.'
@@ -157,6 +204,14 @@ const submitTrailerRecognize = async () => {
 
   await plateRecognitionStore.recognize(trailerFile.value, selectedOcrType.value, 'trailer')
 }
+
+const submitGateProcess = async () => {
+  if (!canProcessGate.value) {
+    return
+  }
+
+  await gateLogStore.processGate(gateProcessPayload.value)
+}
 </script>
 
 <template>
@@ -178,6 +233,14 @@ const submitTrailerRecognize = async () => {
           </select>
         </label>
 
+        <label class="model-select">
+          <span>출입 구분</span>
+          <select v-model="selectedInOutType">
+            <option value="IN">입차</option>
+            <option value="OUT">출차</option>
+          </select>
+        </label>
+
         <div :class="['gate-pass-box', isReadyForGateProcess ? 'success' : 'warning']">
           <span>최종 출입 판단</span>
           <strong>{{ isReadyForGateProcess ? '통과' : '불가' }}</strong>
@@ -189,6 +252,45 @@ const submitTrailerRecognize = async () => {
             }}
           </p>
         </div>
+      </div>
+
+      <div class="gate-process-panel">
+        <div>
+          <span>최종 출입 처리 요청 데이터</span>
+          <strong>{{ canProcessGate ? '처리 가능' : '처리 대기' }}</strong>
+          <p>
+            {{
+              gateProcessMissingItems.length === 0
+                ? '트랙터, 트레일러, 작업정보, 컨테이너, 야드 섹터 정보가 준비되었습니다.'
+                : `부족한 정보: ${gateProcessMissingItems.join(', ')}`
+            }}
+          </p>
+        </div>
+
+        <div class="gate-process-data">
+          <span>트랙터 ID: {{ gateProcessPayload.tractorVehicleId || '-' }}</span>
+          <span>트레일러 ID: {{ gateProcessPayload.trailerVehicleId || '-' }}</span>
+          <span>작업 ID: {{ gateProcessPayload.workOrderId || '-' }}</span>
+          <span>컨테이너 ID: {{ gateProcessPayload.containerId || '-' }}</span>
+          <span>섹터 ID: {{ gateProcessPayload.sectorId || '-' }}</span>
+          <span>출입 구분: {{ selectedInOutType === 'OUT' ? '출차' : '입차' }}</span>
+        </div>
+
+        <button
+          class="primary-button gate-process-button"
+          type="button"
+          :disabled="!canProcessGate || gateLogStore.loading"
+          @click="submitGateProcess"
+        >
+          {{ gateLogStore.loading ? '처리 중' : '최종 출입 처리' }}
+        </button>
+
+        <p
+          v-if="gateLogStore.processResult"
+          :class="['gate-process-result', gateLogStore.processResult.success ? 'success' : 'warning']"
+        >
+          {{ gateLogStore.processResult.message }}
+        </p>
       </div>
 
       <div class="recognition-layout">
@@ -439,7 +541,7 @@ const submitTrailerRecognize = async () => {
 <style scoped>
 .top-control-area {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 220px 160px minmax(0, 1fr);
   gap: 14px;
   align-items: stretch;
   margin-bottom: 14px;
@@ -496,6 +598,73 @@ const submitTrailerRecognize = async () => {
 }
 
 .gate-pass-box.success {
+  color: #155e38;
+  background: #eefaf3;
+  border-color: #9dd8b8;
+}
+
+.gate-process-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 420px) 160px;
+  gap: 12px;
+  align-items: stretch;
+  margin-bottom: 14px;
+  padding: 12px;
+  background: #f6f9fd;
+  border: 1px solid var(--line);
+}
+
+.gate-process-panel > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.gate-process-panel span {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gate-process-panel strong {
+  color: var(--ink-900);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.gate-process-panel p {
+  margin: 0;
+  color: var(--ink-700);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.gate-process-data {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+  align-content: center;
+}
+
+.gate-process-button {
+  align-self: center;
+  min-height: 42px;
+}
+
+.gate-process-result {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  font-size: 15px;
+}
+
+.gate-process-result.warning {
+  color: #9f1d1d;
+  background: #fff4f4;
+  border-color: #e4a6a6;
+}
+
+.gate-process-result.success {
   color: #155e38;
   background: #eefaf3;
   border-color: #9dd8b8;
@@ -628,6 +797,7 @@ const submitTrailerRecognize = async () => {
 
 @media (max-width: 900px) {
   .top-control-area,
+  .gate-process-panel,
   .recognition-layout,
   .result-grid {
     grid-template-columns: 1fr;

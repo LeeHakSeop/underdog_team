@@ -66,4 +66,11 @@ public interface WorkOrderMapper {
     LIMIT 1
 """)
     TrailerWorkInfoDTO findTrailerWorkInfoByVehicleId(Long vehicleId);
+
+    @Update("""
+            UPDATE work_order
+            SET work_status = #{workStatus}
+            WHERE work_order_id = #{workOrderId}
+            """)
+    int updateStatus(@Param("workOrderId") Long workOrderId, @Param("workStatus") String workStatus);
 }

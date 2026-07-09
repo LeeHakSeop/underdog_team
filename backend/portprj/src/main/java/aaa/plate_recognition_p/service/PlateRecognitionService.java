@@ -10,12 +10,9 @@ import aaa.plate_recognition_p.model.PlateRecognitionResultDTO;
 import aaa.vehicle_p.model.TractorVehicleInfoDTO;
 import aaa.vehicle_p.model.VehicleDTO;
 import aaa.vehicle_p.model.VehicleMapper;
-<<<<<<< HEAD
-import aaa.work_order_p.model.WorkOrderDTO;
-=======
 import aaa.work_order_p.model.TrailerWorkInfoDTO;
+import aaa.work_order_p.model.WorkOrderDTO;
 import aaa.work_order_p.service.WorkOrderService;
->>>>>>> origin/pjh
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
@@ -147,6 +144,10 @@ public class PlateRecognitionService {
                 trailerWorkInfo
         ));
 
+        if (matched) {
+            setWorkData(result, vehicle, plateType);
+        }
+
         return result;
     }
 
@@ -239,51 +240,13 @@ public class PlateRecognitionService {
             return plateRecognition;
         }
 
-<<<<<<< HEAD
-        plateRecognitionMapper.insertPlateRecognition(plateRecognition);
-
-        PlateRecognitionResultDTO result = new PlateRecognitionResultDTO();
-        result.setAiResult(aiResult);
-        result.setGateLog(gateLog);
-        result.setPlateRecognition(plateRecognition);
-        result.setVehicle(vehicle);
-        result.setMatched(matched);
-        result.setNeedReview(needReview);
-        result.setMessage(makeMessage(aiResult, matched, needReview));
-
-        if (matched) {
-            setWorkData(result, vehicle, plateType);
-        }
-
-        return result;
-    }
-
-    private String makeErrorMessage(FastApiPlateResponseDTO aiResult, boolean matched) {
-        String message = "";
-
-        if (aiResult.getReviewReasons() != null) {
-            for (String reason : aiResult.getReviewReasons()) {
-                message += reason + ",";
-            }
-        }
-
-        if (!matched) {
-            message += "VEHICLE_NOT_REGISTERED";
-        }
-
-        if (message.endsWith(",")) {
-            message = message.substring(0, message.length() - 1);
-        }
-
-        return message.isBlank() ? null : message;
-=======
         plateRecognition.setVehicleImage(aiResult.getCropPath());
         plateRecognition.setRecognizedPlate(aiResult.getPlateNumber());
         plateRecognition.setIsSuccess(Boolean.TRUE.equals(aiResult.getDetected()) && matched && hasRequiredInfo);
         plateRecognition.setConfidence(BigDecimal.valueOf(aiResult.getConfidence() == null ? 0.0 : aiResult.getConfidence()));
         plateRecognition.setErrorMessage(makeErrorMessage(aiResult, matched, isTractor, isTrailer, hasRequiredInfo));
+
         return plateRecognition;
->>>>>>> origin/pjh
     }
 
     private Long getPlateVehicleId(VehicleDTO vehicle, String plateType, String targetType) {
@@ -298,7 +261,6 @@ public class PlateRecognitionService {
         return null;
     }
 
-<<<<<<< HEAD
     private void setWorkData(PlateRecognitionResultDTO result, VehicleDTO vehicle, String plateType) {
         if (plateType == null) {
             return;
@@ -345,8 +307,6 @@ public class PlateRecognitionService {
         }
     }
 
-    private String makeMessage(FastApiPlateResponseDTO aiResult, boolean matched, boolean needReview) {
-=======
     private ExceptionLogDTO createExceptionLog(
             GateLogDTO gateLog,
             FastApiPlateResponseDTO aiResult,
@@ -359,7 +319,6 @@ public class PlateRecognitionService {
         String exceptionType = null;
         String exceptionMessage = null;
 
->>>>>>> origin/pjh
         if (aiResult == null) {
             exceptionType = "AI_SERVER_ERROR";
             exceptionMessage = "AI server response is empty.";
@@ -392,6 +351,7 @@ public class PlateRecognitionService {
         exceptionLog.setExceptionMessage(exceptionMessage);
         exceptionLog.setOccurredTime(LocalDateTime.now());
         exceptionLog.setProcessStatus("UNPROCESSED");
+
         return exceptionLog;
     }
 
