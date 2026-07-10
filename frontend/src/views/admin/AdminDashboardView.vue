@@ -1,5 +1,10 @@
 <script setup>
+<<<<<<< HEAD
 import { computed, onMounted, onUnmounted } from 'vue'
+=======
+import { computed, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
+>>>>>>> origin/KBH
 import { storeToRefs } from 'pinia'
 import { useDashboardStore } from '@/stores/adminStore/dashboardStore'
 
@@ -15,12 +20,7 @@ let refreshTimer = null
 const recognitionRate = computed(() => {
   const total = summary.value.recognitionTotal || 0
   const success = summary.value.recognitionSuccess || 0
-
-  if (total === 0) {
-    return 0
-  }
-
-  return Math.round((success / total) * 100)
+  return total === 0 ? 0 : Math.round((success / total) * 100)
 })
 
 const metricCards = computed(() => [
@@ -209,13 +209,15 @@ onUnmounted(() => {
           <span class="status-pill">{{ sectorList.length }}개</span>
         </div>
 
-        <div class="sector-list">
+        <div v-if="sectorList.length" class="sector-list">
           <article v-for="sector in sectorList" :key="sector.sectorId" class="sector-card">
             <div>
               <strong>{{ sector.sectorName || '-' }}</strong>
               <span>{{ sector.blockName || '-' }}</span>
             </div>
+
             <p>{{ sector.guideMessage || '안내 메시지가 없습니다.' }}</p>
+
             <dl>
               <div>
                 <dt>상태</dt>
@@ -231,6 +233,10 @@ onUnmounted(() => {
               </div>
             </dl>
           </article>
+        </div>
+
+        <div v-else class="empty-box">
+          야드 섹터 정보가 없습니다.
         </div>
       </article>
     </section>

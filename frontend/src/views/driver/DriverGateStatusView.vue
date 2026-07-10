@@ -1,4 +1,5 @@
 <script setup>
+<<<<<<< HEAD
 import { computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDriverStore } from '@/stores/driverStore'
@@ -58,6 +59,17 @@ onMounted(() => {
 onUnmounted(() => {
   clearInterval(refreshTimer)
 })
+=======
+import {
+  gateLogs,
+  getContainerNumber,
+  getPlateNumber,
+  getSectorByContainerId,
+  workOrders,
+} from '../../data/dbData'
+
+const driverOrders = workOrders.filter((order) => [1, 3].includes(order.driver_id))
+>>>>>>> origin/KBH
 </script>
 
 <template>
@@ -67,6 +79,7 @@ onUnmounted(() => {
         <h2>작업 현황</h2>
         <span class="status-pill">{{ myWorkOrders.length }}건</span>
       </div>
+<<<<<<< HEAD
 
       <div v-if="loading" class="empty-box">
         작업 현황을 불러오는 중입니다.
@@ -120,6 +133,59 @@ onUnmounted(() => {
             {{ order.guideMessage || '게이트 입차 전 번호판 인식 결과와 작업 승인 상태를 확인하세요.' }}
           </div>
         </article>
+=======
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>작업 ID</th>
+              <th>컨테이너</th>
+              <th>작업 유형</th>
+              <th>섹터</th>
+              <th>예약 시간</th>
+              <th>작업 상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="order in driverOrders" :key="order.work_order_id">
+              <td>{{ order.work_order_id }}</td>
+              <td>{{ getContainerNumber(order.container_id) }}</td>
+              <td>{{ order.work_type }}</td>
+              <td>{{ getSectorByContainerId(order.container_id)?.sector_name || '-' }}</td>
+              <td>{{ order.reserved_time }}</td>
+              <td><span class="status-pill">{{ order.work_status }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>게이트 기록</h2>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>시간</th>
+              <th>차량</th>
+              <th>게이트</th>
+              <th>구분</th>
+              <th>처리 결과</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="log in gateLogs" :key="log.gate_log_id">
+              <td>{{ log.entry_time || log.exit_time }}</td>
+              <td>{{ getPlateNumber(log.vehicle_id) }}</td>
+              <td>{{ log.gate_name }}</td>
+              <td>{{ log.in_out_type }}</td>
+              <td><span class="status-pill">{{ log.process_result }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+>>>>>>> origin/KBH
       </div>
     </section>
   </div>

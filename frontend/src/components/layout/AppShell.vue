@@ -25,6 +25,12 @@ const icons = {
     ['path', { d: 'M13 10h7v10h-7z' }],
     ['path', { d: 'M4 13h7v7H4z' }],
   ],
+  users: [
+    ['circle', { cx: '9', cy: '8', r: '3' }],
+    ['path', { d: 'M3 21a6 6 0 0 1 12 0' }],
+    ['circle', { cx: '17', cy: '9', r: '2.5' }],
+    ['path', { d: 'M15 16a5 5 0 0 1 6 5' }],
+  ],
   clipboard: [
     ['path', { d: 'M9 4h6l1 2h3v15H5V6h3z' }],
     ['path', { d: 'M9 4h6v4H9z' }],
@@ -72,19 +78,6 @@ const icons = {
     ['path', { d: 'M3 12h1' }],
     ['path', { d: 'M3 18h1' }],
   ],
-  users: [
-    ['path', { d: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' }],
-    ['circle', { cx: '9', cy: '7', r: '4' }],
-    ['path', { d: 'M22 21v-2a4 4 0 0 0-3-3.87' }],
-    ['path', { d: 'M16 3.13a4 4 0 0 1 0 7.75' }],
-  ],
-  scan: [
-    ['path', { d: 'M4 7V4h3' }],
-    ['path', { d: 'M17 4h3v3' }],
-    ['path', { d: 'M20 17v3h-3' }],
-    ['path', { d: 'M7 20H4v-3' }],
-    ['path', { d: 'M7 12h10' }],
-  ],
   menu: [
     ['path', { d: 'M4 7h16' }],
     ['path', { d: 'M4 12h16' }],
@@ -113,39 +106,109 @@ const MenuIcon = (props) =>
     icons[props.name]?.map(([tag, attrs]) => h(tag, attrs)) || icons.home.map(([tag, attrs]) => h(tag, attrs)),
   )
 
-const menus = {
-  carrier: [
-    { label: '운송사 업무', path: '/carrier/dashboard', icon: 'home' },
-    { label: '기사 가입 승인', path: '/carrier/driver-approval', icon: 'driver' },
-    { label: '트레일러 배정', path: '/carrier/vehicle-register', icon: 'truck' },
-    { label: '운송 요청', path: '/carrier/requests', icon: 'request' },
-    { label: '승인 현황', path: '/carrier/approvals', icon: 'approval' },
+  const menus = {
+  CARRIER: [
+    {
+      label: '업무 홈',
+      path: '/carrier/dashboard',
+      icon: 'home',
+    },
+    {
+      label: '기사 가입 승인',
+      path: '/carrier/driver-approval',
+      icon: 'driver',
+    },
+    {
+      label: '트레일러 배정',
+      path: '/carrier/vehicle-register',
+      icon: 'truck',
+    },
+    {
+      label: '운송 요청',
+      path: '/carrier/requests',
+      icon: 'request',
+    },
+    {
+      label: '승인 현황',
+      path: '/carrier/approvals',
+      icon: 'approval',
+    },
   ],
+<<<<<<< HEAD
   driver: [
     { label: '기사 작업', path: '/driver/dashboard', icon: 'driver' },
     { label: '작업 현황', path: '/driver/work-status', icon: 'list' },
     { label: '내 차량', path: '/driver/vehicles', icon: 'truck' },
+=======
+
+  DRIVER: [
+    {
+      label: '작업 홈',
+      path: '/driver/dashboard',
+      icon: 'driver',
+    },
+    {
+      label: '작업 현황',
+      path: '/driver/work-status',
+      icon: 'list',
+    },
+    {
+      label: '내 차량',
+      path: '/driver/vehicles',
+      icon: 'truck',
+    },
+>>>>>>> origin/KBH
   ],
-  admin: [
-    { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
-    { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
-    { label: 'AI 번호판 인식', path: '/admin/plate-recognition', icon: 'scan' },
-    { label: '가입 회원 관리', path: '/admin/members', icon: 'users' },
-    { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
-    { label: '차량 출입 조회', path: '/admin/gate-logs', icon: 'truck' },
-    { label: '컨테이너 조회', path: '/admin/containers', icon: 'container' },
-    { label: '알림/이벤트', path: '/admin/events', icon: 'bell' },
+
+  ADMIN: [
+    {
+      label: '관리자 메인',
+      path: '/admin/main',
+      icon: 'cctv',
+    },
+    {
+      label: '센터 현황',
+      path: '/admin/dashboard',
+      icon: 'dashboard',
+    },
+    {
+      label: '가입 인원관리',
+      path: '/admin/members',
+      icon: 'users',
+    },
+    {
+      label: '작업 관리',
+      path: '/admin/tasks',
+      icon: 'clipboard',
+    },
+    {
+      label: '차량 출입 조회',
+      path: '/admin/gate-logs',
+      icon: 'truck',
+    },
+    {
+      label: '컨테이너 조회',
+      path: '/admin/containers',
+      icon: 'container',
+    },
+    {
+      label: '알림/이벤트',
+      path: '/admin/events',
+      icon: 'bell',
+    },
   ],
 }
 
 const roleLabels = {
-  carrier: '운송사 담당자',
-  driver: '화물 기사',
-  admin: '관리자',
+  CARRIER: '운송사 담당자',
+  DRIVER: '화물 기사',
+  ADMIN: '관리자',
 }
 
-const activeRole = computed(() => route.meta.role || route.path.split('/')[1] || 'admin')
-const activeMenus = computed(() => menus[activeRole.value] || menus.admin)
+const currentUser = computed(() => JSON.parse(localStorage.getItem('portGateUser') || 'null'))
+const pathRole = computed(() => (route.path.split('/')[1] || 'admin').toUpperCase())
+const activeRole = computed(() => route.meta.role || currentUser.value?.roleCode || pathRole.value)
+const activeMenus = computed(() => menus[activeRole.value] || menus.ADMIN)
 const pageTitle = computed(() => route.meta.title || '항만 게이트 시스템')
 
 const toggleSidebar = () => {
@@ -178,7 +241,7 @@ const logout = () => {
 
       <div class="role-badge">
         <small>현재 화면</small>
-        <strong>{{ roleLabels[activeRole] }}</strong>
+        <strong>{{ roleLabels[activeRole] || '관리자' }}</strong>
       </div>
 
       <nav class="side-nav">

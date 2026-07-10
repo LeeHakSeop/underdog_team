@@ -1,0 +1,30 @@
+### Carrier list
+GET http://localhost/api/carrier
+
+### Carrier detail
+GET http://localhost/api/carrier/1
+
+### Carrier create
+POST http://localhost/api/carrier
+Content-Type: application/json
+
+{
+  "carrierName": "Test Carrier",
+  "carrierContact": "051-999-9999",
+  "managerName": "Test Manager",
+  "carrierStatus": "approved"
+}
+
+### Carrier update
+PUT http://localhost/api/carrier/1
+Content-Type: application/json
+
+{
+  "carrierName": "Updated Carrier",
+  "carrierContact": "051-888-8888",
+  "managerName": "Updated Manager",
+  "carrierStatus": "hold"
+}
+
+### Carrier delete
+DELETE http://localhost/api/carrier/1

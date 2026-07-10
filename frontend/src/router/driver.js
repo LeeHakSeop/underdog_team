@@ -37,6 +37,12 @@ export default [
         meta: { role: 'DRIVER', title: '작업 현황' },
       },
       {
+        path: 'vehicles',
+        name: 'driver-vehicles',
+        component: DriverVehiclesView,
+        meta: { role: 'DRIVER', title: '차량 등록' },
+      },
+      {
         path: 'gate-status',
         redirect: '/driver/work-status',
       },
@@ -44,12 +50,15 @@ export default [
         path: 'sector-guide',
         redirect: '/driver/dashboard',
       },
+<<<<<<< HEAD
       {
         path: 'vehicles',
         name: 'driver-vehicles',
         component: DriverVehiclesView,
         meta: { role: 'DRIVER', title: '내 차량' },
       },
+=======
+>>>>>>> origin/KBH
     ],
   },
 ]

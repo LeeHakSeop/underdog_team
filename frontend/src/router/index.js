@@ -1,30 +1,28 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LoginView from '../views/LoginView.vue'
-import CarrierDashboardView from '../views/carrier/CarrierDashboardView.vue'
-import CarrierApprovalDriverView from '../views/carrier/CarrierApprovalDriverView.vue'
-import CarrierVehicleRegisterView from '../views/carrier/CarrierVehicleRegisterView.vue'
-import CarrierRequestsView from '../views/carrier/CarrierRequestsView.vue'
-import CarrierApprovalsView from '../views/carrier/CarrierApprovalsView.vue'
-import DriverDashboardView from '../views/driver/DriverDashboardView.vue'
-import DriverGateStatusView from '../views/driver/DriverGateStatusView.vue'
-import DriverVehiclesView from '../views/driver/DriverVehiclesView.vue'
-import AdminMainView from '../views/admin/AdminMainView.vue'
-import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
-import AdminMembersView from '../views/admin/AdminMembersView.vue'
-import AdminWorkOrdersView from '../views/admin/AdminWorkOrdersView.vue'
-import AdminGateLogsView from '../views/admin/AdminGateLogsView.vue'
-import AdminContainersView from '../views/admin/AdminContainersView.vue'
-import AdminEventsView from '../views/admin/AdminEventsView.vue'
-import AdminPlateRecognitionView from '../views/admin/AdminPlateRecognitionView.vue'
+
+import authRoutes from './auth'
+import adminRoutes from './admin'
+import carrierRoutes from './carrier'
+import driverRoutes from './driver'
+
+import { authGuard } from './guard'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+
   routes: [
     {
       path: '/',
       redirect: '/login',
     },
+
+    ...authRoutes,
+    ...adminRoutes,
+    ...carrierRoutes,
+    ...driverRoutes,
+
     {
+<<<<<<< HEAD
       path: '/login',
       name: 'login',
       component: LoginView,
@@ -154,39 +152,14 @@ const router = createRouter({
           meta: { role: 'admin', title: '알림/이벤트' },
         },
       ],
+=======
+      path: '/:pathMatch(.*)*',
+      redirect: '/login',
+>>>>>>> origin/KBH
     },
   ],
 })
 
-
-
-router.beforeEach((to) => {
-  if (to.path === '/login') {
-    return true
-  }
-
-
-// 개발중에 OFF
-// router.beforeEach(authGuard)
-
-
-
-  const user = JSON.parse(localStorage.getItem('portGateUser') || 'null')
-  if (!user) {
-    return '/login'
-  }
-
-  const roleRoot = {
-    CARRIER: '/carrier',
-    DRIVER: '/driver',
-    ADMIN: '/admin',
-  }[user.roleCode]
-
-  if (roleRoot && !to.path.startsWith(roleRoot)) {
-    return roleRoot === '/admin' ? '/admin/main' : `${roleRoot}/dashboard`
-  }
-
-  return true
-})
+router.beforeEach(authGuard)
 
 export default router

@@ -1,4 +1,5 @@
 <script setup>
+<<<<<<< HEAD
 import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useGateLogStore } from '@/stores/adminStore/gateLogStore'
@@ -25,23 +26,25 @@ onMounted(() => {
   gateLogStore.loadGateLogs()
   notificationStore.loadNotifications()
 })
+=======
+import { exceptionLogs, workStatusHistory } from '../../data/dbData'
+>>>>>>> origin/KBH
 </script>
 
 <template>
   <div class="page-stack">
-
     <section class="grid-2">
       <article class="panel">
         <div class="section-title">
-          <h2>작업 이벤트</h2>
-          <span class="status-pill">{{ events.length }}건</span>
+          <h2>작업 상태 이력</h2>
+          <span class="status-pill">{{ workStatusHistory.length }}건</span>
         </div>
         <div class="timeline">
-          <div v-for="event in events" :key="event.time + event.type" class="timeline-row">
-            <time>{{ event.time }}</time>
+          <div v-for="history in workStatusHistory" :key="history.history_id" class="timeline-row">
+            <time>{{ history.changed_time }}</time>
             <div>
-              <b>{{ event.type }} · {{ event.target }}</b>
-              <span>{{ event.message }}</span>
+              <b>작업 ID {{ history.work_order_id }} / {{ history.prev_status }} -> {{ history.new_status }}</b>
+              <span>{{ history.changed_by }} / {{ history.reason }}</span>
             </div>
           </div>
         </div>
@@ -49,15 +52,23 @@ onMounted(() => {
 
       <article class="panel">
         <div class="section-title">
-          <h2>예외 알림</h2>
-          <span class="status-pill red">{{ exceptions.length }}건</span>
+          <h2>예외 처리 기록</h2>
+          <span class="status-pill red">{{ exceptionLogs.length }}건</span>
         </div>
         <div class="timeline">
+<<<<<<< HEAD
           <div v-for="item in exceptions" :key="item.exceptionType + item.plateNumber + item.occurredTime" class="timeline-row alert">
             <time>{{ item.processStatus }}</time>
             <div>
               <b>{{ item.exceptionType }} · {{ item.plateNumber }}</b>
               <span>{{ item.exceptionMessage }}</span>
+=======
+          <div v-for="item in exceptionLogs" :key="item.exception_id" class="timeline-row alert">
+            <time>{{ item.process_status }}</time>
+            <div>
+              <b>{{ item.exception_type }} / {{ item.plate_number }}</b>
+              <span>{{ item.exception_message }}</span>
+>>>>>>> origin/KBH
             </div>
           </div>
         </div>
@@ -74,7 +85,7 @@ onMounted(() => {
 
 .timeline-row {
   display: grid;
-  grid-template-columns: 76px 1fr;
+  grid-template-columns: 160px 1fr;
   gap: 12px;
   padding: 12px;
   background: #f6f9fd;
