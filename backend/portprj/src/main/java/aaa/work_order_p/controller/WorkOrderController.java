@@ -1,5 +1,6 @@
 package aaa.work_order_p.controller;
 
+import aaa.work_order_p.model.TrailerWorkInfoDTO;
 import aaa.work_order_p.model.WorkOrderDTO;
 import aaa.work_order_p.service.WorkOrderService;
 import jakarta.annotation.Resource;
@@ -23,5 +24,10 @@ public class WorkOrderController {
     public WorkOrderDTO create(@RequestBody WorkOrderDTO dto) {
         service.insert(dto);
         return dto;
+    }
+
+    @GetMapping("/trailer-info/{vehicleId}")
+    public TrailerWorkInfoDTO trailerInfo(@PathVariable Long vehicleId) {
+        return service.findTrailerWorkInfo(vehicleId);
     }
 }

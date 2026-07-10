@@ -11,6 +11,7 @@ public class PlateRecognitionDTO {
     private Long gateLogId;
     private String vehicleImage;
     private String recognizedPlate;
+    private String plateType;
     private Boolean isSuccess;
     private BigDecimal confidence;
     private String manualCorrection;

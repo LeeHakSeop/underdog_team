@@ -1,18 +1,24 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { getUsers, updateUserStatus } from '@/api/authApi'
-import { fetchCarriers } from '@/api/carrierApi'
-import { fetchDrivers } from '@/api/driverApi'
-import { fetchVehicles, updateVehicleApproval } from '@/api/vehicleApi'
+import { useCarrierStore } from '@/stores/carrierStore'
+import { useDriverStore } from '@/stores/driverStore'
+import { useVehicleStore } from '@/stores/vehicleStore'
 
 const activeTab = ref('user')
 const loading = ref(false)
 const errorMessage = ref('')
 
 const users = ref([])
-const carriers = ref([])
-const drivers = ref([])
-const vehicles = ref([])
+
+const carrierStore = useCarrierStore()
+const driverStore = useDriverStore()
+const vehicleStore = useVehicleStore()
+
+const { carriers } = storeToRefs(carrierStore)
+const { drivers } = storeToRefs(driverStore)
+const { vehicles } = storeToRefs(vehicleStore)
 
 const carrierPendingUsers = computed(() =>
   users.value.filter(
@@ -20,17 +26,48 @@ const carrierPendingUsers = computed(() =>
   ),
 )
 
+const driverPendingUsers = computed(() =>
+  users.value.filter(
+    (user) =>
+      user.roleCode === 'DRIVER' &&
+      (user.status === 'PENDING' || user.status === 'CARRIER_APPROVED'),
+  ),
+)
+
 const finalApprovalVehicles = computed(() =>
   vehicles.value.filter(
-    (vehicle) => vehicle.vehicleStatus === '승인대기' || vehicle.vehicleStatus === 'PENDING',
+    (vehicle) =>
+      vehicle.vehicleStatus === '승인대기' ||
+      vehicle.vehicleStatus === 'PENDING',
   ),
 )
 
 const tabs = computed(() => [
-  { key: 'user', label: '운송사 가입승인', count: carrierPendingUsers.value.length },
-  { key: 'carrier', label: '운송사', count: carriers.value.length },
-  { key: 'driver', label: '기사', count: drivers.value.length },
-  { key: 'vehicle', label: '최종 승인', count: finalApprovalVehicles.value.length },
+  {
+    key: 'user',
+    label: '운송사 가입승인',
+    count: carrierPendingUsers.value.length,
+  },
+  {
+    key: 'driverUser',
+    label: '기사 최종승인 대상',
+    count: driverPendingUsers.value.length,
+  },
+  {
+    key: 'carrier',
+    label: '운송사',
+    count: carriers.value.length,
+  },
+  {
+    key: 'driver',
+    label: '기사',
+    count: drivers.value.length,
+  },
+  {
+    key: 'vehicle',
+    label: '최종 승인',
+    count: finalApprovalVehicles.value.length,
+  },
 ])
 
 const getDriver = (driverId) => {
@@ -41,47 +78,82 @@ const getCarrier = (carrierId) => {
   return carriers.value.find((carrier) => carrier.carrierId === carrierId)
 }
 
+const loadUsers = async () => {
+  users.value = (await getUsers()) || []
+}
+
 const loadData = async () => {
   loading.value = true
   errorMessage.value = ''
 
   try {
-    const [userData, carrierData, driverData, vehicleData] = await Promise.all([
-      getUsers(),
-      fetchCarriers(),
-      fetchDrivers(),
-      fetchVehicles(),
+    await Promise.all([
+      loadUsers(),
+      carrierStore.loadCarriers(),
+      driverStore.loadDrivers(),
+      vehicleStore.loadVehicles(),
     ])
-
-    users.value = userData || []
-    carriers.value = carrierData || []
-    drivers.value = driverData || []
-    vehicles.value = vehicleData || []
   } catch (error) {
-    errorMessage.value = error.message || '데이터를 불러오지 못했습니다.'
+    errorMessage.value =
+      error.message || '관리자 승인 데이터를 불러오지 못했습니다.'
   } finally {
     loading.value = false
   }
 }
 
 const approveCarrier = async (userId) => {
-  await updateUserStatus(userId, 'ACTIVE')
-  await loadData()
+  errorMessage.value = ''
+
+  try {
+    await updateUserStatus(userId, 'ACTIVE')
+    await loadData()
+  } catch (error) {
+    errorMessage.value = error.message || '운송사 승인에 실패했습니다.'
+  }
 }
 
 const rejectCarrier = async (userId) => {
-  await updateUserStatus(userId, 'REJECTED')
-  await loadData()
+  errorMessage.value = ''
+
+  try {
+    await updateUserStatus(userId, 'REJECTED')
+    await loadData()
+  } catch (error) {
+    errorMessage.value = error.message || '운송사 반려에 실패했습니다.'
+  }
+}
+
+const rejectDriverUser = async (userId) => {
+  errorMessage.value = ''
+
+  try {
+    await updateUserStatus(userId, 'REJECTED')
+    await loadData()
+  } catch (error) {
+    errorMessage.value = error.message || '기사 반려에 실패했습니다.'
+  }
 }
 
 const approveVehicle = async (vehicleId) => {
-  await updateVehicleApproval(vehicleId, true)
-  await loadData()
+  errorMessage.value = ''
+
+  try {
+    await vehicleStore.approveVehicle(vehicleId, true)
+    await loadData()
+  } catch (error) {
+    errorMessage.value = error.message || '관리자 최종 승인에 실패했습니다.'
+  }
 }
 
 const rejectVehicle = async (vehicleId) => {
-  await updateVehicleApproval(vehicleId, false)
-  await loadData()
+  errorMessage.value = ''
+
+  try {
+    await vehicleStore.approveVehicle(vehicleId, false)
+    await loadData()
+  } catch (error) {
+    errorMessage.value = error.message || '최종 승인 반려에 실패했습니다.'
+  }
 }
 
 onMounted(loadData)
@@ -92,8 +164,10 @@ onMounted(loadData)
     <section class="panel">
       <div class="section-title">
         <h2>관리자 승인 관리</h2>
+
         <span class="status-pill">
           운송사 승인대기 {{ carrierPendingUsers.length }} /
+          기사 검토대상 {{ driverPendingUsers.length }} /
           최종 승인대기 {{ finalApprovalVehicles.length }}
         </span>
       </div>
@@ -114,8 +188,13 @@ onMounted(loadData)
           <b>{{ tab.count }}</b>
         </button>
 
-        <button class="refresh-button" type="button" @click="loadData">
-          새로고침
+        <button
+          class="refresh-button"
+          type="button"
+          :disabled="loading"
+          @click="loadData"
+        >
+          {{ loading ? '불러오는 중...' : '새로고침' }}
         </button>
       </div>
     </section>
@@ -123,7 +202,7 @@ onMounted(loadData)
     <section v-if="activeTab === 'user'" class="panel">
       <div class="section-title">
         <h2>운송사 가입 승인</h2>
-        <span class="status-pill amber">운송사 PENDING 계정</span>
+        <span class="status-pill amber">회원가입 승인 대기</span>
       </div>
 
       <div v-if="loading" class="empty-box">불러오는 중...</div>
@@ -133,12 +212,17 @@ onMounted(loadData)
       </div>
 
       <div v-else class="approval-grid">
-        <article v-for="user in carrierPendingUsers" :key="user.userId" class="approval-card">
+        <article
+          v-for="user in carrierPendingUsers"
+          :key="user.userId"
+          class="approval-card"
+        >
           <div class="approval-head">
             <div>
               <h3>{{ user.userName || user.loginId }}</h3>
               <p>{{ user.loginId }}</p>
             </div>
+
             <span class="status-pill amber">{{ user.status }}</span>
           </div>
 
@@ -158,14 +242,85 @@ onMounted(loadData)
           </dl>
 
           <div class="action-row">
-            <button class="ghost-button approve" type="button" @click="approveCarrier(user.userId)">
+            <button
+              class="ghost-button approve"
+              type="button"
+              @click="approveCarrier(user.userId)"
+            >
               승인
             </button>
-            <button class="ghost-button reject" type="button" @click="rejectCarrier(user.userId)">
+
+            <button
+              class="ghost-button reject"
+              type="button"
+              @click="rejectCarrier(user.userId)"
+            >
               반려
             </button>
           </div>
         </article>
+      </div>
+    </section>
+
+    <section v-else-if="activeTab === 'driverUser'" class="panel">
+      <div class="section-title">
+        <h2>기사 최종승인 대상</h2>
+        <span class="status-pill amber">
+          운송사 승인·차량 배정 확인 대상
+        </span>
+      </div>
+
+      <div v-if="loading" class="empty-box">불러오는 중...</div>
+
+      <div v-else-if="driverPendingUsers.length === 0" class="empty-box">
+        검토 대상 기사가 없습니다.
+      </div>
+
+      <div v-else class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>회원 ID</th>
+              <th>아이디</th>
+              <th>회원명</th>
+              <th>상태</th>
+              <th>가입일</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr
+              v-for="user in driverPendingUsers"
+              :key="user.userId"
+            >
+              <td>{{ user.userId }}</td>
+              <td>{{ user.loginId }}</td>
+              <td>{{ user.userName }}</td>
+              <td>
+                <span class="status-pill amber">
+                  {{ user.status }}
+                </span>
+              </td>
+              <td>{{ user.createdAt || '-' }}</td>
+              <td>
+                <div class="action-row">
+                  <span class="status-pill">
+                    차량 최종 승인 탭에서 처리
+                  </span>
+
+                  <button
+                    class="ghost-button reject"
+                    type="button"
+                    @click="rejectDriverUser(user.userId)"
+                  >
+                    반려
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -175,7 +330,9 @@ onMounted(loadData)
         <span class="status-pill green">DB 조회</span>
       </div>
 
-      <div class="table-wrap">
+      <div v-if="loading" class="empty-box">불러오는 중...</div>
+
+      <div v-else class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
@@ -186,6 +343,7 @@ onMounted(loadData)
               <th>가입 상태</th>
             </tr>
           </thead>
+
           <tbody>
             <tr v-for="carrier in carriers" :key="carrier.carrierId">
               <td>{{ carrier.carrierId }}</td>
@@ -196,7 +354,9 @@ onMounted(loadData)
                 <span
                   class="status-pill"
                   :class="{
-                    green: carrier.carrierStatus === 'APPROVED' || carrier.carrierStatus === 'ACTIVE',
+                    green:
+                      carrier.carrierStatus === 'APPROVED' ||
+                      carrier.carrierStatus === 'ACTIVE',
                     amber: carrier.carrierStatus === 'PENDING',
                     red: carrier.carrierStatus === 'REJECTED',
                   }"
@@ -204,6 +364,10 @@ onMounted(loadData)
                   {{ carrier.carrierStatus }}
                 </span>
               </td>
+            </tr>
+
+            <tr v-if="carriers.length === 0">
+              <td colspan="5">등록된 운송사가 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -216,7 +380,9 @@ onMounted(loadData)
         <span class="status-pill green">DB 조회</span>
       </div>
 
-      <div class="table-wrap">
+      <div v-if="loading" class="empty-box">불러오는 중...</div>
+
+      <div v-else class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
@@ -228,22 +394,37 @@ onMounted(loadData)
               <th>출입 가능</th>
             </tr>
           </thead>
+
           <tbody>
             <tr v-for="driver in drivers" :key="driver.driverId">
               <td>{{ driver.driverId }}</td>
               <td>{{ driver.driverName }}</td>
               <td>{{ driver.driverContact || '-' }}</td>
               <td>
-                <span class="status-pill" :class="driver.isRegistered ? 'green' : 'amber'">
-                  {{ driver.isRegistered ? '운송사 승인 완료' : '운송사 승인 대기' }}
+                <span
+                  class="status-pill"
+                  :class="driver.isRegistered ? 'green' : 'amber'"
+                >
+                  {{
+                    driver.isRegistered
+                      ? '운송사 승인 완료'
+                      : '운송사 승인 대기'
+                  }}
                 </span>
               </td>
               <td>{{ driver.carrierId || '-' }}</td>
               <td>
-                <span class="status-pill" :class="driver.canEnter ? 'green' : 'red'">
+                <span
+                  class="status-pill"
+                  :class="driver.canEnter ? 'green' : 'red'"
+                >
                   {{ driver.canEnter ? '가능' : '불가' }}
                 </span>
               </td>
+            </tr>
+
+            <tr v-if="drivers.length === 0">
+              <td colspan="6">등록된 기사가 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -253,12 +434,17 @@ onMounted(loadData)
     <section v-else class="panel">
       <div class="section-title">
         <h2>관리자 최종 승인</h2>
-        <span class="status-pill amber">운송사 차량 배정 후 승인대기</span>
+        <span class="status-pill amber">
+          운송사 차량 배정 후 승인대기
+        </span>
       </div>
 
       <div v-if="loading" class="empty-box">불러오는 중...</div>
 
-      <div v-else-if="finalApprovalVehicles.length === 0" class="empty-box">
+      <div
+        v-else-if="finalApprovalVehicles.length === 0"
+        class="empty-box"
+      >
         최종 승인 대기 중인 차량 배정 내역이 없습니다.
       </div>
 
@@ -280,17 +466,26 @@ onMounted(loadData)
           </thead>
 
           <tbody>
-            <tr v-for="vehicle in finalApprovalVehicles" :key="vehicle.vehicleId">
+            <tr
+              v-for="vehicle in finalApprovalVehicles"
+              :key="vehicle.vehicleId"
+            >
               <td>{{ vehicle.vehicleId }}</td>
-              <td>{{ getDriver(vehicle.driverId)?.driverName || '-' }}</td>
-              <td>{{ getCarrier(vehicle.carrierId)?.carrierName || '-' }}</td>
+              <td>
+                {{ getDriver(vehicle.driverId)?.driverName || '-' }}
+              </td>
+              <td>
+                {{ getCarrier(vehicle.carrierId)?.carrierName || '-' }}
+              </td>
               <td>{{ vehicle.plateNumber }}</td>
               <td>{{ vehicle.vehicleType }}</td>
               <td>{{ vehicle.tonnage }}</td>
               <td>{{ vehicle.tractorNo || '-' }}</td>
               <td>{{ vehicle.chassisNo || '-' }}</td>
               <td>
-                <span class="status-pill amber">{{ vehicle.vehicleStatus }}</span>
+                <span class="status-pill amber">
+                  {{ vehicle.vehicleStatus }}
+                </span>
               </td>
               <td>
                 <div class="action-row">
@@ -374,6 +569,11 @@ onMounted(loadData)
   font-weight: 700;
 }
 
+.refresh-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .empty-box {
   padding: 24px;
   color: var(--ink-500);
@@ -446,3 +646,4 @@ onMounted(loadData)
   border-color: #fecaca;
 }
 </style>
+

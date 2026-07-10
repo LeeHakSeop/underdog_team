@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 public class GateLogDTO {
     private Long gateLogId;
     private Long vehicleId;
+    private Long tractorVehicleId;
+    private Long trailerVehicleId;
     private String gateNumber;
     private String gateName;
     private LocalDateTime entryTime;

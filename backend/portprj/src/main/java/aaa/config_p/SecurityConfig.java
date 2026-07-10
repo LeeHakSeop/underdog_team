@@ -1,9 +1,10 @@
 package aaa.config_p;
 
-import aaa.config_p.security.JwtAuthenticationFilter;
+import aaa.filter.JwtFilter;
+import aaa.filter.JwtUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -19,10 +20,10 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtUtil jwtUtil;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    public SecurityConfig(JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
     }
 
     @Bean
@@ -34,9 +35,23 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .cors(cors ->
+                        cors.configurationSource(corsConfigurationSource())
+                )
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
+
                         .requestMatchers(
                                 "/api/login",
                                 "/api/register",
@@ -47,18 +62,32 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
 
-                        // 관리자 회원관리 API
-                        .requestMatchers("/api/auth/users/**").hasRole("ADMIN")
+                        /*
+                         * 관리자 회원관리 API
+                         * JWT 필터에서 권한이 ROLE_ADMIN 형식으로 등록되어 있어야 한다.
+                         */
+                        .requestMatchers(
+                                "/api/auth/users/**"
+                        ).hasRole("ADMIN")
 
-                        // 기존 기능은 팀 프로젝트 영향 방지를 위해 일단 허용
-                        // 발표 전 권한별로 잠그고 싶으면 아래 permitAll을 authenticated로 변경
-                        .requestMatchers("/api/**").permitAll()
+                        /*
+                         * 현재 팀 프로젝트 기능 연결 중이므로 나머지 API는 허용한다.
+                         * 기능 통합 완료 후 역할별 접근제어로 변경 가능하다.
+                         */
+                        .requestMatchers(
+                                "/api/**"
+                        ).permitAll()
 
                         .anyRequest().permitAll()
                 )
+
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+                .addFilterBefore(
+                        new JwtFilter(jwtUtil),
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
@@ -66,13 +95,31 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://127.0.0.1:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://200.200.200.66:5173"
+        ));
+
+        config.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+        ));
+
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 }

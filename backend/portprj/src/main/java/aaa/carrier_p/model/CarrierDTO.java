@@ -15,6 +15,8 @@ public class CarrierDTO {
 
     private String carrierStatus;
 
-    // users.user_id 와 연결
+    /**
+     * users.user_id와 연결
+     */
     private Long userId;
 }

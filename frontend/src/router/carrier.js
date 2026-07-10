@@ -1,6 +1,6 @@
 import CarrierDashboardView from '@/views/carrier/CarrierDashboardView.vue'
 import CarrierApprovalDriverView from '@/views/carrier/CarrierApprovalDriverView.vue'
-import CarrierRegisterVehicleView from '@/views/carrier/CarrierVehicleRegisterView.vue'
+import CarrierVehicleRegisterView from '@/views/carrier/CarrierVehicleRegisterView.vue'
 import CarrierRequestsView from '@/views/carrier/CarrierRequestsView.vue'
 import CarrierApprovalsView from '@/views/carrier/CarrierApprovalsView.vue'
 
@@ -8,7 +8,9 @@ export default [
   {
     path: '/carrier',
     redirect: '/carrier/dashboard',
-    meta: { role: 'CARRIER' },
+    meta: {
+      role: 'CARRIER',
+    },
 
     children: [
       {
@@ -34,7 +36,7 @@ export default [
       {
         path: 'vehicle-register',
         name: 'carrier-vehicle-register',
-        component: CarrierRegisterVehicleView,
+        component: CarrierVehicleRegisterView,
         meta: {
           role: 'CARRIER',
           title: '트레일러 배정',

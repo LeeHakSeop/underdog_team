@@ -15,7 +15,8 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = {
         "http://localhost:5173",
-        "http://127.0.0.1:5173"
+        "http://127.0.0.1:5173",
+        "http://200.200.200.66:5173"
 })
 public class AuthController {
 
@@ -35,7 +36,10 @@ public class AuthController {
     public Map<String, String> register(@RequestBody RegisterDTO dto) {
         authService.register(dto);
 
-        return Map.of("message", "회원가입이 완료되었습니다.");
+        return Map.of(
+                "message",
+                "회원가입이 완료되었습니다."
+        );
     }
 
     @PostMapping("/admin-init")
@@ -49,7 +53,10 @@ public class AuthController {
 
         authService.register(dto);
 
-        return Map.of("message", "관리자 계정 생성 완료");
+        return Map.of(
+                "message",
+                "관리자 계정 생성 완료"
+        );
     }
 
     @GetMapping("/users")
@@ -62,6 +69,12 @@ public class AuthController {
             @PathVariable Long userId,
             @RequestBody Map<String, String> body
     ) {
-        return authService.updateStatus(userId, body.get("status"));
+        String status = body.get("status");
+
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException("변경할 상태값은 필수입니다.");
+        }
+
+        return authService.updateStatus(userId, status);
     }
 }

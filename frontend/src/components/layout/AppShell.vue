@@ -106,7 +106,7 @@ const MenuIcon = (props) =>
     icons[props.name]?.map(([tag, attrs]) => h(tag, attrs)) || icons.home.map(([tag, attrs]) => h(tag, attrs)),
   )
 
-const menus = {
+  const menus = {
   CARRIER: [
     {
       label: '업무 홈',
@@ -211,6 +211,7 @@ const toggleSidebar = () => {
 
 const logout = () => {
   localStorage.removeItem('portGateUser')
+  localStorage.removeItem('token')
   router.push('/login')
 }
 </script>

@@ -4,9 +4,9 @@ import aaa.auth_p.model.LoginDTO;
 import aaa.auth_p.model.LoginResponseDTO;
 import aaa.auth_p.model.RegisterDTO;
 import aaa.carrier_p.model.CarrierMapper;
-import aaa.config_p.JwtUtil;
 import aaa.driver_p.model.DriverDTO;
 import aaa.driver_p.model.DriverMapper;
+import aaa.filter.JwtUtil;
 import aaa.user_p.model.UserDTO;
 import aaa.user_p.model.UserMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,7 +41,7 @@ public class AuthService {
     public LoginResponseDTO login(LoginDTO dto) {
         UserDTO user = mapper.findByLoginId(dto.getLoginId());
 
-        if (user == null || !passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
+        if (user == null || !checkPassword(dto.getPassword(), user.getPassword())) {
             throw new RuntimeException("아이디 또는 비밀번호가 일치하지 않습니다.");
         }
 
@@ -51,31 +51,18 @@ public class AuthService {
             throw new RuntimeException("선택한 로그인 유형이 계정 권한과 다릅니다.");
         }
 
-        if ("PENDING".equals(user.getStatus())) {
-            throw new RuntimeException("운송사 승인 후 로그인할 수 있습니다.");
-        }
-
-        if ("CARRIER_APPROVED".equals(user.getStatus())) {
-            throw new RuntimeException("관리자 최종 승인 후 로그인할 수 있습니다.");
-        }
-
-        if ("REJECTED".equals(user.getStatus())) {
-            throw new RuntimeException("회원가입이 반려되었습니다. 관리자에게 문의하세요.");
-        }
-
-        if (!"ACTIVE".equals(user.getStatus())) {
-            throw new RuntimeException("로그인할 수 없는 계정 상태입니다.");
-        }
+        validateLoginStatus(user);
 
         if ("DRIVER".equals(user.getRoleCode())) {
-            DriverDTO driver = driverMapper.findByUserId(user.getUserId());
-
-            if (driver == null || !Boolean.TRUE.equals(driver.getCanEnter())) {
-                throw new RuntimeException("차량 승인 후 로그인할 수 있습니다.");
-            }
+            validateDriverLogin(user);
         }
 
         mapper.updateLastLogin(user.getUserId());
+
+        String token = jwtUtil.createToken(
+                user.getLoginId(),
+                user.getRoleCode()
+        );
 
         LoginResponseDTO res = new LoginResponseDTO();
         res.setUserId(user.getUserId());
@@ -83,10 +70,76 @@ public class AuthService {
         res.setUserName(user.getUserName());
         res.setRoleCode(user.getRoleCode());
         res.setStatus(user.getStatus());
-        res.setAccessToken(jwtUtil.generateToken(user));
+
+        /*
+         * 기존 프론트와 origin/main 양쪽 호환용.
+         * LoginResponseDTO에도 token, accessToken, tokenType 필드를 모두 둔다.
+         */
+        res.setToken(token);
+        res.setAccessToken(token);
         res.setTokenType("Bearer");
 
         return res;
+    }
+
+    private void validateLoginStatus(UserDTO user) {
+        if ("PENDING".equals(user.getStatus())) {
+            if ("DRIVER".equals(user.getRoleCode())) {
+                throw new RuntimeException("지정한 운송사의 가입 승인 후 로그인할 수 있습니다.");
+            }
+
+            if ("CARRIER".equals(user.getRoleCode())) {
+                throw new RuntimeException("관리자 승인 후 로그인할 수 있습니다.");
+            }
+
+            throw new RuntimeException("승인 후 로그인할 수 있습니다.");
+        }
+
+        if ("CARRIER_APPROVED".equals(user.getStatus())) {
+            throw new RuntimeException("트레일러 배정 및 관리자 최종 승인 후 로그인할 수 있습니다.");
+        }
+
+        if ("REJECTED".equals(user.getStatus())) {
+            throw new RuntimeException("가입 또는 승인 요청이 반려되었습니다.");
+        }
+
+        if (!"ACTIVE".equals(user.getStatus())) {
+            throw new RuntimeException("로그인할 수 없는 계정 상태입니다.");
+        }
+    }
+
+    private void validateDriverLogin(UserDTO user) {
+        DriverDTO driver = driverMapper.findByUserId(user.getUserId());
+
+        if (driver == null) {
+            throw new RuntimeException("기사 정보를 찾을 수 없습니다.");
+        }
+
+        if (!Boolean.TRUE.equals(driver.getIsRegistered())) {
+            throw new RuntimeException("지정한 운송사의 가입 승인 후 로그인할 수 있습니다.");
+        }
+
+        if (!Boolean.TRUE.equals(driver.getCanEnter())) {
+            throw new RuntimeException("트레일러 배정 및 관리자 최종 승인 후 로그인할 수 있습니다.");
+        }
+    }
+
+    /**
+     * 기존 평문 테스트 계정과 BCrypt 계정을 모두 처리한다.
+     * 기존 평문 계정을 모두 BCrypt로 전환한 뒤에는 평문 비교 부분을 제거하는 것이 좋다.
+     */
+    private boolean checkPassword(String inputPassword, String savedPassword) {
+        if (inputPassword == null || savedPassword == null) {
+            return false;
+        }
+
+        if (savedPassword.startsWith("$2a$")
+                || savedPassword.startsWith("$2b$")
+                || savedPassword.startsWith("$2y$")) {
+            return passwordEncoder.matches(inputPassword, savedPassword);
+        }
+
+        return inputPassword.equals(savedPassword);
     }
 
     @Transactional
@@ -97,18 +150,36 @@ public class AuthService {
             throw new RuntimeException("이미 사용 중인 아이디입니다.");
         }
 
-        dto.setPassword(passwordEncoder.encode(dto.getPassword()));
-        dto.setStatus("ADMIN".equals(dto.getRoleCode()) ? "ACTIVE" : "PENDING");
-
-        int result = mapper.insertUser(dto);
-
+        /*
+         * 관련 테이블 입력 전에 역할별 필수값을 검사한다.
+         * 중간 INSERT 후 예외가 발생하더라도 @Transactional로 롤백된다.
+         */
         if ("CARRIER".equals(dto.getRoleCode())) {
             validateCarrierRegister(dto);
-            carrierMapper.insertFromRegister(dto);
         }
 
         if ("DRIVER".equals(dto.getRoleCode())) {
             validateDriverRegister(dto);
+        }
+
+        dto.setPassword(passwordEncoder.encode(dto.getPassword()));
+        dto.setStatus(
+                "ADMIN".equals(dto.getRoleCode())
+                        ? "ACTIVE"
+                        : "PENDING"
+        );
+
+        int result = mapper.insertUser(dto);
+
+        if ("CARRIER".equals(dto.getRoleCode())) {
+            carrierMapper.insertFromRegister(dto);
+        }
+
+        if ("DRIVER".equals(dto.getRoleCode())) {
+            /*
+             * 기사 회원가입 때 차량은 생성하지 않는다.
+             * 지정한 운송사가 승인한 뒤 트레일러를 배정한다.
+             */
             driverMapper.insertFromRegister(dto);
         }
 
@@ -116,12 +187,30 @@ public class AuthService {
     }
 
     public List<UserDTO> findUsers() {
-        return mapper.findAll();
+        List<UserDTO> users = mapper.findAll();
+
+        if (users != null) {
+            users.forEach(user -> user.setPassword(null));
+        }
+
+        return users;
     }
 
+    /**
+     * 관리자 계정 상태 변경.
+     *
+     * 관리자 화면에서는:
+     * - 운송사 PENDING 계정만 ACTIVE 또는 REJECTED 처리
+     * - 기사의 최종 승인은 VehicleService.updateApproval()에서 처리
+     */
     @Transactional
     public UserDTO updateStatus(Long userId, String status) {
-        if (!List.of("PENDING", "CARRIER_APPROVED", "ACTIVE", "REJECTED").contains(status)) {
+        if (!List.of(
+                "PENDING",
+                "CARRIER_APPROVED",
+                "ACTIVE",
+                "REJECTED"
+        ).contains(status)) {
             throw new RuntimeException("상태값이 올바르지 않습니다.");
         }
 
@@ -131,28 +220,65 @@ public class AuthService {
             throw new RuntimeException("사용자를 찾을 수 없습니다.");
         }
 
-        if ("ACTIVE".equals(status) && "CARRIER".equals(user.getRoleCode())) {
-            carrierMapper.updateStatusByUserId(user.getUserId(), "APPROVED");
+        if ("ACTIVE".equals(status)) {
+            approveRelatedAccount(user);
         }
 
         if ("REJECTED".equals(status)) {
-            if ("CARRIER".equals(user.getRoleCode())) {
-                carrierMapper.updateStatusByUserId(user.getUserId(), "REJECTED");
-            }
-
-            if ("DRIVER".equals(user.getRoleCode())) {
-                driverMapper.updateApprovalByUserId(user.getUserId(), false, false);
-            }
+            rejectRelatedAccount(user);
         }
 
         mapper.updateStatus(userId, status);
 
         UserDTO updatedUser = mapper.findById(userId);
+
         if (updatedUser != null) {
             updatedUser.setPassword(null);
         }
 
         return updatedUser;
+    }
+
+    private void approveRelatedAccount(UserDTO user) {
+        if ("CARRIER".equals(user.getRoleCode())) {
+            carrierMapper.updateStatusByUserId(
+                    user.getUserId(),
+                    "APPROVED"
+            );
+        }
+
+        /*
+         * 기사 최종 승인은 여기서 처리하지 않는다.
+         *
+         * 기사 흐름:
+         * PENDING
+         * → 운송사 승인: CARRIER_APPROVED
+         * → 트레일러 배정
+         * → 관리자 차량 최종 승인: ACTIVE
+         */
+        if ("DRIVER".equals(user.getRoleCode())
+                && !"CARRIER_APPROVED".equals(user.getStatus())) {
+            throw new RuntimeException(
+                    "기사는 운송사 승인과 트레일러 배정 후 최종 승인할 수 있습니다."
+            );
+        }
+    }
+
+    private void rejectRelatedAccount(UserDTO user) {
+        if ("CARRIER".equals(user.getRoleCode())) {
+            carrierMapper.updateStatusByUserId(
+                    user.getUserId(),
+                    "REJECTED"
+            );
+        }
+
+        if ("DRIVER".equals(user.getRoleCode())) {
+            driverMapper.updateApprovalByUserId(
+                    user.getUserId(),
+                    false,
+                    false
+            );
+        }
     }
 
     private void validateRegister(RegisterDTO dto) {
@@ -168,20 +294,43 @@ public class AuthService {
             throw new RuntimeException("이름은 필수입니다.");
         }
 
-        if (!List.of("ADMIN", "CARRIER", "DRIVER").contains(dto.getRoleCode())) {
-            throw new RuntimeException("역할은 ADMIN, CARRIER, DRIVER 중 하나여야 합니다.");
+        if (!List.of(
+                "ADMIN",
+                "CARRIER",
+                "DRIVER"
+        ).contains(dto.getRoleCode())) {
+            throw new RuntimeException(
+                    "역할은 ADMIN, CARRIER, DRIVER 중 하나여야 합니다."
+            );
         }
     }
 
     private void validateCarrierRegister(RegisterDTO dto) {
-        if (dto.getCarrierName() == null || dto.getCarrierName().isBlank()) {
+        if (dto.getCarrierName() == null
+                || dto.getCarrierName().isBlank()) {
             throw new RuntimeException("운송사명은 필수입니다.");
+        }
+
+        if (dto.getManagerName() == null
+                || dto.getManagerName().isBlank()) {
+            throw new RuntimeException("운송사 담당자명은 필수입니다.");
+        }
+
+        if (dto.getCarrierContact() == null
+                || dto.getCarrierContact().isBlank()) {
+            throw new RuntimeException("운송사 연락처는 필수입니다.");
         }
     }
 
     private void validateDriverRegister(RegisterDTO dto) {
-        if (dto.getDriverName() == null || dto.getDriverName().isBlank()) {
+        if (dto.getDriverName() == null
+                || dto.getDriverName().isBlank()) {
             throw new RuntimeException("기사명은 필수입니다.");
+        }
+
+        if (dto.getDriverContact() == null
+                || dto.getDriverContact().isBlank()) {
+            throw new RuntimeException("기사 연락처는 필수입니다.");
         }
 
         if (dto.getCarrierId() == null) {

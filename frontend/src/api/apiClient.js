@@ -1,10 +1,10 @@
 // .env.development에 작성한 서버 기본 주소를 가져옵니다.
 // 예: http://localhost
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost'
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost'
 
 export const request = async (path, options = {}) => {
   const token = localStorage.getItem('token')
-
   const headers = new Headers(options.headers)
 
   if (
@@ -20,7 +20,8 @@ export const request = async (path, options = {}) => {
     path === '/api/register' ||
     path === '/api/auth/login' ||
     path === '/api/auth/register' ||
-    path === '/api/auth/signup'
+    path === '/api/auth/signup' ||
+    path === '/api/auth/admin-init'
 
   if (token && !isPublicRequest) {
     headers.set('Authorization', `Bearer ${token}`)
@@ -34,21 +35,38 @@ export const request = async (path, options = {}) => {
   if (response.status === 401 || response.status === 403) {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    window.location.href = '/login'
+    localStorage.removeItem('portGateUser')
+
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login'
+    }
+
     throw new Error('로그인이 필요합니다.')
   }
 
   if (!response.ok) {
-    let msg = '요청 처리 실패'
+    let message = '요청 처리에 실패했습니다.'
 
     try {
       const data = await response.json()
-      msg = data.message || data.error || msg
+      message =
+        data.message ||
+        data.error ||
+        data.detail ||
+        message
     } catch {
-      // JSON 응답이 아니면 기본 메시지 사용
+      try {
+        const text = await response.text()
+
+        if (text) {
+          message = text
+        }
+      } catch {
+        // 응답 본문을 읽을 수 없으면 기본 메시지 사용
+      }
     }
 
-    throw new Error(msg)
+    throw new Error(message)
   }
 
   if (response.status === 204) {
@@ -61,5 +79,9 @@ export const request = async (path, options = {}) => {
     return null
   }
 
-  return JSON.parse(text)
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
 }

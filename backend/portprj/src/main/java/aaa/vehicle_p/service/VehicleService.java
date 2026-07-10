@@ -1,8 +1,14 @@
-package aaa.vehicle_p.service;
+라이브러리
+        /
+        VehicleService.java
+
+
+        package aaa.vehicle_p.service;
 
 import aaa.driver_p.model.DriverDTO;
 import aaa.driver_p.model.DriverMapper;
 import aaa.user_p.model.UserMapper;
+import aaa.vehicle_p.model.TractorVehicleInfoDTO;
 import aaa.vehicle_p.model.VehicleDTO;
 import aaa.vehicle_p.model.VehicleMapper;
 import jakarta.annotation.Resource;
@@ -29,6 +35,14 @@ public class VehicleService {
 
     public VehicleDTO detail(Long vehicleId) {
         return vehicleMapper.detail(vehicleId);
+    }
+
+    public TractorVehicleInfoDTO findTractorInfo(String plateNumber) {
+        if (plateNumber == null || plateNumber.isBlank()) {
+            throw new IllegalArgumentException("차량번호는 필수입니다.");
+        }
+
+        return vehicleMapper.findTractorInfoByPlateNumber(plateNumber);
     }
 
     public List<VehicleDTO> findByCarrierId(Long carrierId) {
@@ -63,6 +77,14 @@ public class VehicleService {
             throw new IllegalArgumentException("이미 등록된 차량번호입니다.");
         }
 
+        if (dto.getIsRegistered() == null) {
+            dto.setIsRegistered(false);
+        }
+
+        if (dto.getVehicleStatus() == null || dto.getVehicleStatus().isBlank()) {
+            dto.setVehicleStatus("승인대기");
+        }
+
         return vehicleMapper.update(dto);
     }
 
@@ -89,7 +111,7 @@ public class VehicleService {
         }
 
         boolean approved = Boolean.TRUE.equals(dto.getIsRegistered());
-        String vehicleStatus = approved ? "정상" : "REJECTED";
+        String vehicleStatus = approved ? "정상" : "승인거절";
 
         int result = vehicleMapper.updateApproval(
                 vehicleId,
@@ -114,6 +136,10 @@ public class VehicleService {
     }
 
     private void validateInsert(VehicleDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("차량 정보는 필수입니다.");
+        }
+
         if (dto.getPlateNumber() == null || dto.getPlateNumber().isBlank()) {
             throw new IllegalArgumentException("차량번호는 필수입니다.");
         }
@@ -136,18 +162,10 @@ public class VehicleService {
     }
 
     private void validateUpdate(VehicleDTO dto) {
-        if (dto.getVehicleId() == null) {
+        if (dto == null || dto.getVehicleId() == null) {
             throw new IllegalArgumentException("차량 ID는 필수입니다.");
         }
 
         validateInsert(dto);
-
-        if (dto.getIsRegistered() == null) {
-            dto.setIsRegistered(false);
-        }
-
-        if (dto.getVehicleStatus() == null || dto.getVehicleStatus().isBlank()) {
-            dto.setVehicleStatus("승인대기");
-        }
     }
 }

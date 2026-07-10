@@ -9,11 +9,22 @@ import { authGuard } from './guard'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+
   routes: [
+    {
+      path: '/',
+      redirect: '/login',
+    },
+
     ...authRoutes,
     ...adminRoutes,
     ...carrierRoutes,
     ...driverRoutes,
+
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/login',
+    },
   ],
 })
 

@@ -2,6 +2,7 @@ package aaa.driver_p.service;
 
 import aaa.driver_p.model.DriverDTO;
 import aaa.driver_p.model.DriverMapper;
+import aaa.driver_p.model.DriverWorkOrderDTO;
 import aaa.user_p.model.UserDTO;
 import aaa.user_p.model.UserMapper;
 import jakarta.annotation.Resource;
@@ -53,8 +54,24 @@ public class DriverService {
             throw new RuntimeException("기사 계정만 승인할 수 있습니다.");
         }
 
-        driverMapper.updateApprovalByUserId(userId, true, false);
-        userMapper.updateStatus(userId, "CARRIER_APPROVED");
+        driverMapper.updateApprovalByUserId(
+                userId,
+                true,
+                false
+        );
+
+        userMapper.updateStatus(
+                userId,
+                "CARRIER_APPROVED"
+        );
+    }
+
+    public List<DriverWorkOrderDTO> myWorkOrders(String userName) {
+        return driverMapper.findWorkOrdersByUserName(userName);
+    }
+
+    public List<DriverWorkOrderDTO> myWorkOrdersByUserId(Long userId) {
+        return driverMapper.findWorkOrdersByUserId(userId);
     }
 
     private void setDefaultValues(DriverDTO dto) {

@@ -14,16 +14,26 @@ const drivers = ref([])
 const currentUser = readCurrentUser()
 
 const myCarrier = computed(() =>
-  carriers.value.find((carrier) => carrier.userId === currentUser?.userId),
+  carriers.value.find(
+    (carrier) => carrier.userId === currentUser?.userId,
+  ),
 )
 
 const myDrivers = computed(() => {
-  if (!myCarrier.value) return []
-  return drivers.value.filter((driver) => driver.carrierId === myCarrier.value.carrierId)
+  if (!myCarrier.value) {
+    return []
+  }
+
+  return drivers.value.filter(
+    (driver) =>
+      driver.carrierId === myCarrier.value.carrierId,
+  )
 })
 
 const availableMyDrivers = computed(() =>
-  myDrivers.value.filter((driver) => driver.canEnter === true),
+  myDrivers.value.filter(
+    (driver) => driver.canEnter === true,
+  ),
 )
 
 const loadData = async () => {
@@ -39,7 +49,9 @@ const loadData = async () => {
     carriers.value = carrierData || []
     drivers.value = driverData || []
   } catch (error) {
-    errorMessage.value = error.message || '운송 요청 데이터를 불러오지 못했습니다.'
+    errorMessage.value =
+      error.message ||
+      '운송 요청 데이터를 불러오지 못했습니다.'
   } finally {
     loading.value = false
   }
@@ -50,7 +62,10 @@ onMounted(loadData)
 
 <template>
   <div class="page-stack">
-    <section v-if="errorMessage" class="panel error-panel">
+    <section
+      v-if="errorMessage"
+      class="panel error-panel"
+    >
       {{ errorMessage }}
     </section>
 
@@ -58,40 +73,75 @@ onMounted(loadData)
       <article class="panel">
         <div class="section-title">
           <h2>운송 요청 등록</h2>
+
           <span class="status-pill">
-            {{ myCarrier?.carrierName || '운송사 조회 중' }}
+            {{
+              myCarrier?.carrierName ||
+              '운송사 조회 중'
+            }}
           </span>
         </div>
 
         <form class="form-grid">
           <div class="field">
-            <label for="containerId">컨테이너</label>
+            <label for="containerId">
+              컨테이너
+            </label>
+
             <select id="containerId">
-              <option v-for="container in containers" :key="container.container_id" :value="container.container_id">
+              <option
+                v-for="container in containers"
+                :key="container.container_id"
+                :value="container.container_id"
+              >
                 {{ container.container_number }}
               </option>
             </select>
           </div>
 
           <div class="field">
-            <label for="workType">작업 유형</label>
+            <label for="workType">
+              작업 유형
+            </label>
+
             <select id="workType">
-              <option value="LOAD_OUT">반출 상차</option>
-              <option value="UNLOAD_IN">반입 하차</option>
+              <option value="LOAD_OUT">
+                반출 상차
+              </option>
+
+              <option value="UNLOAD_IN">
+                반입 하차
+              </option>
             </select>
           </div>
 
           <div class="field">
-            <label for="reservedTime">예약 시간</label>
-            <input id="reservedTime" type="datetime-local" value="2026-07-01T13:00" />
+            <label for="reservedTime">
+              예약 시간
+            </label>
+
+            <input
+              id="reservedTime"
+              type="datetime-local"
+              value="2026-07-01T13:00"
+            />
           </div>
 
           <div class="field">
-            <label for="workStatus">작업 상태</label>
-            <input id="workStatus" value="DISPATCH_WAITING" />
+            <label for="workStatus">
+              작업 상태
+            </label>
+
+            <input
+              id="workStatus"
+              value="DISPATCH_WAITING"
+            />
           </div>
 
-          <button class="primary-button full request-button" type="button">
+          <button
+            class="primary-button full request-button"
+            type="button"
+          >
             운송 요청 등록
           </button>
         </form>
@@ -100,18 +150,30 @@ onMounted(loadData)
       <article class="panel">
         <div class="section-title">
           <h2>출입 가능 기사</h2>
-          <span class="status-pill green">{{ availableMyDrivers.length }}명</span>
+
+          <span class="status-pill green">
+            {{ availableMyDrivers.length }}명
+          </span>
         </div>
 
-        <div v-if="loading" class="empty-box">
+        <div
+          v-if="loading"
+          class="empty-box"
+        >
           불러오는 중...
         </div>
 
-        <div v-else-if="availableMyDrivers.length === 0" class="empty-box">
+        <div
+          v-else-if="availableMyDrivers.length === 0"
+          class="empty-box"
+        >
           출입 가능한 소속 기사가 없습니다.
         </div>
 
-        <div v-else class="match-list">
+        <div
+          v-else
+          class="match-list"
+        >
           <button
             v-for="driver in availableMyDrivers"
             :key="driver.driverId"
@@ -120,10 +182,16 @@ onMounted(loadData)
           >
             <span>
               <b>{{ driver.driverName }}</b>
+
               <small>
-                연락처 {{ driver.driverContact || '-' }} /
-                기사 ID {{ driver.driverId }} /
-                운송사 ID {{ driver.carrierId }}
+                연락처
+                {{ driver.driverContact || '-' }}
+                /
+                기사 ID
+                {{ driver.driverId }}
+                /
+                운송사 ID
+                {{ driver.carrierId }}
               </small>
             </span>
 

@@ -1,5 +1,6 @@
 package aaa.vehicle_p.controller;
 
+import aaa.vehicle_p.model.TractorVehicleInfoDTO;
 import aaa.vehicle_p.model.VehicleDTO;
 import aaa.vehicle_p.service.VehicleService;
 import jakarta.annotation.Resource;
@@ -29,13 +30,24 @@ public class VehicleController {
         return vehicleService.detail(vehicleId);
     }
 
+    @GetMapping("/tractor-info/{plateNumber}")
+    public TractorVehicleInfoDTO tractorInfo(
+            @PathVariable String plateNumber
+    ) {
+        return vehicleService.findTractorInfo(plateNumber);
+    }
+
     @GetMapping("/carrier/{carrierId}")
-    public List<VehicleDTO> listByCarrier(@PathVariable Long carrierId) {
+    public List<VehicleDTO> listByCarrier(
+            @PathVariable Long carrierId
+    ) {
         return vehicleService.findByCarrierId(carrierId);
     }
 
     @GetMapping("/driver/{driverId}")
-    public VehicleDTO findByDriver(@PathVariable Long driverId) {
+    public VehicleDTO findByDriver(
+            @PathVariable Long driverId
+    ) {
         return vehicleService.findByDriverId(driverId);
     }
 
@@ -55,7 +67,10 @@ public class VehicleController {
     }
 
     @PutMapping("/modify/{vehicleId}")
-    public VehicleDTO modify(@PathVariable Long vehicleId, @RequestBody VehicleDTO dto) {
+    public VehicleDTO modify(
+            @PathVariable Long vehicleId,
+            @RequestBody VehicleDTO dto
+    ) {
         dto.setVehicleId(vehicleId);
         vehicleService.update(dto);
         return vehicleService.detail(vehicleId);

@@ -23,7 +23,40 @@ public interface VehicleMapper {
         FROM vehicle
         WHERE plate_number = #{plateNumber}
         """)
-    VehicleDTO findByPlateNumber(String plateNumber);
+    VehicleDTO findByPlateNumber(@Param("plateNumber") String plateNumber);
+
+    @Select("""
+        SELECT
+            v.vehicle_id AS vehicleId,
+            v.plate_number AS plateNumber,
+            v.is_registered AS registeredVehicle,
+            CASE
+                WHEN v.is_registered THEN '예'
+                ELSE '아니오'
+            END AS registeredText,
+            c.carrier_name AS carrierName,
+            d.driver_name AS driverName,
+            v.vehicle_status AS vehicleStatus,
+            v.tractor_no AS tractorNo
+        FROM vehicle v
+        LEFT JOIN carrier c
+            ON v.carrier_id = c.carrier_id
+        LEFT JOIN LATERAL (
+            SELECT driver_id
+            FROM work_order
+            WHERE vehicle_id = v.vehicle_id
+            ORDER BY reserved_time DESC NULLS LAST,
+                     work_order_id DESC
+            LIMIT 1
+        ) wo ON true
+        LEFT JOIN driver d
+            ON wo.driver_id = d.driver_id
+        WHERE v.plate_number = #{plateNumber}
+          AND v.vehicle_type = 'TRACTOR'
+        """)
+    TractorVehicleInfoDTO findTractorInfoByPlateNumber(
+            @Param("plateNumber") String plateNumber
+    );
 
     @Select("""
         SELECT
@@ -59,7 +92,7 @@ public interface VehicleMapper {
         FROM vehicle
         WHERE vehicle_id = #{vehicleId}
         """)
-    VehicleDTO detail(Long vehicleId);
+    VehicleDTO detail(@Param("vehicleId") Long vehicleId);
 
     @Insert("""
         INSERT INTO vehicle (
@@ -110,12 +143,6 @@ public interface VehicleMapper {
         """)
     int update(VehicleDTO dto);
 
-    @Delete("""
-        DELETE FROM vehicle
-        WHERE vehicle_id = #{vehicleId}
-        """)
-    int delete(Long vehicleId);
-
     @Update("""
         UPDATE vehicle
         SET
@@ -145,7 +172,7 @@ public interface VehicleMapper {
         FROM vehicle
         WHERE driver_id = #{driverId}
         """)
-    VehicleDTO findByDriverId(Long driverId);
+    VehicleDTO findByDriverId(@Param("driverId") Long driverId);
 
     @Select("""
         SELECT
@@ -164,5 +191,11 @@ public interface VehicleMapper {
         WHERE carrier_id = #{carrierId}
         ORDER BY vehicle_id DESC
         """)
-    List<VehicleDTO> findByCarrierId(Long carrierId);
+    List<VehicleDTO> findByCarrierId(@Param("carrierId") Long carrierId);
+
+    @Delete("""
+        DELETE FROM vehicle
+        WHERE vehicle_id = #{vehicleId}
+        """)
+    int delete(@Param("vehicleId") Long vehicleId);
 }

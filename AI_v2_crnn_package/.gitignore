@@ -1,0 +1,9 @@
+runs/
+output/
+outputs/
+__pycache__/
+*.pyc
+*.csv
+*.xlsx
+!dependencies.txt
+!model/summary.txt

@@ -1,0 +1,31 @@
+server:
+  port: 80
+
+spring:
+  mvc:
+    view:
+      prefix: /views/
+      suffix: .jsp
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 40MB
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/port_db
+    username: port_user
+    password: 123456
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+jwt:
+  secret: "port-project-jwt-secret-key-must-be-long-enough-2026"
+  expiration-ms: 3600000
+
+ai:
+  plate:
+    url: http://127.0.0.1:8000/api/plate-recognition

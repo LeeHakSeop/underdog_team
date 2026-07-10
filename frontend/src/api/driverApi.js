@@ -16,9 +16,9 @@ export const createDriver = (driver) => {
 }
 
 /**
- * 운송사 승인
+ * 운송사 담당자 승인
  */
-export const carrierApproveDriver = (userId) => {
+export const approveDriverByCarrier = (userId) => {
   return request(`/api/driver/${userId}/carrier-approve`, {
     method: 'PATCH',
   })
@@ -37,9 +37,18 @@ export const deleteDriver = (driverId) => {
   })
 }
 
-export const approveDriverByCarrier = (userId) => {
-  return request(`/api/driver/${userId}/carrier-approve`, {
-    method: 'PATCH',
-  })
+/**
+ * 기사 작업지시 조회(이름 기준)
+ */
+export const fetchMyWorkOrders = (userName) => {
+  return request(
+    `/api/driver/my-work-orders?userName=${encodeURIComponent(userName)}`
+  )
 }
 
+/**
+ * 기사 작업지시 조회(User ID 기준)
+ */
+export const fetchMyWorkOrdersByUserId = (userId) => {
+  return request(`/api/driver/my-work-orders/user/${userId}`)
+}

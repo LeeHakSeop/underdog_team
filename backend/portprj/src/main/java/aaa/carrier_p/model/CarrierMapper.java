@@ -49,7 +49,11 @@ public interface CarrierMapper {
                 #{userId}
             )
             """)
-    @Options(useGeneratedKeys = true, keyProperty = "carrierId", keyColumn = "carrier_id")
+    @Options(
+            useGeneratedKeys = true,
+            keyProperty = "carrierId",
+            keyColumn = "carrier_id"
+    )
     int insert(CarrierDTO dto);
 
     @Update("""
