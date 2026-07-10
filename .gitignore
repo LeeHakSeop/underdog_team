@@ -4,7 +4,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
-
+.tools/
 .env
 .env.*
 !.env.example
@@ -32,3 +32,12 @@ frontend/node_modules/
 *.heic
 *.ico
 *.svg
+*.docx
+*.xlsx
+
+
+# Local AI experiments and training artifacts
+/team_ai/
+/runs/
+team_ai/yolo11/*.pt
+team_ai/yolo11/weights/*.pt
