@@ -2,7 +2,6 @@ package aaa.exception_log_p.model;
 
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -13,35 +12,31 @@ public interface ExceptionLogMapper {
 
     @Select("""
             SELECT
-                exception_log_id,
-                gate_log_id,
-                vehicle_id,
+                NULL AS exceptionLogId,
+                NULL AS gateLogId,
+                NULL AS vehicleId,
                 plate_number,
                 exception_type,
                 exception_message,
-                occurred_time,
+                occured_time AS occurredTime,
                 process_status,
                 manager_action,
                 processed_time
             FROM exception_log
-            ORDER BY exception_log_id DESC
+            ORDER BY occured_time DESC
             """)
     List<ExceptionLogDTO> list();
 
     @Insert("""
             INSERT INTO exception_log (
-                gate_log_id,
-                vehicle_id,
                 plate_number,
                 exception_type,
                 exception_message,
-                occurred_time,
+                occured_time,
                 process_status,
                 manager_action,
                 processed_time
             ) VALUES (
-                #{gateLogId},
-                #{vehicleId},
                 #{plateNumber},
                 #{exceptionType},
                 #{exceptionMessage},
@@ -51,7 +46,6 @@ public interface ExceptionLogMapper {
                 #{processedTime}
             )
             """)
-    @Options(useGeneratedKeys = true, keyProperty = "exceptionLogId", keyColumn = "exception_log_id")
     int insert(ExceptionLogDTO dto);
 
     @Update("""
@@ -60,7 +54,9 @@ public interface ExceptionLogMapper {
                 process_status = #{processStatus},
                 manager_action = #{managerAction},
                 processed_time = #{processedTime}
-            WHERE exception_log_id = #{exceptionLogId}
+            WHERE plate_number = #{plateNumber}
+              AND exception_type = #{exceptionType}
+              AND occured_time = #{occurredTime}
             """)
     int updateProcess(ExceptionLogDTO dto);
 }

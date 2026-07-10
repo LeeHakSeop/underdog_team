@@ -23,9 +23,10 @@ export function authGuard(to) {
     return true
   }
 
+  const token = localStorage.getItem('token')
   const user = JSON.parse(localStorage.getItem('portGateUser') || 'null')
 
-  if (!user) {
+  if (!token || !user) {
     return '/login'
   }
 

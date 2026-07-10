@@ -31,4 +31,8 @@ public class WorkOrderService {
     public TrailerWorkInfoDTO findTrailerWorkInfo(Long vehicleId) {
         return mapper.findTrailerWorkInfoByVehicleId(vehicleId);
     }
+
+    public int updateStatus(Long workOrderId, String workStatus) {
+        return mapper.updateStatus(workOrderId, workStatus);
+    }
 }

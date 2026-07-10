@@ -10,4 +10,5 @@ public class DriverDTO {
     private Boolean isRegistered;
     private Long carrierId;
     private Boolean canEnter;
+    private Long userId;
 }

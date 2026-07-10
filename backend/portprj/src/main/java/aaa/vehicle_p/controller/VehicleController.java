@@ -29,10 +29,29 @@ public class VehicleController {
         return vehicleService.findTractorInfo(plateNumber);
     }
 
+    @GetMapping("/carrier/{carrierId}")
+    public List<VehicleDTO> listByCarrier(@PathVariable Long carrierId) {
+        return vehicleService.findByCarrierId(carrierId);
+    }
+
+    @GetMapping("/driver/{driverId}")
+    public VehicleDTO findByDriver(@PathVariable Long driverId) {
+        return vehicleService.findByDriverId(driverId);
+    }
+
     @PostMapping("/reg")
     public VehicleDTO reg(@RequestBody VehicleDTO dto) {
         vehicleService.insert(dto);
         return dto;
+    }
+
+    @PatchMapping("/{vehicleId}/approval")
+    public VehicleDTO updateApproval(
+            @PathVariable Long vehicleId,
+            @RequestBody VehicleDTO dto
+    ) {
+        vehicleService.updateApproval(vehicleId, dto);
+        return vehicleService.detail(vehicleId);
     }
 
     @PutMapping("/modify/{vehicleId}")

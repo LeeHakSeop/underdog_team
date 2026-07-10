@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { createVehicle, deleteVehicle, fetchVehicles, updateVehicle } from '@/api/vehicleApi'
+import { createVehicle, deleteVehicle, fetchVehicles, updateVehicle, updateVehicleApproval } from '@/api/vehicleApi'
 
 export const useVehicleStore = defineStore('vehicle', {
   state: () => ({
@@ -47,6 +47,21 @@ export const useVehicleStore = defineStore('vehicle', {
         await this.loadVehicles()
       } catch (error) {
         this.error = '차량 수정에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async approveVehicle(vehicleId, isRegistered) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await updateVehicleApproval(vehicleId, isRegistered)
+        await this.loadVehicles()
+      } catch (error) {
+        this.error = '차량 승인 처리에 실패했습니다.'
         throw error
       } finally {
         this.loading = false

@@ -22,6 +22,10 @@ mybatis:
   configuration:
     map-underscore-to-camel-case: true
 
+jwt:
+  secret: "port-project-jwt-secret-key-must-be-long-enough-2026"
+  expiration-ms: 3600000
+
 ai:
   plate:
     url: http://127.0.0.1:8000/api/plate-recognition

@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import CarrierDashboardView from '../views/carrier/CarrierDashboardView.vue'
+import CarrierApprovalDriverView from '../views/carrier/CarrierApprovalDriverView.vue'
+import CarrierVehicleRegisterView from '../views/carrier/CarrierVehicleRegisterView.vue'
 import CarrierRequestsView from '../views/carrier/CarrierRequestsView.vue'
 import CarrierApprovalsView from '../views/carrier/CarrierApprovalsView.vue'
 import DriverDashboardView from '../views/driver/DriverDashboardView.vue'
@@ -38,6 +40,18 @@ const router = createRouter({
           name: 'carrier-dashboard',
           component: CarrierDashboardView,
           meta: { role: 'carrier', title: '운송사 업무' },
+        },
+        {
+          path: 'driver-approval',
+          name: 'carrier-driver-approval',
+          component: CarrierApprovalDriverView,
+          meta: { role: 'carrier', title: '기사 가입 승인' },
+        },
+        {
+          path: 'vehicle-register',
+          name: 'carrier-vehicle-register',
+          component: CarrierVehicleRegisterView,
+          meta: { role: 'carrier', title: '트레일러 배정' },
         },
         {
           path: 'requests',

@@ -14,6 +14,8 @@ CARRIER
 */
 
 import CarrierDashboardView from '@/views/carrier/CarrierDashboardView.vue'
+import CarrierApprovalDriverView from '@/views/carrier/CarrierApprovalDriverView.vue'
+import CarrierVehicleRegisterView from '@/views/carrier/CarrierVehicleRegisterView.vue'
 import CarrierRequestsView from '@/views/carrier/CarrierRequestsView.vue'
 import CarrierApprovalsView from '@/views/carrier/CarrierApprovalsView.vue'
 
@@ -28,6 +30,18 @@ export default [
         name: 'carrier-dashboard',
         component: CarrierDashboardView,
         meta: { role: 'CARRIER', title: '운송사 업무' },
+      },
+      {
+        path: 'driver-approval',
+        name: 'carrier-driver-approval',
+        component: CarrierApprovalDriverView,
+        meta: { role: 'CARRIER', title: '기사 가입 승인' },
+      },
+      {
+        path: 'vehicle-register',
+        name: 'carrier-vehicle-register',
+        component: CarrierVehicleRegisterView,
+        meta: { role: 'CARRIER', title: '트레일러 배정' },
       },
       {
         path: 'requests',

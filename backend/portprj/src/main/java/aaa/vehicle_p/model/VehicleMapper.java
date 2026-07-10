@@ -13,6 +13,7 @@ import java.util.List;
 public interface VehicleMapper {
 
     @Select("""
+<<<<<<< HEAD
             SELECT
                 vehicle_id,
                 plate_number,
@@ -26,6 +27,23 @@ public interface VehicleMapper {
             FROM vehicle
             WHERE plate_number = #{plateNumber}
             """)
+=======
+        SELECT
+            vehicle_id,
+            plate_number,
+            vehicle_type,
+            tonnage,
+            is_registered,
+            vehicle_status,
+            tractor_no,
+            chassis_no,
+            driver_id,
+            carrier_id,
+            user_id
+        FROM vehicle
+        WHERE plate_number = #{plateNumber}
+        """)
+>>>>>>> origin/main
     VehicleDTO findByPlateNumber(String plateNumber);
 
     @Select("""
@@ -63,7 +81,9 @@ public interface VehicleMapper {
                 vehicle_status,
                 tractor_no,
                 chassis_no,
-                carrier_id
+                driver_id,
+                carrier_id,
+                user_id
             FROM vehicle
             ORDER BY vehicle_id DESC
             """)
@@ -79,7 +99,9 @@ public interface VehicleMapper {
                 vehicle_status,
                 tractor_no,
                 chassis_no,
-                carrier_id
+                driver_id,
+                carrier_id,
+                user_id
             FROM vehicle
             WHERE vehicle_id = #{vehicleId}
             """)
@@ -94,7 +116,9 @@ public interface VehicleMapper {
                 vehicle_status,
                 tractor_no,
                 chassis_no,
-                carrier_id
+                driver_id,
+                carrier_id,
+                user_id
             ) VALUES (
                 #{plateNumber},
                 #{vehicleType},
@@ -103,7 +127,9 @@ public interface VehicleMapper {
                 #{vehicleStatus},
                 #{tractorNo},
                 #{chassisNo},
-                #{carrierId}
+                #{driverId},
+                #{carrierId},
+                #{userId}
             )
             """)
     @Options(useGeneratedKeys = true, keyProperty = "vehicleId", keyColumn = "vehicle_id")
@@ -119,10 +145,62 @@ public interface VehicleMapper {
                 vehicle_status = #{vehicleStatus},
                 tractor_no = #{tractorNo},
                 chassis_no = #{chassisNo},
-                carrier_id = #{carrierId}
+                driver_id = #{driverId},
+                carrier_id = #{carrierId},
+                user_id = #{userId}
             WHERE vehicle_id = #{vehicleId}
             """)
     int update(VehicleDTO dto);
+
+    @Update("""
+            UPDATE vehicle
+            SET
+                is_registered = #{isRegistered},
+                vehicle_status = #{vehicleStatus}
+            WHERE vehicle_id = #{vehicleId}
+            """)
+    int updateApproval(
+            @Param("vehicleId") Long vehicleId,
+            @Param("isRegistered") boolean isRegistered,
+            @Param("vehicleStatus") String vehicleStatus
+    );
+
+    @Select("""
+            SELECT
+                vehicle_id,
+                plate_number,
+                vehicle_type,
+                tonnage,
+                is_registered,
+                vehicle_status,
+                tractor_no,
+                chassis_no,
+                driver_id,
+                carrier_id,
+                user_id
+            FROM vehicle
+            WHERE driver_id = #{driverId}
+            """)
+    VehicleDTO findByDriverId(Long driverId);
+
+    @Select("""
+            SELECT
+                vehicle_id,
+                plate_number,
+                vehicle_type,
+                tonnage,
+                is_registered,
+                vehicle_status,
+                tractor_no,
+                chassis_no,
+                driver_id,
+                carrier_id,
+                user_id
+            FROM vehicle
+            WHERE carrier_id = #{carrierId}
+            ORDER BY vehicle_id DESC
+            """)
+    List<VehicleDTO> findByCarrierId(Long carrierId);
 
     @Delete("""
             DELETE FROM vehicle

@@ -11,6 +11,7 @@ import aaa.vehicle_p.model.TractorVehicleInfoDTO;
 import aaa.vehicle_p.model.VehicleDTO;
 import aaa.vehicle_p.model.VehicleMapper;
 import aaa.work_order_p.model.TrailerWorkInfoDTO;
+import aaa.work_order_p.model.WorkOrderDTO;
 import aaa.work_order_p.service.WorkOrderService;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Value;
@@ -143,6 +144,10 @@ public class PlateRecognitionService {
                 trailerWorkInfo
         ));
 
+        if (matched) {
+            setWorkData(result, vehicle, plateType);
+        }
+
         return result;
     }
 
@@ -240,6 +245,7 @@ public class PlateRecognitionService {
         plateRecognition.setIsSuccess(Boolean.TRUE.equals(aiResult.getDetected()) && matched && hasRequiredInfo);
         plateRecognition.setConfidence(BigDecimal.valueOf(aiResult.getConfidence() == null ? 0.0 : aiResult.getConfidence()));
         plateRecognition.setErrorMessage(makeErrorMessage(aiResult, matched, isTractor, isTrailer, hasRequiredInfo));
+
         return plateRecognition;
     }
 
@@ -253,6 +259,52 @@ public class PlateRecognitionService {
         }
 
         return null;
+    }
+
+    private void setWorkData(PlateRecognitionResultDTO result, VehicleDTO vehicle, String plateType) {
+        if (plateType == null) {
+            return;
+        }
+
+        if (plateType.equalsIgnoreCase("TRACTOR")) {
+            setTractorData(result, vehicle);
+        }
+
+        if (plateType.equalsIgnoreCase("TRAILER")) {
+            setTrailerData(result, vehicle);
+        }
+    }
+
+    private void setTractorData(PlateRecognitionResultDTO result, VehicleDTO vehicle) {
+        result.setCarrier(plateRecognitionMapper.findCarrier(vehicle.getCarrierId()));
+
+        WorkOrderDTO workOrder = plateRecognitionMapper.findLatestWorkOrderByTractor(vehicle.getVehicleId());
+        result.setWorkOrder(workOrder);
+
+        if (workOrder != null) {
+            result.setDriver(plateRecognitionMapper.findDriver(workOrder.getDriverId()));
+        }
+    }
+
+    private void setTrailerData(PlateRecognitionResultDTO result, VehicleDTO vehicle) {
+        WorkOrderDTO workOrder = plateRecognitionMapper.findLatestWorkOrderByTrailer(vehicle.getVehicleId());
+        result.setWorkOrder(workOrder);
+
+        if (workOrder == null) {
+            return;
+        }
+
+        result.setDriver(plateRecognitionMapper.findDriver(workOrder.getDriverId()));
+
+        if (workOrder.getContainerId() == null) {
+            return;
+        }
+
+        result.setContainer(plateRecognitionMapper.findContainer(workOrder.getContainerId()));
+
+        if (result.getContainer() != null) {
+            result.setYardSector(plateRecognitionMapper.findYardSector(result.getContainer().getSectorId()));
+        }
     }
 
     private ExceptionLogDTO createExceptionLog(
@@ -299,6 +351,7 @@ public class PlateRecognitionService {
         exceptionLog.setExceptionMessage(exceptionMessage);
         exceptionLog.setOccurredTime(LocalDateTime.now());
         exceptionLog.setProcessStatus("UNPROCESSED");
+
         return exceptionLog;
     }
 

@@ -32,11 +32,16 @@ export const request = async (path, options = {}) => {
     //     // 요청 본문이 JSON 형식임을 Spring 서버에 알려줍니다.
     //     headers.set('Content-Type', 'application/json')
     // }
-    //요청 URL에 따라 로그인요청인지 확인 
-    const isLoginRequest = path === '/api/login'
+    // 로그인/회원가입 요청인지 확인
+    const isPublicRequest =
+      path === '/api/login' ||
+      path === '/api/register' ||
+      path === '/api/auth/login' ||
+      path === '/api/auth/register' ||
+      path === '/api/auth/signup'
 
     // 로그인 후 JWT가 존재할 때와 로그인 요청이 아닌 경우만 실행합니다.
-    if (token  && !isLoginRequest){
+    if (token  && !isPublicRequest){
     // Spring 서버에 JWT를 전달합니다.
     // 실제 전송 형태: Authorization: Bearer JWT문자열
     headers.set('Authorization', `Bearer ${token}`)
@@ -59,13 +64,19 @@ export const request = async (path, options = {}) => {
 
   // HTTP 응답 상태가 정상 범위가 아닌 경우 실행합니다.
   // response.ok는 상태 코드가 200~299이면 true입니다.
+  if (response.status === 401 || response.status === 403) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('portGateUser')
+    throw new Error('로그인이 필요합니다.')
+  }
+
   if (!response.ok) {
 
     let msg = '요청 처리 실패'
 
     try {
         const data = await response.json()
-        msg = data.message || msg
+        msg = data.message || data.error || msg
     } catch {
         // 아무것도 안 함
     }
