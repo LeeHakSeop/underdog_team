@@ -1,7 +1,22 @@
 <script setup>
-import { availableDrivers, workOrders } from '../../data/mockData'
+import { computed } from 'vue'
+import { readCurrentUser } from '@/stores/authStore'
+import { useLogisticsData } from '@/composables/useLogisticsData'
 
-const carrierOrders = workOrders.slice(0, 2)
+const currentUser = readCurrentUser()
+const { availableDrivers, carriers, getContainerNumber, getSectorByContainerId, workOrders } = useLogisticsData()
+
+const myCarrier = computed(() => {
+  return carriers.value.find((carrier) => carrier.user_id === currentUser?.userId)
+})
+
+const carrierOrders = computed(() => {
+  if (!myCarrier.value) return []
+  return workOrders.value.filter((order) => order.carrier_id === myCarrier.value.carrier_id)
+})
+
+const pendingOrders = computed(() => carrierOrders.value.filter((order) => !order.is_approved))
+const approvedOrders = computed(() => carrierOrders.value.filter((order) => order.is_approved))
 </script>
 
 <template>
@@ -9,23 +24,23 @@ const carrierOrders = workOrders.slice(0, 2)
     <section class="grid-4">
       <article class="metric-card">
         <span>승인 대기</span>
-        <strong>4</strong>
+        <strong>{{ pendingOrders.length }}</strong>
         <small>관리자 검토 중</small>
       </article>
       <article class="metric-card">
         <span>출입 가능 기사</span>
-        <strong>7</strong>
+        <strong>{{ availableDrivers.length }}</strong>
         <small>등록 기사 기준</small>
       </article>
       <article class="metric-card">
-        <span>오늘 반출</span>
-        <strong>12</strong>
+        <span>승인 작업</span>
+        <strong>{{ approvedOrders.length }}</strong>
         <small>예약 기준</small>
       </article>
       <article class="metric-card">
-        <span>반려</span>
-        <strong>1</strong>
-        <small>보류 컨테이너</small>
+        <span>전체 작업</span>
+        <strong>{{ carrierOrders.length }}</strong>
+        <small>운송사 기준</small>
       </article>
     </section>
 
@@ -46,12 +61,15 @@ const carrierOrders = workOrders.slice(0, 2)
               </tr>
             </thead>
             <tbody>
-              <tr v-for="order in carrierOrders" :key="order.orderNo">
-                <td>{{ order.orderNo }}</td>
-                <td>{{ order.containerNo }}</td>
-                <td>{{ order.sectorCode }}</td>
-                <td><span class="status-pill">{{ order.status }}</span></td>
-                <td>{{ order.time }}</td>
+              <tr v-for="order in carrierOrders" :key="order.work_order_id">
+                <td>{{ order.work_order_id }}</td>
+                <td>{{ getContainerNumber(order.container_id) }}</td>
+                <td>{{ getSectorByContainerId(order.container_id)?.sector_name || '-' }}</td>
+                <td><span class="status-pill">{{ order.work_status }}</span></td>
+                <td>{{ order.reserved_time }}</td>
+              </tr>
+              <tr v-if="carrierOrders.length === 0">
+                <td colspan="5">최근 운송 요청이 없습니다.</td>
               </tr>
             </tbody>
           </table>
@@ -64,12 +82,12 @@ const carrierOrders = workOrders.slice(0, 2)
           <span class="status-pill green">can_enter=Y</span>
         </div>
         <div class="driver-list">
-          <div v-for="driver in availableDrivers" :key="driver.vehicleNo" class="driver-row">
+          <div v-for="driver in availableDrivers" :key="driver.driver_id" class="driver-row">
             <div>
-              <b>{{ driver.name }}</b>
-              <span>{{ driver.vehicleNo }} · {{ driver.distance }}</span>
+              <b>{{ driver.driver_name }}</b>
+              <span>{{ driver.driver_contact || '-' }}</span>
             </div>
-            <span class="status-pill green">{{ driver.status }}</span>
+            <span class="status-pill green">출입 가능</span>
           </div>
         </div>
       </article>

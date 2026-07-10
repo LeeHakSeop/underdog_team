@@ -1,5 +1,30 @@
 <script setup>
-import { events, exceptions } from '../../data/mockData'
+import { computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useGateLogStore } from '@/stores/adminStore/gateLogStore'
+import { useNotificationStore } from '@/stores/adminStore/notificationStore'
+import { useLogisticsData } from '@/composables/useLogisticsData'
+
+const gateLogStore = useGateLogStore()
+const notificationStore = useNotificationStore()
+const { notifications } = storeToRefs(notificationStore)
+const { getPlateNumber } = useLogisticsData()
+
+const events = computed(() => {
+  return gateLogStore.gateLogs.map((log) => ({
+    time: log.entryTime || log.exitTime || '-',
+    type: log.inOutType || '-',
+    target: getPlateNumber(log.vehicleId),
+    message: `${log.gateName || '-'} / ${log.processResult || '-'}`,
+  }))
+})
+
+const exceptions = computed(() => notifications.value)
+
+onMounted(() => {
+  gateLogStore.loadGateLogs()
+  notificationStore.loadNotifications()
+})
 </script>
 
 <template>
@@ -28,11 +53,11 @@ import { events, exceptions } from '../../data/mockData'
           <span class="status-pill red">{{ exceptions.length }}건</span>
         </div>
         <div class="timeline">
-          <div v-for="item in exceptions" :key="item.type + item.vehicleNo" class="timeline-row alert">
-            <time>{{ item.status }}</time>
+          <div v-for="item in exceptions" :key="item.exceptionType + item.plateNumber + item.occurredTime" class="timeline-row alert">
+            <time>{{ item.processStatus }}</time>
             <div>
-              <b>{{ item.type }} · {{ item.vehicleNo }}</b>
-              <span>{{ item.message }}</span>
+              <b>{{ item.exceptionType }} · {{ item.plateNumber }}</b>
+              <span>{{ item.exceptionMessage }}</span>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue'
-import { yardSectors } from '../../data/mockData'
+import { computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useYardSectorStore } from '@/stores/adminStore/yardSectorStore'
 
 const props = defineProps({
   selectedCode: {
@@ -10,10 +11,37 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select'])
+const yardSectorStore = useYardSectorStore()
+const { yardSectors } = storeToRefs(yardSectorStore)
 
 const gate = { x: 8, y: 86 }
+const mapPositions = [
+  { x: 19, y: 27 },
+  { x: 38, y: 27 },
+  { x: 58, y: 43 },
+  { x: 78, y: 43 },
+  { x: 30, y: 69 },
+  { x: 68, y: 69 },
+]
+
+const mapSectors = computed(() => {
+  return yardSectors.value.map((sector, index) => ({
+    ...sector,
+    code: sector.sectorName,
+    count: sector.waitingVehicleCount || 0,
+    statusText: sector.sectorStatus || '-',
+    status: sector.sectorStatus === '혼잡' ? 'congested' : sector.sectorStatus === '작업중' ? 'working' : 'available',
+    x: mapPositions[index % mapPositions.length].x,
+    y: mapPositions[index % mapPositions.length].y,
+  }))
+})
+
 const selectedSector = computed(() => {
-  return yardSectors.find((sector) => sector.code === props.selectedCode) || yardSectors[0]
+  return mapSectors.value.find((sector) => sector.code === props.selectedCode) || mapSectors.value[0]
+})
+
+onMounted(() => {
+  yardSectorStore.loadYardSectors()
 })
 </script>
 
@@ -32,8 +60,8 @@ const selectedSector = computed(() => {
       <div class="route-line route-line-a"></div>
       <div class="route-line route-line-b"></div>
       <button
-        v-for="sector in yardSectors"
-        :key="sector.code"
+        v-for="sector in mapSectors"
+        :key="sector.sectorId"
         class="sector-node"
         :class="[sector.status, { selected: sector.code === selectedSector?.code }]"
         type="button"
@@ -49,9 +77,9 @@ const selectedSector = computed(() => {
     </div>
 
     <div class="map-footer">
-      <span>선택 섹터: {{ selectedSector?.code }}</span>
-      <span>{{ selectedSector?.statusText }}</span>
-      <span>대기 차량: {{ selectedSector?.count }}대</span>
+      <span>선택 섹터: {{ selectedSector?.code || '-' }}</span>
+      <span>{{ selectedSector?.statusText || '-' }}</span>
+      <span>대기 차량: {{ selectedSector?.count || 0 }}대</span>
     </div>
   </div>
 </template>

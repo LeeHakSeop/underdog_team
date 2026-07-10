@@ -1,21 +1,22 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { gateLogs } from '../../data/mockData'
+import { useLogisticsData } from '@/composables/useLogisticsData'
 
 const vehicleQuery = ref('')
 const sortKey = ref('time')
+const { gateLogs, getPlateNumber } = useLogisticsData()
 
 const visibleLogs = computed(() => {
   const query = vehicleQuery.value.trim().toLowerCase()
   const filtered = query
-    ? gateLogs.filter((log) => log.vehicleNo.toLowerCase().includes(query))
-    : [...gateLogs]
+    ? gateLogs.value.filter((log) => getPlateNumber(log.vehicle_id).toLowerCase().includes(query))
+    : [...gateLogs.value]
 
   return filtered.sort((a, b) => {
     if (sortKey.value === 'gate') {
-      return a.gate.localeCompare(b.gate, 'ko')
+      return (a.gate_name || '').localeCompare(b.gate_name || '', 'ko')
     }
-    return a.time.localeCompare(b.time)
+    return (b.entry_time || b.exit_time || '').localeCompare(a.entry_time || a.exit_time || '')
   })
 })
 </script>
@@ -47,13 +48,16 @@ const visibleLogs = computed(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="log in visibleLogs" :key="log.logNo">
-              <td>{{ log.logNo }}</td>
-              <td>{{ log.vehicleNo }}</td>
-              <td>{{ log.gate }}</td>
-              <td>{{ log.type }}</td>
-              <td>{{ log.time }}</td>
-              <td><span class="status-pill">{{ log.result }}</span></td>
+            <tr v-for="log in visibleLogs" :key="log.gate_log_id">
+              <td>{{ log.gate_log_id }}</td>
+              <td>{{ getPlateNumber(log.vehicle_id) }}</td>
+              <td>{{ log.gate_name }}</td>
+              <td>{{ log.in_out_type }}</td>
+              <td>{{ log.entry_time || log.exit_time || '-' }}</td>
+              <td><span class="status-pill">{{ log.process_result }}</span></td>
+            </tr>
+            <tr v-if="visibleLogs.length === 0">
+              <td colspan="6">게이트 로그 데이터가 없습니다.</td>
             </tr>
           </tbody>
         </table>

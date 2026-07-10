@@ -48,7 +48,7 @@ export default [
         path: 'vehicles',
         name: 'driver-vehicles',
         component: DriverVehiclesView,
-        meta: { role: 'DRIVER', title: '차량 등록' },
+        meta: { role: 'DRIVER', title: '내 차량' },
       },
     ],
   },

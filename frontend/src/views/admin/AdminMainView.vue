@@ -1,26 +1,32 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { containers, gateCameras, gateLogs, workOrders } from '../../data/mockData'
+import { useLogisticsData } from '@/composables/useLogisticsData'
 
-const selectedGateId = ref(gateCameras[0]?.id || '')
-const processType = ref(gateCameras[0]?.gateType || 'IN')
+const {
+  gateLogs,
+  getCarrierName,
+  getContainer,
+  getContainerNumber,
+  getDriverName,
+  getPlateNumber,
+  getSectorByContainerId,
+  workOrders,
+} = useLogisticsData()
 
-const selectedGate = computed(() => {
-  return gateCameras.find((camera) => camera.id === selectedGateId.value) || gateCameras[0]
-})
+const selectedGateId = ref('G-01')
+const processType = ref('IN')
 
-const matchedOrder = computed(() => {
-  if (!selectedGate.value?.matchedOrderNo) return null
-  return workOrders.find((order) => order.orderNo === selectedGate.value.matchedOrderNo) || null
-})
+const gateCameras = computed(() => {
+  const rows = gateLogs.value.slice(0, 9).map((log, index) => ({
+    id: log.gate_number || `G-${String(index + 1).padStart(2, '0')}`,
+    name: log.gate_name || `게이트 ${String(index + 1).padStart(2, '0')}`,
+    gateType: log.in_out_type || 'IN',
+    status: log.process_result || '대기',
+    vehicleId: log.vehicle_id,
+    recognizedVehicleNo: getPlateNumber(log.vehicle_id),
+    matchedOrderId: workOrders.value.find((order) => order.vehicle_id === log.vehicle_id)?.work_order_id || '',
+  }))
 
-const matchedContainer = computed(() => {
-  if (!matchedOrder.value) return null
-  return containers.find((container) => container.containerNo === matchedOrder.value.containerNo) || null
-})
-
-const gateRows = computed(() => {
-  const rows = [...gateCameras]
   while (rows.length < 9) {
     const next = rows.length + 1
     rows.push({
@@ -28,11 +34,27 @@ const gateRows = computed(() => {
       name: `게이트 ${String(next).padStart(2, '0')}`,
       gateType: next % 2 === 0 ? 'OUT' : 'IN',
       status: '대기',
+      vehicleId: null,
       recognizedVehicleNo: '',
-      matchedOrderNo: '',
+      matchedOrderId: '',
     })
   }
-  return rows.slice(0, 9)
+
+  return rows
+})
+
+const selectedGate = computed(() => {
+  return gateCameras.value.find((camera) => camera.id === selectedGateId.value) || gateCameras.value[0]
+})
+
+const matchedOrder = computed(() => {
+  if (!selectedGate.value?.matchedOrderId) return null
+  return workOrders.value.find((order) => order.work_order_id === selectedGate.value.matchedOrderId) || null
+})
+
+const matchedContainer = computed(() => {
+  if (!matchedOrder.value) return null
+  return getContainer(matchedOrder.value.container_id)
 })
 
 const processLabel = computed(() => (processType.value === 'IN' ? '입차 처리' : '출차 처리'))
@@ -47,7 +69,7 @@ watch(selectedGate, (gate) => {
     <section class="control-layout">
       <article class="cctv-wall">
         <button
-          v-for="gate in gateRows"
+          v-for="gate in gateCameras"
           :key="gate.id"
           class="cctv-cell"
           :class="{ active: gate.id === selectedGateId, empty: !gate.recognizedVehicleNo }"
@@ -94,19 +116,19 @@ watch(selectedGate, (gate) => {
             <dl>
               <div>
                 <dt>작업번호</dt>
-                <dd>{{ matchedOrder?.orderNo || '-' }}</dd>
+                <dd>{{ matchedOrder?.work_order_id || '-' }}</dd>
               </div>
               <div>
                 <dt>작업유형</dt>
-                <dd>{{ matchedOrder?.workType || '-' }}</dd>
+                <dd>{{ matchedOrder?.work_type || '-' }}</dd>
               </div>
               <div>
                 <dt>예약시간</dt>
-                <dd>{{ matchedOrder?.time || '-' }}</dd>
+                <dd>{{ matchedOrder?.reserved_time || '-' }}</dd>
               </div>
               <div>
                 <dt>작업상태</dt>
-                <dd>{{ matchedOrder?.status || '-' }}</dd>
+                <dd>{{ matchedOrder?.work_status || '-' }}</dd>
               </div>
             </dl>
           </section>
@@ -116,15 +138,15 @@ watch(selectedGate, (gate) => {
             <dl>
               <div>
                 <dt>차량번호</dt>
-                <dd>{{ matchedOrder?.vehicleNo || '-' }}</dd>
+                <dd>{{ matchedOrder ? getPlateNumber(matchedOrder.vehicle_id) : '-' }}</dd>
               </div>
               <div>
                 <dt>기사명</dt>
-                <dd>{{ matchedOrder?.driverName || '-' }}</dd>
+                <dd>{{ matchedOrder ? getDriverName(matchedOrder.driver_id) : '-' }}</dd>
               </div>
               <div>
                 <dt>운송사</dt>
-                <dd>{{ matchedOrder?.carrierName || '-' }}</dd>
+                <dd>{{ matchedOrder ? getCarrierName(matchedOrder.carrier_id) : '-' }}</dd>
               </div>
             </dl>
           </section>
@@ -134,15 +156,15 @@ watch(selectedGate, (gate) => {
             <dl>
               <div>
                 <dt>컨테이너</dt>
-                <dd>{{ matchedOrder?.containerNo || '-' }}</dd>
+                <dd>{{ matchedOrder ? getContainerNumber(matchedOrder.container_id) : '-' }}</dd>
               </div>
               <div>
                 <dt>규격/유형</dt>
-                <dd>{{ matchedContainer ? `${matchedContainer.sizeType} / ${matchedContainer.type}` : '-' }}</dd>
+                <dd>{{ matchedContainer ? `${matchedContainer.container_size} / ${matchedContainer.shipping_line}` : '-' }}</dd>
               </div>
               <div>
                 <dt>배정 섹터</dt>
-                <dd>{{ matchedOrder?.sectorCode || '-' }}</dd>
+                <dd>{{ matchedOrder ? getSectorByContainerId(matchedOrder.container_id)?.sector_name || '-' : '-' }}</dd>
               </div>
             </dl>
           </section>
@@ -169,12 +191,19 @@ watch(selectedGate, (gate) => {
           <span>구분</span>
           <span>처리 결과</span>
         </div>
-        <div v-for="log in gateLogs" :key="log.logNo" class="compact-row">
-          <span>{{ log.time }}</span>
-          <span>{{ log.vehicleNo }}</span>
-          <span>{{ log.gate }}</span>
-          <span>{{ log.type }}</span>
-          <span>{{ log.result }}</span>
+        <div v-for="log in gateLogs" :key="log.gate_log_id" class="compact-row">
+          <span>{{ log.entry_time || log.exit_time || '-' }}</span>
+          <span>{{ getPlateNumber(log.vehicle_id) }}</span>
+          <span>{{ log.gate_name }}</span>
+          <span>{{ log.in_out_type }}</span>
+          <span>{{ log.process_result }}</span>
+        </div>
+        <div v-if="gateLogs.length === 0" class="compact-row">
+          <span>-</span>
+          <span>게이트 로그 데이터가 없습니다.</span>
+          <span>-</span>
+          <span>-</span>
+          <span>-</span>
         </div>
       </div>
     </section>

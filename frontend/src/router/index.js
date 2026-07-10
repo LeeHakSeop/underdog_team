@@ -96,7 +96,7 @@ const router = createRouter({
           path: 'vehicles',
           name: 'driver-vehicles',
           component: DriverVehiclesView,
-          meta: { role: 'driver', title: '차량 등록' },
+          meta: { role: 'driver', title: '내 차량' },
         },
       ],
     },

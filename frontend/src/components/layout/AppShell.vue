@@ -124,7 +124,7 @@ const menus = {
   driver: [
     { label: '기사 작업', path: '/driver/dashboard', icon: 'driver' },
     { label: '작업 현황', path: '/driver/work-status', icon: 'list' },
-    { label: '차량 등록', path: '/driver/vehicles', icon: 'truck' },
+    { label: '내 차량', path: '/driver/vehicles', icon: 'truck' },
   ],
   admin: [
     { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },

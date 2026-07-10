@@ -35,7 +35,17 @@ public class DriverService {
 
     public int update(DriverDTO dto) {
         setDefaultValues(dto);
-        return driverMapper.update(dto);
+        int result = driverMapper.update(dto);
+
+        if (dto.getUserId() != null) {
+            if (Boolean.TRUE.equals(dto.getCanEnter())) {
+                userMapper.updateStatus(dto.getUserId(), "ACTIVE");
+            } else if (Boolean.TRUE.equals(dto.getIsRegistered())) {
+                userMapper.updateStatus(dto.getUserId(), "CARRIER_APPROVED");
+            }
+        }
+
+        return result;
     }
 
     public int delete(Long driverId) {

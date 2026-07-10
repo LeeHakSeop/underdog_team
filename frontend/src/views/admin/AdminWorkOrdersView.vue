@@ -1,13 +1,14 @@
 <script setup>
 import { computed } from 'vue'
-import { workOrders } from '../../data/mockData'
+import { useLogisticsData } from '@/composables/useLogisticsData'
 
+const { workOrders, getCarrierName, getContainer, getContainerNumber, getDriverName, getPlateNumber, getSectorByContainerId } = useLogisticsData()
 const carrierRequests = computed(() => {
-  return workOrders.filter((order) => order.status === '배차 대기')
+  return workOrders.value.filter((order) => order.work_status === 'DISPATCH_WAITING')
 })
 
 const acceptedDriverTasks = computed(() => {
-  return workOrders.filter((order) => ['기사 승낙', '상차 진행'].includes(order.status))
+  return workOrders.value.filter((order) => ['APPROVED', 'IN_PROGRESS', 'WORKING'].includes(order.work_status))
 })
 </script>
 
@@ -34,16 +35,19 @@ const acceptedDriverTasks = computed(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in carrierRequests" :key="order.orderNo">
-              <td>{{ order.orderNo }}</td>
-              <td>{{ order.carrierName }}</td>
-              <td>{{ order.vehicleNo }}</td>
-              <td>{{ order.driverName }}</td>
-              <td>{{ order.containerNo }}</td>
-              <td>{{ order.workType }}</td>
-              <td>{{ order.time }}</td>
-              <td><span class="status-pill amber">{{ order.status }}</span></td>
+            <tr v-for="order in carrierRequests" :key="order.work_order_id">
+              <td>{{ order.work_order_id }}</td>
+              <td>{{ getCarrierName(order.carrier_id) }}</td>
+              <td>{{ getPlateNumber(order.vehicle_id) }}</td>
+              <td>{{ getDriverName(order.driver_id) }}</td>
+              <td>{{ getContainerNumber(order.container_id) }}</td>
+              <td>{{ order.work_type }}</td>
+              <td>{{ order.reserved_time }}</td>
+              <td><span class="status-pill amber">{{ order.work_status }}</span></td>
               <td><button class="ghost-button" type="button">요청 확인</button></td>
+            </tr>
+            <tr v-if="carrierRequests.length === 0">
+              <td colspan="9">배차 대기 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -70,15 +74,18 @@ const acceptedDriverTasks = computed(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in acceptedDriverTasks" :key="order.orderNo">
-              <td>{{ order.orderNo }}</td>
-              <td>{{ order.cargoType }}</td>
-              <td>{{ order.containerNo }}</td>
-              <td>{{ order.vehicleNo }}</td>
-              <td>{{ order.driverName }}</td>
-              <td>{{ order.sectorCode }}</td>
-              <td><span class="status-pill green">{{ order.status }}</span></td>
+            <tr v-for="order in acceptedDriverTasks" :key="order.work_order_id">
+              <td>{{ order.work_order_id }}</td>
+              <td>{{ getContainer(order.container_id)?.shipping_line || '-' }}</td>
+              <td>{{ getContainerNumber(order.container_id) }}</td>
+              <td>{{ getPlateNumber(order.vehicle_id) }}</td>
+              <td>{{ getDriverName(order.driver_id) }}</td>
+              <td>{{ getSectorByContainerId(order.container_id)?.sector_name || '-' }}</td>
+              <td><span class="status-pill green">{{ order.work_status }}</span></td>
               <td><button class="primary-button" type="button">섹터 배치 승인</button></td>
+            </tr>
+            <tr v-if="acceptedDriverTasks.length === 0">
+              <td colspan="8">섹터 배치 대상 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
