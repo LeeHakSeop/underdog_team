@@ -1,6 +1,11 @@
 package aaa.vehicle_p.model;
 
-import org.apache.ibatis.annotations.*;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -8,19 +13,19 @@ import java.util.List;
 public interface VehicleMapper {
 
     @Select("""
-        SELECT
-            vehicle_id,
-            plate_number,
-            vehicle_type,
-            tonnage,
-            is_registered,
-            vehicle_status,
-            tractor_no,
-            chassis_no,
-            carrier_id
-        FROM vehicle
-        WHERE plate_number = #{plateNumber}
-        """)
+            SELECT
+                vehicle_id,
+                plate_number,
+                vehicle_type,
+                tonnage,
+                is_registered,
+                vehicle_status,
+                tractor_no,
+                chassis_no,
+                carrier_id
+            FROM vehicle
+            WHERE plate_number = #{plateNumber}
+            """)
     VehicleDTO findByPlateNumber(String plateNumber);
 
     @Select("""
@@ -28,7 +33,7 @@ public interface VehicleMapper {
                 v.vehicle_id AS vehicleId,
                 v.plate_number AS plateNumber,
                 v.is_registered AS registeredVehicle,
-                CASE WHEN v.is_registered THEN '예' ELSE '아니오' END AS registeredText,
+                CASE WHEN v.is_registered THEN 'YES' ELSE 'NO' END AS registeredText,
                 c.carrier_name AS carrierName,
                 d.driver_name AS driverName,
                 v.vehicle_status AS vehicleStatus,
@@ -41,7 +46,7 @@ public interface VehicleMapper {
                 WHERE vehicle_id = v.vehicle_id
                 ORDER BY reserved_time DESC NULLS LAST, work_order_id DESC
                 LIMIT 1
-            ) wo ON true
+             ) wo ON true
             LEFT JOIN driver d ON wo.driver_id = d.driver_id
             WHERE v.plate_number = #{plateNumber}
               AND v.vehicle_type = 'TRACTOR'
