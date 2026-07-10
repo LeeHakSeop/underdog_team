@@ -171,8 +171,14 @@ watch(selectedGate, (gate) => {
         </div>
 
         <div class="process-footer">
-          <button class="primary-button process-button" :class="{ out: processType === 'OUT' }" type="button">
-            {{ processLabel }}
+          <button
+            class="primary-button process-button"
+            :class="{ out: processType === 'OUT' }"
+            type="button"
+            disabled
+            title="트랙터와 트레일러 검증이 필요한 기능입니다. AI 번호판 인식 메뉴를 이용하세요."
+          >
+            AI 인식 메뉴에서 {{ processLabel }}
           </button>
         </div>
       </aside>

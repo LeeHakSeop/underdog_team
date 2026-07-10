@@ -92,13 +92,13 @@ const submitRequest = async () => {
           <span class="status-pill green">{{ availableDrivers.length }}명</span>
         </div>
         <div class="match-list">
-          <button v-for="driver in availableDrivers" :key="driver.driver_id" class="match-card" type="button">
+          <article v-for="driver in availableDrivers" :key="driver.driver_id" class="match-card">
             <span>
               <b>{{ driver.driver_name }}</b>
               <small>연락처 {{ driver.driver_contact || '-' }}</small>
             </span>
             <strong>{{ driver.can_enter ? '출입 가능' : '출입 제한' }}</strong>
-          </button>
+          </article>
         </div>
       </article>
     </section>

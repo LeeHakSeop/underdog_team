@@ -196,9 +196,10 @@ const logout = () => {
 
       <div class="side-footer">
         <div class="side-note">
-          <b>실시간 운영 현황</b>
-          <span>센터 현황 메뉴에서</span>
-          <span>DB 연동 데이터를 확인하세요.</span>
+          <b>오늘 기준</b>
+          <span>입차 18대</span>
+          <span>배차 대기 9건</span>
+          <span>상차 진행 6건</span>
         </div>
         <button class="logout-button" type="button" title="로그아웃" @click="logout">
           <MenuIcon name="logout" />

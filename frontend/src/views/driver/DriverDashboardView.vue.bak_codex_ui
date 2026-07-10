@@ -14,37 +14,6 @@ const currentWorkOrder = computed(() => {
   return myWorkOrders.value[0] || null
 })
 
-
-/* CODEX DRIVER DASHBOARD START */
-const passStatus = computed(() => {
-  if (!currentWorkOrder.value) {
-    return '대기'
-  }
-
-  if (currentWorkOrder.value.isApproved && currentWorkOrder.value.canEnter) {
-    return '출입 가능'
-  }
-
-  return '승인 대기'
-})
-
-const nextGuide = computed(() => {
-  if (!currentWorkOrder.value) {
-    return '배정된 작업이 없습니다.'
-  }
-
-  if (!currentWorkOrder.value.isApproved) {
-    return '관리자 승인 후 게이트 출입이 가능합니다.'
-  }
-
-  if (!currentWorkOrder.value.canEnter) {
-    return '기사 출입 가능 상태를 운송사 또는 관리자에게 확인하세요.'
-  }
-
-  return `${currentWorkOrder.value.sectorName || '지정 섹터'}로 이동 후 안내 메시지를 확인하세요.`
-})
-/* CODEX DRIVER DASHBOARD END */
-
 const getBooleanText = (value) => {
   if (value === true) {
     return '승인'
@@ -111,27 +80,6 @@ onMounted(() => {
         로그인한 기사에게 배정된 작업정보가 없습니다.
       </div>
     </section>
-
-
-    <!-- CODEX DRIVER DASHBOARD START -->
-    <section v-if="currentWorkOrder" class="driver-operation-panel">
-      <article class="driver-pass-card">
-        <span>최종 출입 상태</span>
-        <strong>{{ passStatus }}</strong>
-        <p>{{ nextGuide }}</p>
-      </article>
-      <article class="driver-pass-card">
-        <span>목적지</span>
-        <strong>{{ currentWorkOrder.sectorName || '-' }}</strong>
-        <p>{{ currentWorkOrder.guideMessage || '야드 안내 메시지가 없습니다.' }}</p>
-      </article>
-      <article class="driver-pass-card">
-        <span>예약 시간</span>
-        <strong>{{ currentWorkOrder.reservedTime || '-' }}</strong>
-        <p>{{ currentWorkOrder.containerNumber || '-' }} / {{ currentWorkOrder.workType || '-' }}</p>
-      </article>
-    </section>
-    <!-- CODEX DRIVER DASHBOARD END -->
 
     <section v-if="currentWorkOrder" class="grid-2 driver-grid">
       <article class="panel">
@@ -305,48 +253,8 @@ onMounted(() => {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
 }
 
-
-/* CODEX DRIVER DASHBOARD START */
-.driver-operation-panel {
-  display: grid;
-  grid-template-columns: 1.1fr 1fr 1fr;
-  gap: 10px;
-}
-
-.driver-pass-card {
-  display: grid;
-  gap: 7px;
-  padding: 14px;
-  background: #f7f9fb;
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--blue-700);
-  border-radius: 2px;
-}
-
-.driver-pass-card span {
-  color: var(--ink-500);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.driver-pass-card strong {
-  color: var(--ink-900);
-  font-size: 22px;
-  font-weight: 900;
-}
-
-.driver-pass-card p {
-  margin: 0;
-  color: var(--ink-700);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-/* CODEX DRIVER DASHBOARD END */
-
 @media (max-width: 900px) {
   .work-summary,
-  .driver-operation-panel,
   .driver-grid {
     grid-template-columns: 1fr;
   }

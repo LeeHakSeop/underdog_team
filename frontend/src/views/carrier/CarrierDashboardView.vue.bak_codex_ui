@@ -17,30 +17,6 @@ const carrierOrders = computed(() => {
 
 const pendingOrders = computed(() => carrierOrders.value.filter((order) => !order.is_approved))
 const approvedOrders = computed(() => carrierOrders.value.filter((order) => order.is_approved))
-
-/* CODEX CARRIER DASHBOARD START */
-const actionCards = computed(() => [
-  {
-    title: '기사 승인',
-    count: availableDrivers.value.length,
-    text: '출입 가능한 기사 현황을 확인합니다.',
-    path: '/carrier/driver-approval',
-  },
-  {
-    title: '트레일러 배정',
-    count: pendingOrders.value.length,
-    text: '승인 대기 작업의 트레일러 배정 상태를 확인합니다.',
-    path: '/carrier/vehicle-register',
-  },
-  {
-    title: '운송 요청',
-    count: carrierOrders.value.length,
-    text: '관리자에게 전달된 작업 요청 흐름을 확인합니다.',
-    path: '/carrier/requests',
-  },
-])
-/* CODEX CARRIER DASHBOARD END */
-
 </script>
 
 <template>
@@ -67,17 +43,6 @@ const actionCards = computed(() => [
         <small>운송사 기준</small>
       </article>
     </section>
-
-
-    <!-- CODEX CARRIER DASHBOARD START -->
-    <section class="grid-3 carrier-action-grid">
-      <RouterLink v-for="card in actionCards" :key="card.title" class="carrier-action-card" :to="card.path">
-        <span>{{ card.title }}</span>
-        <strong>{{ card.count }}</strong>
-        <p>{{ card.text }}</p>
-      </RouterLink>
-    </section>
-    <!-- CODEX CARRIER DASHBOARD END -->
 
     <section class="grid-2">
       <article class="panel">
@@ -131,39 +96,6 @@ const actionCards = computed(() => [
 </template>
 
 <style scoped>
-
-/* CODEX CARRIER DASHBOARD START */
-.carrier-action-card {
-  display: grid;
-  gap: 6px;
-  min-height: 104px;
-  padding: 13px;
-  background: #f7f9fb;
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--blue-700);
-  border-radius: 2px;
-}
-
-.carrier-action-card span {
-  color: var(--ink-500);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.carrier-action-card strong {
-  color: var(--ink-900);
-  font-size: 24px;
-  font-weight: 900;
-}
-
-.carrier-action-card p {
-  margin: 0;
-  color: var(--ink-700);
-  font-size: 12px;
-  font-weight: 800;
-}
-/* CODEX CARRIER DASHBOARD END */
-
 .driver-list {
   display: grid;
   gap: 10px;
