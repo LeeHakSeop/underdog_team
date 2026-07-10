@@ -27,8 +27,8 @@ const getBooleanText = (value) => {
 }
 
 onMounted(() => {
-  if (loginUser.value?.userName) {
-    driverStore.loadMyWorkOrders(loginUser.value.userName)
+  if (loginUser.value?.userId) {
+    driverStore.loadMyWorkOrdersByUserId(loginUser.value.userId)
   }
 })
 </script>

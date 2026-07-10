@@ -116,6 +116,8 @@ const MenuIcon = (props) =>
 const menus = {
   carrier: [
     { label: '운송사 업무', path: '/carrier/dashboard', icon: 'home' },
+    { label: '기사 가입 승인', path: '/carrier/driver-approval', icon: 'driver' },
+    { label: '트레일러 배정', path: '/carrier/vehicle-register', icon: 'truck' },
     { label: '운송 요청', path: '/carrier/requests', icon: 'request' },
     { label: '승인 현황', path: '/carrier/approvals', icon: 'approval' },
   ],
@@ -153,6 +155,7 @@ const toggleSidebar = () => {
 
 const logout = () => {
   localStorage.removeItem('portGateUser')
+  localStorage.removeItem('token')
   router.push('/login')
 }
 </script>

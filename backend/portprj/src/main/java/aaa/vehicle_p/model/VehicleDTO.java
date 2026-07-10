@@ -12,5 +12,7 @@ public class VehicleDTO {
     private String vehicleStatus;
     private String tractorNo;
     private String chassisNo;
+    private Long driverId;
     private Long carrierId;
+    private Long userId;
 }

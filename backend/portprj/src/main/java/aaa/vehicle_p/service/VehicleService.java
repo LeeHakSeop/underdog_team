@@ -1,10 +1,14 @@
 package aaa.vehicle_p.service;
 
+import aaa.driver_p.model.DriverDTO;
+import aaa.driver_p.model.DriverMapper;
+import aaa.user_p.model.UserMapper;
 import aaa.vehicle_p.model.TractorVehicleInfoDTO;
 import aaa.vehicle_p.model.VehicleDTO;
 import aaa.vehicle_p.model.VehicleMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -13,6 +17,12 @@ public class VehicleService {
 
     @Resource
     VehicleMapper vehicleMapper;
+
+    @Resource
+    DriverMapper driverMapper;
+
+    @Resource
+    UserMapper userMapper;
 
     public List<VehicleDTO> list() {
         return vehicleMapper.list();
@@ -26,6 +36,15 @@ public class VehicleService {
         return vehicleMapper.findTractorInfoByPlateNumber(plateNumber);
     }
 
+    public List<VehicleDTO> findByCarrierId(Long carrierId) {
+        return vehicleMapper.findByCarrierId(carrierId);
+    }
+
+    public VehicleDTO findByDriverId(Long driverId) {
+        return vehicleMapper.findByDriverId(driverId);
+    }
+
+    @Transactional
     public int insert(VehicleDTO dto) {
         setDefaultValues(dto);
 
@@ -36,6 +55,7 @@ public class VehicleService {
         return vehicleMapper.insert(dto);
     }
 
+    @Transactional
     public int update(VehicleDTO dto) {
         setDefaultValues(dto);
 
@@ -51,13 +71,45 @@ public class VehicleService {
         return vehicleMapper.delete(vehicleId);
     }
 
+    @Transactional
+    public int updateApproval(Long vehicleId, VehicleDTO dto) {
+        VehicleDTO vehicle = vehicleMapper.detail(vehicleId);
+
+        if (vehicle == null) {
+            throw new IllegalArgumentException("차량 정보를 찾을 수 없습니다.");
+        }
+
+        if (vehicle.getDriverId() == null) {
+            throw new IllegalArgumentException("배정 기사가 없는 차량입니다.");
+        }
+
+        DriverDTO driver = driverMapper.detail(vehicle.getDriverId());
+
+        if (driver == null) {
+            throw new IllegalArgumentException("배정된 기사 정보를 찾을 수 없습니다.");
+        }
+
+        boolean approved = Boolean.TRUE.equals(dto.getIsRegistered());
+        String vehicleStatus = approved ? "정상" : "승인거절";
+
+        int result = vehicleMapper.updateApproval(vehicleId, approved, vehicleStatus);
+
+        driverMapper.updateApprovalByDriverId(vehicle.getDriverId(), true, approved);
+
+        if (driver.getUserId() != null) {
+            userMapper.updateStatus(driver.getUserId(), approved ? "ACTIVE" : "CARRIER_APPROVED");
+        }
+
+        return result;
+    }
+
     private void setDefaultValues(VehicleDTO dto) {
         if (dto.getIsRegistered() == null) {
-            dto.setIsRegistered(true);
+            dto.setIsRegistered(false);
         }
 
         if (dto.getVehicleStatus() == null || dto.getVehicleStatus().isBlank()) {
-            dto.setVehicleStatus("ACTIVE");
+            dto.setVehicleStatus("승인대기");
         }
     }
 }

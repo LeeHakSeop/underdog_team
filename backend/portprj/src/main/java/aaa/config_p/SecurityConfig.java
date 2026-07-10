@@ -1,9 +1,15 @@
 package aaa.config_p;
 
+import aaa.filter.JwtFilter;
+import aaa.filter.JwtUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -13,82 +19,60 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
-    /**
-     * Spring Security 기본 설정
-     *
-     * 현재(개발 단계)
-     *  - CSRF 비활성화
-     *  - CORS 허용
-     *  - 모든 API 접근 허용
-     *
-     * 추후(로그인 구현 시)
-     *  - JWT Filter 추가
-     *  - Role(권한) 설정
-     *  - 인증이 필요한 API 설정
-     */
+    private final JwtUtil jwtUtil;
+
+    public SecurityConfig(JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
         http
-                // CSRF(Cross Site Request Forgery) 공격 방지 기능
-                // REST API 개발 시에는 보통 사용하지 않으므로 비활성화
                 .csrf(csrf -> csrf.disable())
-
-                // CORS 정책 적용
-                // 아래 corsConfigurationSource() 설정을 사용
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(
+                                "/api/login",
+                                "/api/register",
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/signup",
+                                "/api/auth/admin-init",
+                                "/error"
+                        ).permitAll()
 
-                // 요청별 접근 권한 설정
-                .authorizeHttpRequests(auth ->
-                        auth
-                                // 현재는 개발 단계이므로 모든 API 허용
-                                .requestMatchers("/api/**").permitAll()
+                        // 관리자 회원관리 API
+                        .requestMatchers("/api/auth/users/**").hasRole("ADMIN")
 
-                                // 그 외 요청도 모두 허용
-                                .anyRequest().permitAll()
-                );
+                        // 기존 기능은 팀 프로젝트 영향 방지를 위해 일단 허용
+                        // 발표 전 권한별로 잠그고 싶으면 아래 permitAll을 authenticated로 변경
+                        .requestMatchers("/api/**").permitAll()
+
+                        .anyRequest().permitAll()
+                )
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable())
+                .addFilterBefore(new JwtFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-
-    /**
-     * CORS(Cross-Origin Resource Sharing) 설정
-     *
-     * Vue(5173) → Spring Boot(8080)
-     * 서로 다른 포트에서 통신할 수 있도록 허용
-     */
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-
         CorsConfiguration config = new CorsConfiguration();
-
-        // 허용할 Origin (Vue 개발 서버)
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-
-        // 허용할 HTTP Method
-        config.setAllowedMethods(List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "DELETE",
-                "OPTIONS"
-        ));
-
-        // 모든 Header 허용
+        config.setAllowedOrigins(List.of("http://localhost:5173", "http://127.0.0.1:5173"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-
-        // Session / Cookie / JWT 등 인증정보 전달 허용
         config.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
-
-        // 모든 요청에 위 CORS 정책 적용
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-
         return source;
     }
-
 }

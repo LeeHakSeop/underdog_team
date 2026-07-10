@@ -1,6 +1,6 @@
 // stores/driverStore.js
 import { defineStore } from 'pinia'
-import { createDriver, deleteDriver, fetchDrivers, fetchMyWorkOrders, updateDriver } from '@/api/driverApi'
+import { approveDriverByCarrier, createDriver, deleteDriver, fetchDrivers, fetchMyWorkOrders, fetchMyWorkOrdersByUserId, updateDriver } from '@/api/driverApi'
 
 export const useDriverStore = defineStore('driver', {
   state: () => ({
@@ -39,6 +39,20 @@ export const useDriverStore = defineStore('driver', {
       }
     },
 
+    async loadMyWorkOrdersByUserId(userId) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        this.myWorkOrders = await fetchMyWorkOrdersByUserId(userId)
+      } catch (error) {
+        this.error = '작업정보를 불러오지 못했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
     async addDriver(driver) {
       this.loading = true
       this.error = ''
@@ -63,6 +77,21 @@ export const useDriverStore = defineStore('driver', {
         await this.loadDrivers()
       } catch (error) {
         this.error = '기사 수정에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async carrierApproveDriver(userId) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await approveDriverByCarrier(userId)
+        await this.loadDrivers()
+      } catch (error) {
+        this.error = '기사 승인에 실패했습니다.'
         throw error
       } finally {
         this.loading = false

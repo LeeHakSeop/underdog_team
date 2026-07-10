@@ -4,9 +4,10 @@ import lombok.Data;
 
 @Data
 public class LoginResponseDTO {
-    Long userId;
-    String loginId;
-    String userName;
-    String roleCode;
-    String token;
+    private Long userId;
+    private String loginId;
+    private String userName;
+    private String roleCode;
+    private String status;
+    private String token;
 }

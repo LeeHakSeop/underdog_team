@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://200.200.200.66:5173")
 @RestController
 @RequestMapping("/api/driver")
 public class DriverController {
@@ -32,6 +31,11 @@ public class DriverController {
         return dto;
     }
 
+    @PatchMapping("/{userId}/carrier-approve")
+    public void carrierApprove(@PathVariable Long userId) {
+        driverService.approveByCarrier(userId);
+    }
+
     @PutMapping("/modify/{driverId}")
     public DriverDTO modify(@PathVariable Long driverId, @RequestBody DriverDTO dto) {
         dto.setDriverId(driverId);
@@ -47,5 +51,10 @@ public class DriverController {
     @GetMapping("/my-work-orders")
     public List<DriverWorkOrderDTO> myWorkOrders(@RequestParam String userName) {
         return driverService.myWorkOrders(userName);
+    }
+
+    @GetMapping("/my-work-orders/user/{userId}")
+    public List<DriverWorkOrderDTO> myWorkOrdersByUserId(@PathVariable Long userId) {
+        return driverService.myWorkOrdersByUserId(userId);
     }
 }

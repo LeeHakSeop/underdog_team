@@ -9,4 +9,5 @@ public class CarrierDTO {
     private String carrierContact;
     private String managerName;
     private String carrierStatus;
+    private Long userId;
 }
