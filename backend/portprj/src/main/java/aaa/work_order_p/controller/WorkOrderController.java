@@ -2,6 +2,7 @@ package aaa.work_order_p.controller;
 
 import aaa.work_order_p.model.TrailerWorkInfoDTO;
 import aaa.work_order_p.model.WorkOrderDTO;
+import aaa.work_order_p.model.WorkOrderProcessResultDTO;
 import aaa.work_order_p.service.WorkOrderService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +37,7 @@ public class WorkOrderController {
         return service.findTrailerWorkInfo(vehicleId);
     }
 
+<<<<<<< HEAD
     @PatchMapping("/{workOrderId}/approve")
     public WorkOrderDTO approve(@PathVariable Long workOrderId) {
         return service.approve(workOrderId);
@@ -43,11 +45,19 @@ public class WorkOrderController {
 
     @PatchMapping("/{workOrderId}/start")
     public WorkOrderDTO start(@PathVariable Long workOrderId) {
+=======
+    @PatchMapping("/{workOrderId}/start")
+    public WorkOrderProcessResultDTO start(@PathVariable Long workOrderId) {
+>>>>>>> origin/pjh
         return service.start(workOrderId);
     }
 
     @PatchMapping("/{workOrderId}/complete")
+<<<<<<< HEAD
     public WorkOrderDTO complete(@PathVariable Long workOrderId) {
+=======
+    public WorkOrderProcessResultDTO complete(@PathVariable Long workOrderId) {
+>>>>>>> origin/pjh
         return service.complete(workOrderId);
     }
 }

@@ -31,6 +31,7 @@ public interface VehicleMapper {
                 v.plate_number AS plateNumber,
                 v.is_registered AS registeredVehicle,
                 CASE WHEN v.is_registered THEN '예' ELSE '아니오' END AS registeredText,
+                wo.driver_id AS driverId,
                 c.carrier_name AS carrierName,
                 d.driver_name AS driverName,
                 v.vehicle_status AS vehicleStatus,

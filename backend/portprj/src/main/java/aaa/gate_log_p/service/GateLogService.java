@@ -1,11 +1,14 @@
 package aaa.gate_log_p.service;
 
+import aaa.container_p.model.ContainerDTO;
+import aaa.container_p.service.ContainerService;
 import aaa.exception_log_p.model.ExceptionLogDTO;
 import aaa.exception_log_p.service.ExceptionLogService;
-import aaa.gate_log_p.model.GateProcessRequestDTO;
-import aaa.gate_log_p.model.GateProcessResultDTO;
 import aaa.gate_log_p.model.GateLogDTO;
 import aaa.gate_log_p.model.GateLogMapper;
+import aaa.gate_log_p.model.GateProcessRequestDTO;
+import aaa.gate_log_p.model.GateProcessResultDTO;
+import aaa.work_order_p.model.WorkOrderDTO;
 import aaa.work_order_p.service.WorkOrderService;
 import aaa.work_order_p.model.WorkOrderDTO;
 import jakarta.annotation.Resource;
@@ -14,15 +17,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class GateLogService {
+
+    private static final String GATE_SUCCESS = "GATE_SUCCESS";
+    private static final String GATE_FAIL = "GATE_FAIL";
 
     @Resource
     GateLogMapper mapper;
 
     @Resource
     WorkOrderService workOrderService;
+
+    @Resource
+    ContainerService containerService;
 
     @Resource
     ExceptionLogService exceptionLogService;
@@ -33,31 +43,33 @@ public class GateLogService {
 
     @Transactional
     public GateProcessResultDTO process(GateProcessRequestDTO dto) {
-        GateProcessResultDTO result = new GateProcessResultDTO();
         String failReason = validateRequest(dto);
         String inOutType = normalizeInOutType(dto == null ? null : dto.getInOutType());
 
         if (failReason != null) {
-            GateLogDTO gateLog = createGateLog(dto, inOutType, "FAIL", false);
-            mapper.insert(gateLog);
-
-            insertExceptionLog(gateLog, dto, failReason);
-
-            result.setSuccess(false);
-            result.setGateLogId(gateLog.getGateLogId());
-            result.setWorkOrderId(dto == null ? null : dto.getWorkOrderId());
-            result.setProcessResult("FAIL");
-            result.setExceptionType(failReason);
-            result.setMessage(makeFailMessage(failReason));
-            return result;
+            return fail(dto, inOutType, failReason);
         }
 
-        GateLogDTO gateLog = createGateLog(dto, inOutType, "SUCCESS", true);
-        mapper.insert(gateLog);
+        WorkOrderDTO workOrder = workOrderService.detail(dto.getWorkOrderId());
+        failReason = validateWorkOrder(dto, workOrder, inOutType);
+
+        if (failReason != null) {
+            return fail(dto, inOutType, failReason);
+        }
 
         String workStatus = "OUT".equals(inOutType) ? "GATE_OUT" : "GATE_IN";
-        workOrderService.updateStatus(dto.getWorkOrderId(), workStatus);
+        int updated = workOrderService.updateStatus(dto.getWorkOrderId(), workStatus);
 
+        if (updated == 0) {
+            return fail(dto, inOutType, "WORK_ORDER_UPDATE_FAILED");
+        }
+
+        containerService.blockExit(dto.getContainerId());
+
+        GateLogDTO gateLog = createGateLog(dto, inOutType, GATE_SUCCESS, true);
+        mapper.insert(gateLog);
+
+        GateProcessResultDTO result = new GateProcessResultDTO();
         result.setSuccess(true);
         result.setGateLogId(gateLog.getGateLogId());
         result.setWorkOrderId(dto.getWorkOrderId());
@@ -127,6 +139,92 @@ public class GateLogService {
         return null;
     }
 
+    private String validateWorkOrder(GateProcessRequestDTO dto, WorkOrderDTO workOrder, String inOutType) {
+        if (workOrder == null) {
+            return "WORK_ORDER_NOT_FOUND";
+        }
+
+        if (!matchesVehicle(dto.getTractorVehicleId(), workOrder.getTractorVehicleId(), workOrder.getVehicleId())) {
+            return "TRACTOR_MISMATCH";
+        }
+
+        if (!matchesVehicle(dto.getTrailerVehicleId(), workOrder.getTrailerVehicleId(), workOrder.getVehicleId())) {
+            return "TRAILER_MISMATCH";
+        }
+
+        if (!Objects.equals(dto.getContainerId(), workOrder.getContainerId())) {
+            return "CONTAINER_MISMATCH";
+        }
+
+        ContainerDTO container = containerService.detail(dto.getContainerId());
+        if (container == null) {
+            return "CONTAINER_NOT_FOUND";
+        }
+
+        if (!Objects.equals(dto.getSectorId(), container.getSectorId())) {
+            return "SECTOR_MISMATCH";
+        }
+
+        if (!Boolean.TRUE.equals(workOrder.getIsApproved())) {
+            return "WORK_ORDER_NOT_APPROVED";
+        }
+
+        String currentStatus = workOrder.getWorkStatus();
+
+        if ("CANCELED".equalsIgnoreCase(currentStatus)) {
+            return "WORK_ORDER_CANCELED";
+        }
+
+        if ("IN".equals(inOutType) && isStatusAny(currentStatus, "GATE_OUT", "COMPLETED", "출차완료", "상차완료", "하차완료")) {
+            return "WORK_ORDER_ALREADY_CLOSED";
+        }
+
+        if ("OUT".equals(inOutType) && !isStatusAny(currentStatus, "COMPLETED", "상차완료", "하차완료")) {
+            return "WORK_ORDER_NOT_COMPLETED";
+        }
+
+        if ("OUT".equals(inOutType) && !Boolean.TRUE.equals(container.getCanExit())) {
+            return "CONTAINER_EXIT_NOT_ALLOWED";
+        }
+
+        return null;
+    }
+
+    private boolean matchesVehicle(Long requestedVehicleId, Long workOrderVehicleId, Long legacyVehicleId) {
+        return Objects.equals(requestedVehicleId, workOrderVehicleId)
+                || Objects.equals(requestedVehicleId, legacyVehicleId);
+    }
+
+    private boolean isStatusAny(String status, String... targets) {
+        if (status == null) {
+            return false;
+        }
+
+        for (String target : targets) {
+            if (status.equalsIgnoreCase(target)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private GateProcessResultDTO fail(GateProcessRequestDTO dto, String inOutType, String failReason) {
+        GateLogDTO gateLog = createGateLog(dto, inOutType, GATE_FAIL, false);
+        mapper.insert(gateLog);
+
+        insertExceptionLog(gateLog, dto, failReason);
+
+        GateProcessResultDTO result = new GateProcessResultDTO();
+        result.setSuccess(false);
+        result.setGateLogId(gateLog.getGateLogId());
+        result.setWorkOrderId(dto == null ? null : dto.getWorkOrderId());
+        result.setProcessResult("FAIL");
+        result.setExceptionType(failReason);
+        result.setMessage(makeFailMessage(failReason));
+        return result;
+    }
+
     private GateLogDTO createGateLog(GateProcessRequestDTO dto, String inOutType, String processResult, boolean managerCheck) {
         GateLogDTO gateLog = new GateLogDTO();
         gateLog.setVehicleId(dto == null ? null : dto.getTrailerVehicleId());
@@ -170,25 +268,59 @@ public class GateLogService {
         if ("REQUEST_EMPTY".equals(failReason)) {
             return "출입 처리 요청값이 없습니다.";
         }
-
         if ("TRACTOR_EMPTY".equals(failReason)) {
             return "트랙터 차량 정보가 없습니다.";
         }
-
         if ("TRAILER_EMPTY".equals(failReason)) {
             return "트레일러 차량 정보가 없습니다.";
         }
-
         if ("WORK_ORDER_EMPTY".equals(failReason)) {
             return "작업정보가 없습니다.";
         }
-
+        if ("WORK_ORDER_NOT_FOUND".equals(failReason)) {
+            return "작업지시를 찾을 수 없습니다.";
+        }
+        if ("WORK_ORDER_NOT_APPROVED".equals(failReason)) {
+            return "승인되지 않은 작업지시입니다.";
+        }
+        if ("WORK_ORDER_UPDATE_FAILED".equals(failReason)) {
+            return "작업 상태 변경에 실패했습니다.";
+        }
+        if ("WORK_ORDER_CANCELED".equals(failReason)) {
+            return "취소된 작업지시입니다.";
+        }
+        if ("WORK_ORDER_ALREADY_CLOSED".equals(failReason)) {
+            return "이미 종료된 작업지시입니다.";
+        }
+        if ("WORK_ORDER_NOT_GATE_IN".equals(failReason)) {
+            return "입차 처리되지 않은 작업은 출차 처리할 수 없습니다.";
+        }
+        if ("WORK_ORDER_NOT_COMPLETED".equals(failReason)) {
+            return "야드 작업이 완료된 후 출차 처리할 수 있습니다.";
+        }
+        if ("CONTAINER_EXIT_NOT_ALLOWED".equals(failReason)) {
+            return "컨테이너가 출차 가능 상태가 아닙니다.";
+        }
+        if ("TRACTOR_MISMATCH".equals(failReason)) {
+            return "트랙터 차량이 작업지시와 일치하지 않습니다.";
+        }
+        if ("TRAILER_MISMATCH".equals(failReason)) {
+            return "트레일러 차량이 작업지시와 일치하지 않습니다.";
+        }
+        if ("CONTAINER_MISMATCH".equals(failReason)) {
+            return "컨테이너 정보가 작업지시와 일치하지 않습니다.";
+        }
+        if ("CONTAINER_NOT_FOUND".equals(failReason)) {
+            return "컨테이너 정보를 찾을 수 없습니다.";
+        }
         if ("CONTAINER_EMPTY".equals(failReason)) {
             return "컨테이너 정보가 없습니다.";
         }
-
         if ("SECTOR_EMPTY".equals(failReason)) {
             return "야드 섹터 정보가 없습니다.";
+        }
+        if ("SECTOR_MISMATCH".equals(failReason)) {
+            return "야드 섹터 정보가 컨테이너와 일치하지 않습니다.";
         }
 
         if ("WORK_ORDER_NOT_FOUND".equals(failReason)) {

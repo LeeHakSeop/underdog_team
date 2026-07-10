@@ -8,6 +8,7 @@ public class TractorVehicleInfoDTO {
     private String plateNumber;
     private Boolean registeredVehicle;
     private String registeredText;
+    private Long driverId;
     private String carrierName;
     private String driverName;
     private String vehicleStatus;
