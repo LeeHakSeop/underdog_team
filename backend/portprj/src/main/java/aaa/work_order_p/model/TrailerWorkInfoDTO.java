@@ -9,7 +9,12 @@ public class TrailerWorkInfoDTO {
     private String workType;
 
     private Long vehicleId;
+    private Long tractorVehicleId;
+    private Long trailerVehicleId;
+    private Long driverId;
     private Long containerId;
+    private String workStatus;
+    private Boolean isApproved;
     private String containerNumber;
     private String containerLocation;
     private String yardLocation;
@@ -20,6 +25,8 @@ public class TrailerWorkInfoDTO {
     private Long sectorId;
     private String sectorName;
     private String blockName;
+    private String sectorStatus;
     private String guideMessage;
+    private String altWaitingArea;
     private String workGuideMessage;
 }
