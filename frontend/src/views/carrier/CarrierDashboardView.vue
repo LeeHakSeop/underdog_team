@@ -1,9 +1,12 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { readCurrentUser } from '@/stores/authStore'
 import { useLogisticsData } from '@/composables/useLogisticsData'
+import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
 
 const currentUser = readCurrentUser()
+const workOrderStore = useWorkOrderStore()
+let refreshTimer = null
 const { availableDrivers, carriers, getContainerNumber, getSectorByContainerId, workOrders } = useLogisticsData()
 
 const myCarrier = computed(() => {
@@ -17,6 +20,18 @@ const carrierOrders = computed(() => {
 
 const pendingOrders = computed(() => carrierOrders.value.filter((order) => !order.is_approved))
 const approvedOrders = computed(() => carrierOrders.value.filter((order) => order.is_approved))
+
+onMounted(() => {
+  refreshTimer = setInterval(() => {
+    if (!workOrderStore.loading) {
+      workOrderStore.loadWorkOrders().catch(() => {})
+    }
+  }, 5000)
+})
+
+onUnmounted(() => {
+  clearInterval(refreshTimer)
+})
 
 /* CODEX CARRIER DASHBOARD START */
 const actionCards = computed(() => [

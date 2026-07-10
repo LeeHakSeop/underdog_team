@@ -6,6 +6,7 @@ export const useDriverStore = defineStore('driver', {
   state: () => ({
     drivers: [],
     myWorkOrders: [],
+    workOrdersLoaded: false,
     loading: false,
     error: '',
   }),
@@ -26,11 +27,14 @@ export const useDriverStore = defineStore('driver', {
     },
 
     async loadMyWorkOrders(userName) {
-      this.loading = true
+      if (!this.workOrdersLoaded) {
+        this.loading = true
+      }
       this.error = ''
 
       try {
         this.myWorkOrders = await fetchMyWorkOrders(userName)
+        this.workOrdersLoaded = true
       } catch (error) {
         this.error = '작업정보를 불러오지 못했습니다.'
         throw error
@@ -40,11 +44,14 @@ export const useDriverStore = defineStore('driver', {
     },
 
     async loadMyWorkOrdersByUserId(userId) {
-      this.loading = true
+      if (!this.workOrdersLoaded) {
+        this.loading = true
+      }
       this.error = ''
 
       try {
         this.myWorkOrders = await fetchMyWorkOrdersByUserId(userId)
+        this.workOrdersLoaded = true
       } catch (error) {
         this.error = '작업정보를 불러오지 못했습니다.'
         throw error

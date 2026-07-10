@@ -9,6 +9,9 @@ public interface WorkOrderMapper {
     @Select("SELECT * FROM work_order ORDER BY work_order_id DESC")
     List<WorkOrderDTO> list();
 
+    @Select("SELECT * FROM work_order WHERE work_order_id = #{workOrderId}")
+    WorkOrderDTO detail(Long workOrderId);
+
     @Insert("""
             INSERT INTO work_order (
                 work_type,
@@ -73,4 +76,12 @@ public interface WorkOrderMapper {
             WHERE work_order_id = #{workOrderId}
             """)
     int updateStatus(@Param("workOrderId") Long workOrderId, @Param("workStatus") String workStatus);
+
+    @Update("""
+            UPDATE work_order
+            SET is_approved = true,
+                work_status = 'APPROVED'
+            WHERE work_order_id = #{workOrderId}
+            """)
+    int approve(Long workOrderId);
 }

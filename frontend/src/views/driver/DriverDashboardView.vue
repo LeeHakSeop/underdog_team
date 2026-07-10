@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDriverStore } from '@/stores/driverStore'
 
 const driverStore = useDriverStore()
 const { myWorkOrders, loading, error } = storeToRefs(driverStore)
+let refreshTimer = null
 
 const loginUser = computed(() => {
   return JSON.parse(localStorage.getItem('portGateUser') || 'null')
@@ -60,7 +61,17 @@ const getBooleanText = (value) => {
 onMounted(() => {
   if (loginUser.value?.userId) {
     driverStore.loadMyWorkOrdersByUserId(loginUser.value.userId)
+
+    refreshTimer = setInterval(() => {
+      if (!driverStore.loading) {
+        driverStore.loadMyWorkOrdersByUserId(loginUser.value.userId).catch(() => {})
+      }
+    }, 5000)
   }
+})
+
+onUnmounted(() => {
+  clearInterval(refreshTimer)
 })
 </script>
 

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDashboardStore } from '@/stores/adminStore/dashboardStore'
 
@@ -10,6 +10,7 @@ const summary = computed(() => dashboard.value?.summary || {})
 const workStatusList = computed(() => dashboard.value?.workStatusList || [])
 const recentWorkOrders = computed(() => dashboard.value?.recentWorkOrders || [])
 const sectorList = computed(() => dashboard.value?.sectorList || [])
+let refreshTimer = null
 
 const recognitionRate = computed(() => {
   const total = summary.value.recognitionTotal || 0
@@ -52,6 +53,20 @@ const workCards = computed(() => [
   { label: '완료', value: summary.value.workDone || 0 },
 ])
 
+const getWorkCount = (workStatus) => {
+  const status = workStatusList.value.find((item) => item.workStatus === workStatus)
+  return status ? status.workCount : 0
+}
+
+const workFlowCards = computed(() => [
+  { label: '작업 요청', status: 'DISPATCH_WAITING', count: getWorkCount('DISPATCH_WAITING') },
+  { label: '승인 완료', status: 'APPROVED', count: getWorkCount('APPROVED') },
+  { label: '입차 완료', status: 'GATE_IN', count: getWorkCount('GATE_IN') },
+  { label: '작업 진행', status: 'IN_PROGRESS', count: getWorkCount('IN_PROGRESS') },
+  { label: '작업 완료', status: 'COMPLETED', count: getWorkCount('COMPLETED') },
+  { label: '출차 완료', status: 'GATE_OUT', count: getWorkCount('GATE_OUT') },
+])
+
 
 /* CODEX ADMIN DASHBOARD START */
 const priorityCards = computed(() => [
@@ -84,6 +99,16 @@ const priorityCards = computed(() => [
 
 onMounted(() => {
   dashboardStore.loadDashboard()
+
+  refreshTimer = setInterval(() => {
+    if (!dashboardStore.loading) {
+      dashboardStore.loadDashboard().catch(() => {})
+    }
+  }, 5000)
+})
+
+onUnmounted(() => {
+  clearInterval(refreshTimer)
 })
 </script>
 
@@ -111,6 +136,24 @@ onMounted(() => {
           <strong>{{ card.value }}</strong>
           <small>{{ card.hint }}</small>
         </article>
+      </div>
+    </section>
+
+    <section v-if="!loading && !error" class="panel">
+      <div class="section-title">
+        <h2>전체 작업 흐름</h2>
+        <span class="status-pill">5초마다 갱신</span>
+      </div>
+
+      <div class="work-flow-grid">
+        <template v-for="(card, index) in workFlowCards" :key="card.status">
+          <article class="flow-card">
+            <span>{{ card.label }}</span>
+            <strong>{{ card.count }}건</strong>
+            <small>{{ card.status }}</small>
+          </article>
+          <span v-if="index < workFlowCards.length - 1" class="flow-arrow">→</span>
+        </template>
       </div>
     </section>
 
@@ -238,6 +281,42 @@ onMounted(() => {
 <style scoped>
 .dashboard-grid {
   grid-template-columns: minmax(0, 0.85fr) minmax(360px, 1.15fr);
+}
+
+.work-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr) minmax(18px, 28px)) minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+
+.flow-card {
+  display: grid;
+  gap: 4px;
+  min-height: 82px;
+  padding: 10px;
+  background: #f6f9fd;
+  border: 1px solid var(--line);
+}
+
+.flow-card span,
+.flow-card small {
+  color: var(--ink-500);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.flow-card strong {
+  color: var(--ink-900);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.flow-arrow {
+  color: var(--blue-700);
+  font-size: 20px;
+  font-weight: 900;
+  text-align: center;
 }
 
 .empty-box {
@@ -391,11 +470,23 @@ onMounted(() => {
   .sector-list {
     grid-template-columns: 1fr;
   }
+
+  .work-flow-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .flow-arrow {
+    display: none;
+  }
 }
 
 @media (max-width: 760px) {
   .work-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .work-flow-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

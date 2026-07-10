@@ -7,8 +7,10 @@ import aaa.gate_log_p.model.GateProcessResultDTO;
 import aaa.gate_log_p.model.GateLogDTO;
 import aaa.gate_log_p.model.GateLogMapper;
 import aaa.work_order_p.service.WorkOrderService;
+import aaa.work_order_p.model.WorkOrderDTO;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +31,7 @@ public class GateLogService {
         return mapper.list();
     }
 
+    @Transactional
     public GateProcessResultDTO process(GateProcessRequestDTO dto) {
         GateProcessResultDTO result = new GateProcessResultDTO();
         String failReason = validateRequest(dto);
@@ -87,6 +90,38 @@ public class GateLogService {
 
         if (dto.getSectorId() == null) {
             return "SECTOR_EMPTY";
+        }
+
+        WorkOrderDTO workOrder = workOrderService.detail(dto.getWorkOrderId());
+
+        if (workOrder == null) {
+            return "WORK_ORDER_NOT_FOUND";
+        }
+
+        if (!Boolean.TRUE.equals(workOrder.getIsApproved())) {
+            return "WORK_NOT_APPROVED";
+        }
+
+        if (workOrder.getContainerId() != null && !workOrder.getContainerId().equals(dto.getContainerId())) {
+            return "CONTAINER_MISMATCH";
+        }
+
+        if (workOrder.getTractorVehicleId() != null && !workOrder.getTractorVehicleId().equals(dto.getTractorVehicleId())) {
+            return "TRACTOR_MISMATCH";
+        }
+
+        if (workOrder.getTrailerVehicleId() != null && !workOrder.getTrailerVehicleId().equals(dto.getTrailerVehicleId())) {
+            return "TRAILER_MISMATCH";
+        }
+
+        String inOutType = normalizeInOutType(dto.getInOutType());
+
+        if ("IN".equals(inOutType) && !"APPROVED".equals(workOrder.getWorkStatus())) {
+            return "INVALID_IN_STATUS";
+        }
+
+        if ("OUT".equals(inOutType) && !"COMPLETED".equals(workOrder.getWorkStatus())) {
+            return "INVALID_OUT_STATUS";
         }
 
         return null;
@@ -154,6 +189,34 @@ public class GateLogService {
 
         if ("SECTOR_EMPTY".equals(failReason)) {
             return "야드 섹터 정보가 없습니다.";
+        }
+
+        if ("WORK_ORDER_NOT_FOUND".equals(failReason)) {
+            return "작업정보를 찾을 수 없습니다.";
+        }
+
+        if ("WORK_NOT_APPROVED".equals(failReason)) {
+            return "승인되지 않은 작업입니다.";
+        }
+
+        if ("CONTAINER_MISMATCH".equals(failReason)) {
+            return "작업정보와 컨테이너 정보가 일치하지 않습니다.";
+        }
+
+        if ("TRACTOR_MISMATCH".equals(failReason)) {
+            return "작업정보와 트랙터 정보가 일치하지 않습니다.";
+        }
+
+        if ("TRAILER_MISMATCH".equals(failReason)) {
+            return "작업정보와 트레일러 정보가 일치하지 않습니다.";
+        }
+
+        if ("INVALID_IN_STATUS".equals(failReason)) {
+            return "승인 완료 상태의 작업만 입차할 수 있습니다.";
+        }
+
+        if ("INVALID_OUT_STATUS".equals(failReason)) {
+            return "작업 완료 상태에서만 출차할 수 있습니다.";
         }
 
         return "출입 처리를 진행할 수 없습니다.";

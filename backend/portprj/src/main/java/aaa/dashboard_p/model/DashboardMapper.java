@@ -21,7 +21,7 @@ public interface DashboardMapper {
                 (SELECT COUNT(*) FROM plate_recognition WHERE is_success = false) AS recognitionFail,
                 (SELECT COUNT(*) FROM exception_log WHERE process_status IS NULL OR process_status <> 'PROCESSED') AS exceptionOpen,
                 (SELECT COUNT(*) FROM work_order) AS workTotal,
-                (SELECT COUNT(*) FROM work_order WHERE work_status IN ('DISPATCH_WAITING', 'READY', 'WAITING')) AS workReady,
+                (SELECT COUNT(*) FROM work_order WHERE work_status IN ('DISPATCH_WAITING', 'APPROVED', 'READY', 'WAITING')) AS workReady,
                 (SELECT COUNT(*) FROM work_order WHERE work_status IN ('GATE_IN', 'IN_PROGRESS', 'WORKING')) AS workInProgress,
                 (SELECT COUNT(*) FROM work_order WHERE work_status IN ('GATE_OUT', 'DONE', 'COMPLETED')) AS workDone
             """)
