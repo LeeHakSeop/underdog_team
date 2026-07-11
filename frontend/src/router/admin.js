@@ -1,28 +1,11 @@
-/*
-=========================================
-관리자(Admin) Router
-=========================================
-
-역할
-- 관리자 메인
-- 센터 현황
-- 작업 관리
-- 차량 출입 조회
-- 컨테이너 조회
-- 이벤트 관리
-
-접근 권한
-ADMIN
-=========================================
-*/
-
 import AdminMainView from '@/views/admin/AdminMainView.vue'
 import AdminDashboardView from '@/views/admin/AdminDashboardView.vue'
-import AdminTasksView from '@/views/admin/AdminTasksView.vue'
+import AdminWorkOrdersView from '@/views/admin/AdminWorkOrdersView.vue'
 import AdminGateLogsView from '@/views/admin/AdminGateLogsView.vue'
 import AdminContainersView from '@/views/admin/AdminContainersView.vue'
 import AdminEventsView from '@/views/admin/AdminEventsView.vue'
 import AdminMembersView from '@/views/admin/AdminMembersView.vue'
+import AdminPlateRecognitionView from '@/views/admin/AdminPlateRecognitionView.vue'
 
 export default [
   {
@@ -46,13 +29,17 @@ export default [
         path: 'members',
         name: 'admin-members',
         component: AdminMembersView,
-        meta: { role: 'ADMIN', title: '가입 인원관리' },
+        meta: { role: 'ADMIN', title: '가입 회원 관리' },
+      },
+      {
+        path: 'work-orders',
+        name: 'admin-work-orders',
+        component: AdminWorkOrdersView,
+        meta: { role: 'ADMIN', title: '작업 관리' },
       },
       {
         path: 'tasks',
-        name: 'admin-tasks',
-        component: AdminTasksView,
-        meta: { role: 'ADMIN', title: '작업 관리' },
+        redirect: '/admin/work-orders',
       },
       {
         path: 'gate-logs',
@@ -71,6 +58,12 @@ export default [
         name: 'admin-events',
         component: AdminEventsView,
         meta: { role: 'ADMIN', title: '알림/이벤트' },
+      },
+      {
+        path: 'plate-recognition',
+        name: 'plate-recognition',
+        component: AdminPlateRecognitionView,
+        meta: { role: 'ADMIN', title: '인식조회' },
       },
     ],
   },

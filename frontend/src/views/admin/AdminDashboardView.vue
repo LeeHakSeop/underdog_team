@@ -1,10 +1,6 @@
 <script setup>
-<<<<<<< HEAD
 import { computed, onMounted, onUnmounted } from 'vue'
-=======
-import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
->>>>>>> origin/KBH
 import { storeToRefs } from 'pinia'
 import { useDashboardStore } from '@/stores/adminStore/dashboardStore'
 
@@ -67,8 +63,6 @@ const workFlowCards = computed(() => [
   { label: '출차 완료', status: 'GATE_OUT', count: getWorkCount('GATE_OUT') },
 ])
 
-
-/* CODEX ADMIN DASHBOARD START */
 const priorityCards = computed(() => [
   {
     label: '승인 처리',
@@ -95,7 +89,6 @@ const priorityCards = computed(() => [
     tone: 'blue',
   },
 ])
-/* CODEX ADMIN DASHBOARD END */
 
 onMounted(() => {
   dashboardStore.loadDashboard()
@@ -157,8 +150,6 @@ onUnmounted(() => {
       </div>
     </section>
 
-
-    <!-- CODEX ADMIN DASHBOARD START -->
     <section v-if="!loading && !error" class="grid-4 priority-grid">
       <article v-for="card in priorityCards" :key="card.label" class="priority-card" :class="card.tone">
         <span>{{ card.label }}</span>
@@ -166,7 +157,6 @@ onUnmounted(() => {
         <p>{{ card.text }}</p>
       </article>
     </section>
-    <!-- CODEX ADMIN DASHBOARD END -->
 
     <section class="grid-2 dashboard-grid">
       <article class="panel">
@@ -215,22 +205,11 @@ onUnmounted(() => {
               <strong>{{ sector.sectorName || '-' }}</strong>
               <span>{{ sector.blockName || '-' }}</span>
             </div>
-
             <p>{{ sector.guideMessage || '안내 메시지가 없습니다.' }}</p>
-
             <dl>
-              <div>
-                <dt>상태</dt>
-                <dd>{{ sector.sectorStatus || '-' }}</dd>
-              </div>
-              <div>
-                <dt>대기 차량</dt>
-                <dd>{{ sector.waitingVehicleCount || 0 }}대</dd>
-              </div>
-              <div>
-                <dt>대체 장소</dt>
-                <dd>{{ sector.altWaitingArea || '-' }}</dd>
-              </div>
+              <div><dt>상태</dt><dd>{{ sector.sectorStatus || '-' }}</dd></div>
+              <div><dt>대기 차량</dt><dd>{{ sector.waitingVehicleCount || 0 }}대</dd></div>
+              <div><dt>대체 장소</dt><dd>{{ sector.altWaitingArea || '-' }}</dd></div>
             </dl>
           </article>
         </div>
@@ -243,7 +222,7 @@ onUnmounted(() => {
 
     <section class="panel">
       <div class="section-title">
-        <h2>최근 작업정보</h2>
+        <h2>최근 작업 정보</h2>
         <RouterLink class="ghost-button" to="/admin/work-orders">상세 보기</RouterLink>
       </div>
 
@@ -275,7 +254,7 @@ onUnmounted(() => {
               <td>{{ order.reservedTime || '-' }}</td>
             </tr>
             <tr v-if="recentWorkOrders.length === 0">
-              <td colspan="9">최근 작업정보가 없습니다.</td>
+              <td colspan="9">최근 작업 정보가 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -425,8 +404,6 @@ onUnmounted(() => {
   font-weight: 800;
 }
 
-
-/* CODEX ADMIN DASHBOARD START */
 .priority-card {
   display: grid;
   gap: 6px;
@@ -468,8 +445,6 @@ onUnmounted(() => {
 .priority-card.red {
   border-left-color: var(--red-500);
 }
-
-/* CODEX ADMIN DASHBOARD END */
 
 @media (max-width: 1100px) {
   .dashboard-grid,

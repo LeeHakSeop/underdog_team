@@ -1,7 +1,6 @@
 import CarrierDashboardView from '@/views/carrier/CarrierDashboardView.vue'
 import CarrierApprovalDriverView from '@/views/carrier/CarrierApprovalDriverView.vue'
 import CarrierVehicleRegisterView from '@/views/carrier/CarrierVehicleRegisterView.vue'
-import CarrierRequestsView from '@/views/carrier/CarrierRequestsView.vue'
 import CarrierApprovalsView from '@/views/carrier/CarrierApprovalsView.vue'
 
 export default [
@@ -40,16 +39,6 @@ export default [
         meta: {
           role: 'CARRIER',
           title: '트레일러 배정',
-        },
-      },
-
-      {
-        path: 'requests',
-        name: 'carrier-requests',
-        component: CarrierRequestsView,
-        meta: {
-          role: 'CARRIER',
-          title: '운송 요청',
         },
       },
 

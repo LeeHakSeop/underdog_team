@@ -17,8 +17,8 @@ public interface UserMapper {
             role_code AS roleCode,
             status,
             created_at AS createdAt,
-            updated_at AS updatedAt,
-            last_login_at AS lastLoginAt
+            NULL::timestamp AS updatedAt,
+            NULL::timestamp AS lastLoginAt
         FROM users
         WHERE login_id = #{loginId}
     """)
@@ -33,8 +33,8 @@ public interface UserMapper {
             role_code AS roleCode,
             status,
             created_at AS createdAt,
-            updated_at AS updatedAt,
-            last_login_at AS lastLoginAt
+            NULL::timestamp AS updatedAt,
+            NULL::timestamp AS lastLoginAt
         FROM users
         WHERE user_id = #{userId}
     """)
@@ -49,8 +49,8 @@ public interface UserMapper {
             role_code AS roleCode,
             status,
             created_at AS createdAt,
-            updated_at AS updatedAt,
-            last_login_at AS lastLoginAt
+            NULL::timestamp AS updatedAt,
+            NULL::timestamp AS lastLoginAt
         FROM users
         ORDER BY user_id DESC
     """)
@@ -75,8 +75,7 @@ public interface UserMapper {
             user_name,
             role_code,
             status,
-            created_at,
-            updated_at
+            created_at
         )
         VALUES
         (
@@ -85,7 +84,6 @@ public interface UserMapper {
             #{userName},
             #{roleCode},
             #{status},
-            CURRENT_TIMESTAMP,
             CURRENT_TIMESTAMP
         )
     """)
@@ -99,8 +97,7 @@ public interface UserMapper {
     @Update("""
         UPDATE users
         SET
-            status = #{status},
-            updated_at = CURRENT_TIMESTAMP
+            status = #{status}
         WHERE user_id = #{userId}
     """)
     int updateStatus(
@@ -111,8 +108,7 @@ public interface UserMapper {
     @Update("""
         UPDATE users
         SET
-            last_login_at = CURRENT_TIMESTAMP,
-            updated_at = CURRENT_TIMESTAMP
+            created_at = created_at
         WHERE user_id = #{userId}
     """)
     int updateLastLogin(@Param("userId") Long userId);

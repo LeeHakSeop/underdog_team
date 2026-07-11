@@ -136,6 +136,11 @@ public interface DriverMapper {
                 #{userId}
             )
             """)
+    @Options(
+            useGeneratedKeys = true,
+            keyProperty = "driverId",
+            keyColumn = "driver_id"
+    )
     int insertFromRegister(RegisterDTO dto);
 
     @Select("""

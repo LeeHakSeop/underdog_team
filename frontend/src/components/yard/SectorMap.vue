@@ -1,12 +1,7 @@
 <script setup>
-<<<<<<< HEAD
 import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useYardSectorStore } from '@/stores/adminStore/yardSectorStore'
-=======
-import { computed } from 'vue'
-import { yardSectors } from '../../data/dbData'
->>>>>>> origin/KBH
+import { useDashboardStore } from '@/stores/adminStore/dashboardStore'
 
 const props = defineProps({
   selectedCode: {
@@ -16,11 +11,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select'])
-const yardSectorStore = useYardSectorStore()
-const { yardSectors } = storeToRefs(yardSectorStore)
 
-<<<<<<< HEAD
-const gate = { x: 8, y: 86 }
+const dashboardStore = useDashboardStore()
+const { dashboard } = storeToRefs(dashboardStore)
+
 const mapPositions = [
   { x: 19, y: 27 },
   { x: 38, y: 27 },
@@ -30,41 +24,31 @@ const mapPositions = [
   { x: 68, y: 69 },
 ]
 
-const mapSectors = computed(() => {
-  return yardSectors.value.map((sector, index) => ({
+const sectorList = computed(() => dashboard.value?.sectorList || [])
+
+const sectors = computed(() =>
+  sectorList.value.map((sector, index) => ({
     ...sector,
     code: sector.sectorName,
     count: sector.waitingVehicleCount || 0,
     statusText: sector.sectorStatus || '-',
-    status: sector.sectorStatus === '혼잡' ? 'congested' : sector.sectorStatus === '작업중' ? 'working' : 'available',
+    className:
+      sector.sectorStatus === '혼잡'
+        ? 'congested'
+        : sector.sectorStatus === '작업중'
+          ? 'working'
+          : 'available',
     x: mapPositions[index % mapPositions.length].x,
     y: mapPositions[index % mapPositions.length].y,
-  }))
-})
-
-const selectedSector = computed(() => {
-  return mapSectors.value.find((sector) => sector.code === props.selectedCode) || mapSectors.value[0]
-})
-
-onMounted(() => {
-  yardSectorStore.loadYardSectors()
-=======
-const positions = {
-  'A-01': { x: 24, y: 30, className: 'available' },
-  'B-07': { x: 58, y: 46, className: 'working' },
-  'C-03': { x: 36, y: 70, className: 'congested' },
-}
-
-const sectors = computed(() =>
-  yardSectors.map((sector) => ({
-    ...sector,
-    ...(positions[sector.sector_name] || { x: 50, y: 50, className: 'available' }),
   })),
 )
 
 const selectedSector = computed(() => {
-  return sectors.value.find((sector) => sector.sector_name === props.selectedCode) || sectors.value[0]
->>>>>>> origin/KBH
+  return sectors.value.find((sector) => sector.code === props.selectedCode) || sectors.value[0]
+})
+
+onMounted(() => {
+  dashboardStore.loadDashboard()
 })
 </script>
 
@@ -73,42 +57,31 @@ const selectedSector = computed(() => {
     <div class="map-header">
       <div>
         <b>야드 섹터 안내</b>
-        <span>섹터와 대기 차량 현황을 확인합니다.</span>
+        <span>섹터별 대기 차량 현황을 확인합니다.</span>
       </div>
-      <span class="status-pill green">{{ selectedSector?.sector_name }}</span>
+      <span class="status-pill green">{{ selectedSector?.code || '-' }}</span>
     </div>
 
     <div class="yard-canvas">
       <div class="gate-marker">GATE</div>
       <button
-<<<<<<< HEAD
-        v-for="sector in mapSectors"
-        :key="sector.sectorId"
-=======
         v-for="sector in sectors"
-        :key="sector.sector_id"
->>>>>>> origin/KBH
+        :key="sector.sectorId"
         class="sector-node"
-        :class="[sector.className, { selected: sector.sector_name === selectedSector?.sector_name }]"
+        :class="[sector.className, { selected: sector.code === selectedSector?.code }]"
         type="button"
         :style="{ left: `${sector.x}%`, top: `${sector.y}%` }"
-        @click="emit('select', sector.sector_name)"
+        @click="emit('select', sector.code)"
       >
-        <strong>{{ sector.sector_name }}</strong>
-        <small>대기 {{ sector.waiting_vehicle_count }}대</small>
+        <strong>{{ sector.code }}</strong>
+        <small>대기 {{ sector.count }}대</small>
       </button>
     </div>
 
     <div class="map-footer">
-<<<<<<< HEAD
       <span>선택 섹터: {{ selectedSector?.code || '-' }}</span>
       <span>{{ selectedSector?.statusText || '-' }}</span>
       <span>대기 차량: {{ selectedSector?.count || 0 }}대</span>
-=======
-      <span>블록: {{ selectedSector?.block_name }}</span>
-      <span>상태: {{ selectedSector?.sector_status }}</span>
-      <span>대체 대기장: {{ selectedSector?.alt_waiting_area }}</span>
->>>>>>> origin/KBH
     </div>
   </div>
 </template>

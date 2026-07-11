@@ -3,10 +3,7 @@ import { defineStore } from 'pinia'
 import {
   createVehicle,
   deleteVehicle,
-<<<<<<< HEAD
   fetchVehicleByDriver,
-=======
->>>>>>> origin/KBH
   fetchVehicles,
   updateVehicle,
   updateVehicleApproval,

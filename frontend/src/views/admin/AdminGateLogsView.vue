@@ -1,38 +1,37 @@
 <script setup>
-import { computed, ref } from 'vue'
-<<<<<<< HEAD
-import { useLogisticsData } from '@/composables/useLogisticsData'
-=======
-import { gateLogs, getPlateNumber } from '../../data/dbData'
->>>>>>> origin/KBH
+import { computed, onMounted, ref } from 'vue'
+import { useGateLogStore } from '@/stores/adminStore/gateLogStore'
+import { useVehicleStore } from '@/stores/vehicleStore'
 
 const vehicleQuery = ref('')
 const sortKey = ref('time')
-const { gateLogs, getPlateNumber } = useLogisticsData()
+const gateLogStore = useGateLogStore()
+const vehicleStore = useVehicleStore()
+
+const getPlateNumber = (vehicleId) => {
+  const vehicle = vehicleStore.vehicles.find((item) => (item.vehicleId || item.vehicle_id) === vehicleId)
+  return vehicle?.plateNumber || vehicle?.plate_number || vehicleId || '-'
+}
 
 const visibleLogs = computed(() => {
   const query = vehicleQuery.value.trim().toLowerCase()
   const filtered = query
-<<<<<<< HEAD
-    ? gateLogs.value.filter((log) => getPlateNumber(log.vehicle_id).toLowerCase().includes(query))
-    : [...gateLogs.value]
+    ? gateLogStore.gateLogs.filter((log) => String(getPlateNumber(log.vehicleId || log.vehicle_id)).toLowerCase().includes(query))
+    : [...gateLogStore.gateLogs]
 
   return filtered.sort((a, b) => {
     if (sortKey.value === 'gate') {
-      return (a.gate_name || '').localeCompare(b.gate_name || '', 'ko')
+      return String(a.gateName || a.gate_name || '').localeCompare(String(b.gateName || b.gate_name || ''), 'ko')
     }
-    return (b.entry_time || b.exit_time || '').localeCompare(a.entry_time || a.exit_time || '')
-=======
-    ? gateLogs.filter((log) => getPlateNumber(log.vehicle_id).toLowerCase().includes(query))
-    : [...gateLogs]
-
-  return filtered.sort((a, b) => {
-    if (sortKey.value === 'gate') {
-      return a.gate_name.localeCompare(b.gate_name)
-    }
-    return String(a.entry_time || a.exit_time).localeCompare(String(b.entry_time || b.exit_time))
->>>>>>> origin/KBH
+    return String(b.entryTime || b.entry_time || b.exitTime || b.exit_time || '').localeCompare(
+      String(a.entryTime || a.entry_time || a.exitTime || a.exit_time || ''),
+    )
   })
+})
+
+onMounted(() => {
+  gateLogStore.loadGateLogs()
+  vehicleStore.loadVehicles()
 })
 </script>
 
@@ -50,6 +49,7 @@ const visibleLogs = computed(() => {
           <span class="status-pill">{{ visibleLogs.length }}건</span>
         </div>
       </div>
+
       <div class="table-wrap">
         <table class="data-table">
           <thead>
@@ -66,26 +66,19 @@ const visibleLogs = computed(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="log in visibleLogs" :key="log.gate_log_id">
-              <td>{{ log.gate_log_id }}</td>
-              <td>{{ getPlateNumber(log.vehicle_id) }}</td>
-<<<<<<< HEAD
-              <td>{{ log.gate_name }}</td>
-              <td>{{ log.in_out_type }}</td>
-              <td>{{ log.entry_time || log.exit_time || '-' }}</td>
-              <td><span class="status-pill">{{ log.process_result }}</span></td>
+            <tr v-for="log in visibleLogs" :key="log.gateLogId || log.gate_log_id">
+              <td>{{ log.gateLogId || log.gate_log_id }}</td>
+              <td>{{ getPlateNumber(log.vehicleId || log.vehicle_id) }}</td>
+              <td>{{ log.gateNumber || log.gate_number || '-' }}</td>
+              <td>{{ log.gateName || log.gate_name || '-' }}</td>
+              <td>{{ log.entryTime || log.entry_time || '-' }}</td>
+              <td>{{ log.exitTime || log.exit_time || '-' }}</td>
+              <td>{{ log.inOutType || log.in_out_type || '-' }}</td>
+              <td><span class="status-pill">{{ log.processResult || log.process_result || '-' }}</span></td>
+              <td>{{ log.managerCheck || log.manager_check || '-' }}</td>
             </tr>
             <tr v-if="visibleLogs.length === 0">
-              <td colspan="6">게이트 로그 데이터가 없습니다.</td>
-=======
-              <td>{{ log.gate_number }}</td>
-              <td>{{ log.gate_name }}</td>
-              <td>{{ log.entry_time || '-' }}</td>
-              <td>{{ log.exit_time || '-' }}</td>
-              <td>{{ log.in_out_type }}</td>
-              <td><span class="status-pill">{{ log.process_result }}</span></td>
-              <td>{{ log.manager_check }}</td>
->>>>>>> origin/KBH
+              <td colspan="9">게이트 로그 데이터가 없습니다.</td>
             </tr>
           </tbody>
         </table>

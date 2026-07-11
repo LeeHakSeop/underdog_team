@@ -41,12 +41,8 @@ export const useDriverStore = defineStore('driver', {
       this.error = ''
 
       try {
-<<<<<<< HEAD
-        this.myWorkOrders = await fetchMyWorkOrders(userName)
-        this.workOrdersLoaded = true
-=======
         this.myWorkOrders = (await fetchMyWorkOrders(userName)) || []
->>>>>>> origin/KBH
+        this.workOrdersLoaded = true
       } catch (error) {
         this.error = error.message || '작업정보를 불러오지 못했습니다.'
         throw error
@@ -62,13 +58,8 @@ export const useDriverStore = defineStore('driver', {
       this.error = ''
 
       try {
-<<<<<<< HEAD
-        this.myWorkOrders = await fetchMyWorkOrdersByUserId(userId)
+        this.myWorkOrders = (await fetchMyWorkOrdersByUserId(userId)) || []
         this.workOrdersLoaded = true
-=======
-        this.myWorkOrders =
-          (await fetchMyWorkOrdersByUserId(userId)) || []
->>>>>>> origin/KBH
       } catch (error) {
         this.error = error.message || '작업정보를 불러오지 못했습니다.'
         throw error

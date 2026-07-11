@@ -20,6 +20,7 @@ public class RegisterDTO {
     private String carrierStatus;
 
     // driver 테이블
+    private Long driverId;
     private String driverName;
     private String driverContact;
     private Long carrierId;

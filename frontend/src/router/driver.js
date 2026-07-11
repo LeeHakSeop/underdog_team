@@ -1,19 +1,3 @@
-/*
-=========================================
-기사(Driver) Router
-=========================================
-
-역할
-- 기사 메인
-- 게이트 상태
-- 작업 진행
-- 섹터 안내
-
-접근 권한
-DRIVER
-=========================================
-*/
-
 import DriverDashboardView from '@/views/driver/DriverDashboardView.vue'
 import DriverGateStatusView from '@/views/driver/DriverGateStatusView.vue'
 import DriverVehiclesView from '@/views/driver/DriverVehiclesView.vue'
@@ -50,15 +34,6 @@ export default [
         path: 'sector-guide',
         redirect: '/driver/dashboard',
       },
-<<<<<<< HEAD
-      {
-        path: 'vehicles',
-        name: 'driver-vehicles',
-        component: DriverVehiclesView,
-        meta: { role: 'DRIVER', title: '내 차량' },
-      },
-=======
->>>>>>> origin/KBH
     ],
   },
 ]

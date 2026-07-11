@@ -1,12 +1,7 @@
 <script setup>
-<<<<<<< HEAD
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useContainerStore } from '@/stores/adminStore/containerStore'
-=======
-import { computed, ref } from 'vue'
-import { containers, getSectorName } from '../../data/dbData'
->>>>>>> origin/KBH
 
 const containerQuery = ref('')
 const containerStore = useContainerStore()
@@ -14,17 +9,14 @@ const { containers, loading, error } = storeToRefs(containerStore)
 
 const visibleContainers = computed(() => {
   const query = containerQuery.value.trim().toLowerCase()
-<<<<<<< HEAD
   if (!query) return containers.value
-  return containers.value.filter((container) => container.containerNumber.toLowerCase().includes(query))
+  return containers.value.filter((container) =>
+    String(container.containerNumber || container.container_number || '').toLowerCase().includes(query),
+  )
 })
 
 onMounted(() => {
   containerStore.loadContainers()
-=======
-  if (!query) return containers
-  return containers.filter((container) => container.container_number.toLowerCase().includes(query))
->>>>>>> origin/KBH
 })
 </script>
 
@@ -38,8 +30,14 @@ onMounted(() => {
           <span class="status-pill">{{ visibleContainers.length }}건</span>
         </div>
       </div>
-      <div v-if="loading" class="empty-box">컨테이너 목록을 불러오는 중입니다.</div>
-      <div v-else-if="error" class="empty-box warning">{{ error }}</div>
+
+      <div v-if="loading" class="empty-box">
+        컨테이너 목록을 불러오는 중입니다.
+      </div>
+      <div v-else-if="error" class="empty-box warning">
+        {{ error }}
+      </div>
+
       <div class="table-wrap">
         <table v-if="!loading && !error" class="data-table">
           <thead>
@@ -47,36 +45,30 @@ onMounted(() => {
               <th>컨테이너 ID</th>
               <th>컨테이너 번호</th>
               <th>규격</th>
-              <th>유형</th>
+              <th>선사</th>
               <th>현재 위치</th>
-              <th>섹터</th>
+              <th>야드 위치</th>
               <th>반출 가능</th>
-              <th>보류 여부</th>
             </tr>
           </thead>
           <tbody>
-<<<<<<< HEAD
-            <tr v-for="container in visibleContainers" :key="container.containerId">
-              <td>{{ container.containerNumber }}</td>
-              <td>{{ container.containerSize }}</td>
-              <td>{{ container.shippingLine || '-' }}</td>
-              <td>{{ container.containerLocation }}</td>
-              <td>{{ container.block }}-{{ container.bay }}-{{ container.rowNo }}</td>
-              <td><span class="status-pill" :class="{ red: !container.canExit }">{{ container.canExit ? '가능' : '보류' }}</span></td>
+            <tr v-for="container in visibleContainers" :key="container.containerId || container.container_id">
+              <td>{{ container.containerId || container.container_id }}</td>
+              <td>{{ container.containerNumber || container.container_number }}</td>
+              <td>{{ container.containerSize || container.container_size || '-' }}</td>
+              <td>{{ container.shippingLine || container.shipping_line || '-' }}</td>
+              <td>{{ container.containerLocation || container.container_location || '-' }}</td>
+              <td>
+                {{ container.block || '-' }}-{{ container.bay || '-' }}-{{ container.rowNo || container.row_no || '-' }}
+              </td>
+              <td>
+                <span class="status-pill" :class="{ red: !(container.canExit ?? container.can_exit) }">
+                  {{ container.canExit ?? container.can_exit ? '가능' : '보류' }}
+                </span>
+              </td>
             </tr>
             <tr v-if="visibleContainers.length === 0">
-              <td colspan="6">컨테이너 데이터가 없습니다.</td>
-=======
-            <tr v-for="container in visibleContainers" :key="container.container_id">
-              <td>{{ container.container_id }}</td>
-              <td>{{ container.container_number }}</td>
-              <td>{{ container.container_size }}</td>
-              <td>{{ container.container_type }}</td>
-              <td>{{ container.current_location }}</td>
-              <td>{{ getSectorName(container.sector_id) }}</td>
-              <td><span class="status-pill" :class="{ green: container.can_exit }">{{ container.can_exit }}</span></td>
-              <td><span class="status-pill" :class="{ red: container.on_hold }">{{ container.on_hold }}</span></td>
->>>>>>> origin/KBH
+              <td colspan="7">컨테이너 데이터가 없습니다.</td>
             </tr>
           </tbody>
         </table>

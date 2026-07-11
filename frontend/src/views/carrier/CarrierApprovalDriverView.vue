@@ -103,7 +103,7 @@ onMounted(loadData)
       </div>
 
       <div v-else-if="pendingDrivers.length === 0" class="empty-box">
-        승인 대기중인 기사가 없습니다.
+        승인 대기 중인 기사가 없습니다.
       </div>
 
       <div v-else class="driver-list">
@@ -153,7 +153,7 @@ onMounted(loadData)
           </div>
 
           <span class="status-pill" :class="driver.canEnter ? 'green' : 'amber'">
-            {{ driver.canEnter ? '최종 승인 완료' : '트레일러 배정 대기' }}
+            {{ driver.canEnter ? '최종 승인 완료' : '관리자 최종 승인 대기' }}
           </span>
         </div>
       </div>
@@ -195,13 +195,10 @@ onMounted(loadData)
   font-weight: 700;
 }
 
-.driver-row small {
-  margin-top: 3px;
-}
-
 .approve-btn {
+  min-width: 96px;
   min-height: 34px;
-  padding: 0 14px;
+  padding: 0 12px;
   color: #ffffff;
   background: var(--blue-700);
   border: 1px solid var(--blue-700);
@@ -215,16 +212,8 @@ onMounted(loadData)
   opacity: 0.65;
 }
 
-.empty-box {
-  padding: 30px;
-  color: var(--ink-500);
-  text-align: center;
-  background: #f8fbfe;
-  border: 1px solid var(--line);
-}
-
 .form-message {
-  margin: 10px 0;
+  margin-top: 10px;
   padding: 10px 12px;
   border-radius: 4px;
   font-size: 13px;
@@ -243,10 +232,11 @@ onMounted(loadData)
   border: 1px solid #fecaca;
 }
 
-@media (max-width: 760px) {
-  .driver-row {
-    align-items: stretch;
-    flex-direction: column;
-  }
+.empty-box {
+  padding: 24px;
+  color: var(--ink-500);
+  text-align: center;
+  background: #f8fbfe;
+  border: 1px solid var(--line);
 }
 </style>

@@ -6,18 +6,22 @@ import aaa.work_order_p.model.WorkOrderDTO;
 import aaa.work_order_p.model.WorkOrderMapper;
 import aaa.work_order_p.model.WorkOrderProcessResultDTO;
 import jakarta.annotation.Resource;
-import org.springframework.stereotype.Service;
-<<<<<<< HEAD
 import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
-=======
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
->>>>>>> origin/pjh
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @Service
 public class WorkOrderService {
+
+    private static final String STATUS_DISPATCH_WAITING = "DISPATCH_WAITING";
+    private static final String STATUS_APPROVED = "APPROVED";
+    private static final String STATUS_GATE_IN = "GATE_IN";
+    private static final String STATUS_IN_PROGRESS = "IN_PROGRESS";
+    private static final String STATUS_COMPLETED = "COMPLETED";
+    private static final String STATUS_GATE_OUT = "GATE_OUT";
 
     @Resource
     WorkOrderMapper mapper;
@@ -35,11 +39,13 @@ public class WorkOrderService {
 
     public int insert(WorkOrderDTO dto) {
         if (dto.getWorkStatus() == null || dto.getWorkStatus().isBlank()) {
-            dto.setWorkStatus("DISPATCH_WAITING");
+            dto.setWorkStatus(STATUS_DISPATCH_WAITING);
         }
+
         if (dto.getIsApproved() == null) {
             dto.setIsApproved(false);
         }
+
         return mapper.insert(dto);
     }
 
@@ -51,11 +57,10 @@ public class WorkOrderService {
         return mapper.updateStatus(workOrderId, workStatus);
     }
 
-<<<<<<< HEAD
     public WorkOrderDTO approve(Long workOrderId) {
         WorkOrderDTO workOrder = getWorkOrder(workOrderId);
 
-        if (!"DISPATCH_WAITING".equals(workOrder.getWorkStatus())) {
+        if (!STATUS_DISPATCH_WAITING.equals(workOrder.getWorkStatus())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "승인 대기 작업만 승인할 수 있습니다.");
         }
 
@@ -63,47 +68,12 @@ public class WorkOrderService {
         return mapper.detail(workOrderId);
     }
 
-    public WorkOrderDTO start(Long workOrderId) {
-        WorkOrderDTO workOrder = getWorkOrder(workOrderId);
-
-        if (!Boolean.TRUE.equals(workOrder.getIsApproved())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "승인된 작업만 시작할 수 있습니다.");
-        }
-
-        if (!"GATE_IN".equals(workOrder.getWorkStatus())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "입차 완료 작업만 시작할 수 있습니다.");
-        }
-
-        mapper.updateStatus(workOrderId, "IN_PROGRESS");
-        return mapper.detail(workOrderId);
-    }
-
-    public WorkOrderDTO complete(Long workOrderId) {
-        WorkOrderDTO workOrder = getWorkOrder(workOrderId);
-
-        if (!"IN_PROGRESS".equals(workOrder.getWorkStatus())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "진행 중인 작업만 완료할 수 있습니다.");
-        }
-
-        mapper.updateStatus(workOrderId, "COMPLETED");
-        return mapper.detail(workOrderId);
-    }
-
-    private WorkOrderDTO getWorkOrder(Long workOrderId) {
-        WorkOrderDTO workOrder = mapper.detail(workOrderId);
-
-        if (workOrder == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "작업정보를 찾을 수 없습니다.");
-        }
-
-        return workOrder;
-=======
     @Transactional
     public WorkOrderProcessResultDTO start(Long workOrderId) {
         WorkOrderDTO workOrder = detail(workOrderId);
 
         if (workOrder == null) {
-            return fail(workOrderId, null, "WORK_ORDER_NOT_FOUND", "작업지시를 찾을 수 없습니다.");
+            return fail(workOrderId, null, "WORK_ORDER_NOT_FOUND", "작업 지시를 찾을 수 없습니다.");
         }
 
         if (!Boolean.TRUE.equals(workOrder.getIsApproved())) {
@@ -112,28 +82,33 @@ public class WorkOrderService {
 
         String currentStatus = workOrder.getWorkStatus();
 
-        if (isStatusAny(currentStatus, "IN_PROGRESS", "이동중")) {
-            return fail(workOrderId, currentStatus, "WORK_ORDER_ALREADY_STARTED", "이미 작업이 시작되었습니다.");
+        if (STATUS_IN_PROGRESS.equals(currentStatus)) {
+            return fail(workOrderId, currentStatus, "WORK_ORDER_ALREADY_STARTED", "이미 시작된 작업입니다.");
         }
 
-        if (isStatusAny(currentStatus, "COMPLETED", "상차완료", "하차완료")) {
+        if (STATUS_COMPLETED.equals(currentStatus)) {
             return fail(workOrderId, currentStatus, "WORK_ORDER_ALREADY_COMPLETED", "이미 완료된 작업입니다.");
         }
 
-        if (isStatusAny(currentStatus, "GATE_OUT", "출차완료")) {
+        if (STATUS_GATE_OUT.equals(currentStatus)) {
             return fail(workOrderId, currentStatus, "WORK_ORDER_ALREADY_CLOSED", "이미 출차 완료된 작업입니다.");
         }
 
-        if (!isStatusAny(currentStatus, "GATE_IN", "게이트진입")) {
-            return fail(workOrderId, currentStatus, "WORK_ORDER_NOT_GATE_IN", "입차 완료 후 작업을 시작할 수 있습니다.");
+        if (!STATUS_GATE_IN.equals(currentStatus)) {
+            return fail(workOrderId, currentStatus, "WORK_ORDER_NOT_GATE_IN", "입차 완료 작업만 시작할 수 있습니다.");
         }
 
-        int updated = updateStatus(workOrderId, "IN_PROGRESS");
+        if (workOrder.getContainerId() != null) {
+            containerService.blockExit(workOrder.getContainerId());
+        }
+
+        int updated = updateStatus(workOrderId, STATUS_IN_PROGRESS);
+
         if (updated == 0) {
             return fail(workOrderId, currentStatus, "WORK_ORDER_UPDATE_FAILED", "작업 상태 변경에 실패했습니다.");
         }
 
-        return success(workOrderId, "IN_PROGRESS", "작업이 시작되었습니다.");
+        return success(workOrderId, STATUS_IN_PROGRESS, "작업이 시작되었습니다.");
     }
 
     @Transactional
@@ -141,7 +116,7 @@ public class WorkOrderService {
         WorkOrderDTO workOrder = detail(workOrderId);
 
         if (workOrder == null) {
-            return fail(workOrderId, null, "WORK_ORDER_NOT_FOUND", "작업지시를 찾을 수 없습니다.");
+            return fail(workOrderId, null, "WORK_ORDER_NOT_FOUND", "작업 지시를 찾을 수 없습니다.");
         }
 
         if (!Boolean.TRUE.equals(workOrder.getIsApproved())) {
@@ -150,30 +125,46 @@ public class WorkOrderService {
 
         String currentStatus = workOrder.getWorkStatus();
 
-        if (isStatusAny(currentStatus, "COMPLETED", "상차완료", "하차완료")) {
+        if (STATUS_COMPLETED.equals(currentStatus)) {
             return fail(workOrderId, currentStatus, "WORK_ORDER_ALREADY_COMPLETED", "이미 완료된 작업입니다.");
         }
 
-        if (isStatusAny(currentStatus, "GATE_OUT", "출차완료")) {
+        if (STATUS_GATE_OUT.equals(currentStatus)) {
             return fail(workOrderId, currentStatus, "WORK_ORDER_ALREADY_CLOSED", "이미 출차 완료된 작업입니다.");
         }
 
-        if (!isStatusAny(currentStatus, "IN_PROGRESS", "이동중")) {
-            return fail(workOrderId, currentStatus, "WORK_ORDER_NOT_IN_PROGRESS", "작업 시작 후 완료 처리할 수 있습니다.");
+        if (!STATUS_IN_PROGRESS.equals(currentStatus)) {
+            return fail(workOrderId, currentStatus, "WORK_ORDER_NOT_IN_PROGRESS", "작업 진행 중인 작업만 완료할 수 있습니다.");
+        }
+
+        if (workOrder.getContainerId() == null) {
+            return fail(workOrderId, currentStatus, "CONTAINER_NOT_FOUND", "작업에 연결된 컨테이너 정보가 없습니다.");
         }
 
         int containerUpdated = containerService.allowExit(workOrder.getContainerId());
+
         if (containerUpdated == 0) {
             return fail(workOrderId, currentStatus, "CONTAINER_UPDATE_FAILED", "컨테이너 출차 가능 상태 변경에 실패했습니다.");
         }
 
-        int updated = updateStatus(workOrderId, "COMPLETED");
+        int updated = updateStatus(workOrderId, STATUS_COMPLETED);
+
         if (updated == 0) {
             containerService.blockExit(workOrder.getContainerId());
             return fail(workOrderId, currentStatus, "WORK_ORDER_UPDATE_FAILED", "작업 상태 변경에 실패했습니다.");
         }
 
-        return success(workOrderId, "COMPLETED", makeCompleteMessage(workOrder.getWorkType()));
+        return success(workOrderId, STATUS_COMPLETED, makeCompleteMessage(workOrder.getWorkType()));
+    }
+
+    private WorkOrderDTO getWorkOrder(Long workOrderId) {
+        WorkOrderDTO workOrder = mapper.detail(workOrderId);
+
+        if (workOrder == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "작업 정보를 찾을 수 없습니다.");
+        }
+
+        return workOrder;
     }
 
     private WorkOrderProcessResultDTO success(Long workOrderId, String workStatus, String message) {
@@ -197,20 +188,6 @@ public class WorkOrderService {
         return result;
     }
 
-    private boolean isStatusAny(String status, String... targets) {
-        if (status == null) {
-            return false;
-        }
-
-        for (String target : targets) {
-            if (status.equalsIgnoreCase(target)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private String makeCompleteMessage(String workType) {
         if (workType == null) {
             return "작업이 완료되었습니다.";
@@ -225,6 +202,5 @@ public class WorkOrderService {
         }
 
         return "작업이 완료되었습니다.";
->>>>>>> origin/pjh
     }
 }

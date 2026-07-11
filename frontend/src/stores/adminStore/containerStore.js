@@ -1,6 +1,6 @@
 // stores/containerStore.js
 import { defineStore } from 'pinia'
-import { fetchContainers } from '@/api/containerApi'
+import { fetchContainers } from '@/api/adminApi/containerApi'
 
 export const useContainerStore = defineStore('container', {
   state: () => ({ containers: [], loading: false, error: '' }),

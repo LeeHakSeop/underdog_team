@@ -15,15 +15,14 @@ const drivers = ref([])
 
 const currentUser = readCurrentUser()
 
-const vehicleTypes = ['트랙터', '트레일러', '카고', '윙바디', '탱크로리', '냉동탑', '기타']
+const vehicleTypes = ['트레일러']
 const tonnageOptions = ['1톤', '2.5톤', '5톤', '8.5톤', '11톤', '18톤', '25톤']
 
 const form = ref({
   driverId: null,
   plateNumber: '',
-  vehicleType: '트랙터',
+  vehicleType: '트레일러',
   tonnage: '25톤',
-  tractorNo: '',
   chassisNo: '',
 })
 
@@ -79,14 +78,15 @@ const resetForm = () => {
   form.value = {
     driverId: null,
     plateNumber: '',
-    vehicleType: '트랙터',
+    vehicleType: '트레일러',
     tonnage: '25톤',
-    tractorNo: '',
     chassisNo: '',
   }
 }
 
 const validate = () => {
+  form.value.vehicleType = '트레일러'
+
   if (!myCarrier.value) {
     throw new Error('로그인한 운송사 정보를 찾을 수 없습니다.')
   }
@@ -100,11 +100,7 @@ const validate = () => {
   }
 
   if (!form.value.plateNumber.trim()) {
-    throw new Error('차량번호를 입력하세요.')
-  }
-
-  if (!form.value.vehicleType) {
-    throw new Error('차량종류를 선택하세요.')
+    throw new Error('트레일러 차량번호를 입력하세요.')
   }
 
   if (!form.value.tonnage) {
@@ -125,9 +121,9 @@ const submitVehicle = async () => {
       carrierId: myCarrier.value.carrierId,
       userId: selectedDriver.value?.userId,
       plateNumber: form.value.plateNumber,
-      vehicleType: form.value.vehicleType,
+      vehicleType: '트레일러',
       tonnage: form.value.tonnage,
-      tractorNo: form.value.tractorNo,
+      tractorNo: null,
       chassisNo: form.value.chassisNo,
     })
 
@@ -190,7 +186,7 @@ onMounted(loadData)
           </div>
 
           <div class="field">
-            <label for="plateNumber">차량번호</label>
+            <label for="plateNumber">트레일러 차량번호</label>
             <input
               id="plateNumber"
               v-model.trim="form.plateNumber"
@@ -217,14 +213,6 @@ onMounted(loadData)
           </div>
 
           <div class="field">
-            <label for="tractorNo">트랙터 번호</label>
-            <div class="inline-field">
-              <input id="tractorNo" v-model.trim="form.tractorNo" placeholder="예: TR-999999" />
-              <button type="button" @click="form.tractorNo = generateCode('TR')">자동</button>
-            </div>
-          </div>
-
-          <div class="field full">
             <label for="chassisNo">샤시 번호</label>
             <div class="inline-field">
               <input id="chassisNo" v-model.trim="form.chassisNo" placeholder="예: CH-999999" />

@@ -7,87 +7,19 @@ const router = useRouter()
 const isCollapsed = ref(localStorage.getItem('portGateSidebar') === 'collapsed')
 
 const icons = {
-  home: [
-    ['path', { d: 'M3 10.5 12 3l9 7.5' }],
-    ['path', { d: 'M5 9.5V21h14V9.5' }],
-    ['path', { d: 'M9 21v-7h6v7' }],
-  ],
-  cctv: [
-    ['path', { d: 'M4 6h11l3 3v5H4z' }],
-    ['path', { d: 'M18 10h3v3h-3' }],
-    ['path', { d: 'M9 14v4' }],
-    ['path', { d: 'M6 21h10' }],
-    ['path', { d: 'M12 14l4 7' }],
-  ],
-  dashboard: [
-    ['path', { d: 'M4 4h7v7H4z' }],
-    ['path', { d: 'M13 4h7v4h-7z' }],
-    ['path', { d: 'M13 10h7v10h-7z' }],
-    ['path', { d: 'M4 13h7v7H4z' }],
-  ],
-  users: [
-    ['circle', { cx: '9', cy: '8', r: '3' }],
-    ['path', { d: 'M3 21a6 6 0 0 1 12 0' }],
-    ['circle', { cx: '17', cy: '9', r: '2.5' }],
-    ['path', { d: 'M15 16a5 5 0 0 1 6 5' }],
-  ],
-  clipboard: [
-    ['path', { d: 'M9 4h6l1 2h3v15H5V6h3z' }],
-    ['path', { d: 'M9 4h6v4H9z' }],
-    ['path', { d: 'M8 12h8' }],
-    ['path', { d: 'M8 16h6' }],
-  ],
-  truck: [
-    ['path', { d: 'M3 7h11v9H3z' }],
-    ['path', { d: 'M14 10h4l3 3v3h-7z' }],
-    ['circle', { cx: '7', cy: '18', r: '2' }],
-    ['circle', { cx: '18', cy: '18', r: '2' }],
-  ],
-  container: [
-    ['path', { d: 'M3 7h18v11H3z' }],
-    ['path', { d: 'M7 7v11' }],
-    ['path', { d: 'M11 7v11' }],
-    ['path', { d: 'M15 7v11' }],
-    ['path', { d: 'M3 11h18' }],
-  ],
-  bell: [
-    ['path', { d: 'M6 17h12l-1.5-2.5V10a4.5 4.5 0 0 0-9 0v4.5z' }],
-    ['path', { d: 'M10 20h4' }],
-    ['path', { d: 'M12 4V2.5' }],
-  ],
-  request: [
-    ['path', { d: 'M5 4h10l4 4v12H5z' }],
-    ['path', { d: 'M15 4v4h4' }],
-    ['path', { d: 'M9 14h6' }],
-    ['path', { d: 'M12 11v6' }],
-  ],
-  approval: [
-    ['path', { d: 'M5 4h14v16H5z' }],
-    ['path', { d: 'm8 12 3 3 5-6' }],
-  ],
-  driver: [
-    ['circle', { cx: '12', cy: '7', r: '3' }],
-    ['path', { d: 'M5 21a7 7 0 0 1 14 0' }],
-    ['path', { d: 'm16 12 2 2 4-5' }],
-  ],
-  list: [
-    ['path', { d: 'M8 6h13' }],
-    ['path', { d: 'M8 12h13' }],
-    ['path', { d: 'M8 18h13' }],
-    ['path', { d: 'M3 6h1' }],
-    ['path', { d: 'M3 12h1' }],
-    ['path', { d: 'M3 18h1' }],
-  ],
-  menu: [
-    ['path', { d: 'M4 7h16' }],
-    ['path', { d: 'M4 12h16' }],
-    ['path', { d: 'M4 17h16' }],
-  ],
-  logout: [
-    ['path', { d: 'M10 5H5v14h5' }],
-    ['path', { d: 'M14 8l4 4-4 4' }],
-    ['path', { d: 'M8 12h10' }],
-  ],
+  home: [['path', { d: 'M3 10.5 12 3l9 7.5' }], ['path', { d: 'M5 9.5V21h14V9.5' }], ['path', { d: 'M9 21v-7h6v7' }]],
+  cctv: [['path', { d: 'M4 6h11l3 3v5H4z' }], ['path', { d: 'M18 10h3v3h-3' }], ['path', { d: 'M9 14v4' }], ['path', { d: 'M6 21h10' }], ['path', { d: 'M12 14l4 7' }]],
+  dashboard: [['path', { d: 'M4 4h7v7H4z' }], ['path', { d: 'M13 4h7v4h-7z' }], ['path', { d: 'M13 10h7v10h-7z' }], ['path', { d: 'M4 13h7v7H4z' }]],
+  users: [['circle', { cx: '9', cy: '8', r: '3' }], ['path', { d: 'M3 21a6 6 0 0 1 12 0' }], ['circle', { cx: '17', cy: '9', r: '2.5' }], ['path', { d: 'M15 16a5 5 0 0 1 6 5' }]],
+  clipboard: [['path', { d: 'M9 4h6l1 2h3v15H5V6h3z' }], ['path', { d: 'M9 4h6v4H9z' }], ['path', { d: 'M8 12h8' }], ['path', { d: 'M8 16h6' }]],
+  truck: [['path', { d: 'M3 7h11v9H3z' }], ['path', { d: 'M14 10h4l3 3v3h-7z' }], ['circle', { cx: '7', cy: '18', r: '2' }], ['circle', { cx: '18', cy: '18', r: '2' }]],
+  container: [['path', { d: 'M3 7h18v11H3z' }], ['path', { d: 'M7 7v11' }], ['path', { d: 'M11 7v11' }], ['path', { d: 'M15 7v11' }], ['path', { d: 'M3 11h18' }]],
+  bell: [['path', { d: 'M6 17h12l-1.5-2.5V10a4.5 4.5 0 0 0-9 0v4.5z' }], ['path', { d: 'M10 20h4' }], ['path', { d: 'M12 4V2.5' }]],
+  approval: [['path', { d: 'M5 4h14v16H5z' }], ['path', { d: 'm8 12 3 3 5-6' }]],
+  driver: [['circle', { cx: '12', cy: '7', r: '3' }], ['path', { d: 'M5 21a7 7 0 0 1 14 0' }], ['path', { d: 'm16 12 2 2 4-5' }]],
+  list: [['path', { d: 'M8 6h13' }], ['path', { d: 'M8 12h13' }], ['path', { d: 'M8 18h13' }], ['path', { d: 'M3 6h1' }], ['path', { d: 'M3 12h1' }], ['path', { d: 'M3 18h1' }]],
+  menu: [['path', { d: 'M4 7h16' }], ['path', { d: 'M4 12h16' }], ['path', { d: 'M4 17h16' }]],
+  logout: [['path', { d: 'M10 5H5v14h5' }], ['path', { d: 'M14 8l4 4-4 4' }], ['path', { d: 'M8 12h10' }]],
 }
 
 const MenuIcon = (props) =>
@@ -106,96 +38,26 @@ const MenuIcon = (props) =>
     icons[props.name]?.map(([tag, attrs]) => h(tag, attrs)) || icons.home.map(([tag, attrs]) => h(tag, attrs)),
   )
 
-  const menus = {
+const menus = {
   CARRIER: [
-    {
-      label: '업무 홈',
-      path: '/carrier/dashboard',
-      icon: 'home',
-    },
-    {
-      label: '기사 가입 승인',
-      path: '/carrier/driver-approval',
-      icon: 'driver',
-    },
-    {
-      label: '트레일러 배정',
-      path: '/carrier/vehicle-register',
-      icon: 'truck',
-    },
-    {
-      label: '운송 요청',
-      path: '/carrier/requests',
-      icon: 'request',
-    },
-    {
-      label: '승인 현황',
-      path: '/carrier/approvals',
-      icon: 'approval',
-    },
+    { label: '업무 홈', path: '/carrier/dashboard', icon: 'home' },
+    { label: '기사 가입 승인', path: '/carrier/driver-approval', icon: 'driver' },
+    { label: '트레일러 배정', path: '/carrier/vehicle-register', icon: 'truck' },
+    { label: '승인 현황', path: '/carrier/approvals', icon: 'approval' },
   ],
-<<<<<<< HEAD
-  driver: [
-    { label: '기사 작업', path: '/driver/dashboard', icon: 'driver' },
+  DRIVER: [
+    { label: '작업 홈', path: '/driver/dashboard', icon: 'driver' },
     { label: '작업 현황', path: '/driver/work-status', icon: 'list' },
     { label: '내 차량', path: '/driver/vehicles', icon: 'truck' },
-=======
-
-  DRIVER: [
-    {
-      label: '작업 홈',
-      path: '/driver/dashboard',
-      icon: 'driver',
-    },
-    {
-      label: '작업 현황',
-      path: '/driver/work-status',
-      icon: 'list',
-    },
-    {
-      label: '내 차량',
-      path: '/driver/vehicles',
-      icon: 'truck',
-    },
->>>>>>> origin/KBH
   ],
-
   ADMIN: [
-    {
-      label: '관리자 메인',
-      path: '/admin/main',
-      icon: 'cctv',
-    },
-    {
-      label: '센터 현황',
-      path: '/admin/dashboard',
-      icon: 'dashboard',
-    },
-    {
-      label: '가입 인원관리',
-      path: '/admin/members',
-      icon: 'users',
-    },
-    {
-      label: '작업 관리',
-      path: '/admin/tasks',
-      icon: 'clipboard',
-    },
-    {
-      label: '차량 출입 조회',
-      path: '/admin/gate-logs',
-      icon: 'truck',
-    },
-    {
-      label: '컨테이너 조회',
-      path: '/admin/containers',
-      icon: 'container',
-    },
-    {
-      label: '알림/이벤트',
-      path: '/admin/events',
-      icon: 'bell',
-    },
+    { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
+    { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
+    { label: '가입 인원관리', path: '/admin/members', icon: 'users' },
+    { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
+    { label: '차량 출입 조회', path: '/admin/gate-logs', icon: 'truck' },
+    { label: '컨테이너 조회', path: '/admin/containers', icon: 'container' },
+    { label: '알림/이벤트', path: '/admin/events', icon: 'bell' },
   ],
 }
 
@@ -207,7 +69,7 @@ const roleLabels = {
 
 const currentUser = computed(() => JSON.parse(localStorage.getItem('portGateUser') || 'null'))
 const pathRole = computed(() => (route.path.split('/')[1] || 'admin').toUpperCase())
-const activeRole = computed(() => route.meta.role || currentUser.value?.roleCode || pathRole.value)
+const activeRole = computed(() => String(route.meta.role || currentUser.value?.roleCode || pathRole.value).toUpperCase())
 const activeMenus = computed(() => menus[activeRole.value] || menus.ADMIN)
 const pageTitle = computed(() => route.meta.title || '항만 게이트 시스템')
 

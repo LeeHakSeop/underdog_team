@@ -6,12 +6,23 @@ import java.util.List;
 
 @Mapper
 public interface WorkOrderMapper {
-    @Select("SELECT * FROM work_order ORDER BY work_order_id DESC")
+    @Select("""
+            SELECT
+                work_order_id AS workOrderId,
+                work_type AS workType,
+                vehicle_id AS vehicleId,
+                tractor_vehicle_id AS tractorVehicleId,
+                trailer_vehicle_id AS trailerVehicleId,
+                driver_id AS driverId,
+                container_id AS containerId,
+                reserved_time AS reservedTime,
+                work_status AS workStatus,
+                is_approved AS isApproved
+            FROM work_order
+            ORDER BY work_order_id DESC
+            """)
     List<WorkOrderDTO> list();
 
-<<<<<<< HEAD
-    @Select("SELECT * FROM work_order WHERE work_order_id = #{workOrderId}")
-=======
     @Select("""
             SELECT
                 work_order_id AS workOrderId,
@@ -27,7 +38,6 @@ public interface WorkOrderMapper {
             FROM work_order
             WHERE work_order_id = #{workOrderId}
             """)
->>>>>>> origin/pjh
     WorkOrderDTO detail(Long workOrderId);
 
     @Insert("""
@@ -102,7 +112,7 @@ public interface WorkOrderMapper {
             WHERE (wo.trailer_vehicle_id = #{vehicleId}
                OR wo.vehicle_id = #{vehicleId})
               AND COALESCE(wo.is_approved, FALSE) = TRUE
-              AND wo.work_status IN ('GATE_IN', 'IN_PROGRESS', '게이트진입', '이동중')
+              AND wo.work_status IN ('GATE_IN', 'IN_PROGRESS')
             ORDER BY wo.reserved_time DESC NULLS LAST, wo.work_order_id DESC
             LIMIT 1
             """)

@@ -37,27 +37,18 @@ public class WorkOrderController {
         return service.findTrailerWorkInfo(vehicleId);
     }
 
-<<<<<<< HEAD
     @PatchMapping("/{workOrderId}/approve")
     public WorkOrderDTO approve(@PathVariable Long workOrderId) {
         return service.approve(workOrderId);
     }
 
     @PatchMapping("/{workOrderId}/start")
-    public WorkOrderDTO start(@PathVariable Long workOrderId) {
-=======
-    @PatchMapping("/{workOrderId}/start")
     public WorkOrderProcessResultDTO start(@PathVariable Long workOrderId) {
->>>>>>> origin/pjh
         return service.start(workOrderId);
     }
 
     @PatchMapping("/{workOrderId}/complete")
-<<<<<<< HEAD
-    public WorkOrderDTO complete(@PathVariable Long workOrderId) {
-=======
     public WorkOrderProcessResultDTO complete(@PathVariable Long workOrderId) {
->>>>>>> origin/pjh
         return service.complete(workOrderId);
     }
 }

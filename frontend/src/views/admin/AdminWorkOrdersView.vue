@@ -1,39 +1,85 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useLogisticsData } from '@/composables/useLogisticsData'
+import { useCarrierStore } from '@/stores/carrierStore'
+import { useContainerStore } from '@/stores/adminStore/containerStore'
+import { useDriverStore } from '@/stores/driverStore'
+import { useVehicleStore } from '@/stores/vehicleStore'
 import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
 
 const workOrderStore = useWorkOrderStore()
+const carrierStore = useCarrierStore()
+const containerStore = useContainerStore()
+const driverStore = useDriverStore()
+const vehicleStore = useVehicleStore()
 const processingId = ref(null)
 const processMessage = ref('')
 let refreshTimer = null
 
-const { workOrders, getCarrierName, getContainer, getContainerNumber, getDriverName, getPlateNumber, getSectorByContainerId } = useLogisticsData()
+const getId = (row, key) => row?.[key] ?? row?.[key.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)]
+const getValue = (row, camelKey, snakeKey) => row?.[camelKey] ?? row?.[snakeKey] ?? ''
+
+const getVehicle = (vehicleId) => {
+  return vehicleStore.vehicles.find((item) => getId(item, 'vehicleId') === vehicleId) || null
+}
+
+const getCarrierName = (order) => {
+  const vehicle = getVehicle(getId(order, 'vehicleId')) || getVehicle(getId(order, 'trailerVehicleId'))
+  const carrierId = getId(vehicle, 'carrierId')
+  const carrier = carrierStore.carriers.find((item) => getId(item, 'carrierId') === carrierId)
+  return getValue(carrier, 'carrierName', 'carrier_name') || '-'
+}
+
+const getDriverName = (driverId) => {
+  const driver = driverStore.drivers.find((item) => getId(item, 'driverId') === driverId)
+  return getValue(driver, 'driverName', 'driver_name') || '-'
+}
+
+const getPlateNumber = (vehicleId) => {
+  const vehicle = getVehicle(vehicleId)
+  return getValue(vehicle, 'plateNumber', 'plate_number') || '-'
+}
+
+const getContainer = (containerId) => {
+  return containerStore.containers.find((item) => getId(item, 'containerId') === containerId) || null
+}
+
+const getContainerNumber = (containerId) => {
+  const container = getContainer(containerId)
+  return getValue(container, 'containerNumber', 'container_number') || '-'
+}
+
+const getYardLocation = (containerId) => {
+  const container = getContainer(containerId)
+  if (!container) return '-'
+  return `${container.block || '-'}-${container.bay || '-'}-${container.rowNo || container.row_no || '-'}`
+}
+
 const carrierRequests = computed(() => {
-  return workOrders.value.filter((order) => order.work_status === 'DISPATCH_WAITING')
+  return workOrderStore.workOrders.filter((order) => getValue(order, 'workStatus', 'work_status') === 'DISPATCH_WAITING')
 })
 
 const processingTasks = computed(() => {
-  return workOrders.value.filter((order) => order.work_status !== 'DISPATCH_WAITING')
+  return workOrderStore.workOrders.filter((order) => getValue(order, 'workStatus', 'work_status') !== 'DISPATCH_WAITING')
 })
 
 const processWorkOrder = async (order, action) => {
-  processingId.value = order.work_order_id
+  const workOrderId = getId(order, 'workOrderId')
+  processingId.value = workOrderId
   processMessage.value = ''
 
   try {
     if (action === 'approve') {
-      await workOrderStore.approve(order.work_order_id)
+      await workOrderStore.approve(workOrderId)
       processMessage.value = '작업 승인이 완료되었습니다.'
     }
 
     if (action === 'start') {
-      await workOrderStore.start(order.work_order_id)
+      await workOrderStore.start(workOrderId)
       processMessage.value = '작업 시작 처리가 완료되었습니다.'
     }
 
     if (action === 'complete') {
-      await workOrderStore.complete(order.work_order_id)
+      await workOrderStore.complete(workOrderId)
       processMessage.value = '작업 완료 처리가 완료되었습니다.'
     }
   } catch (error) {
@@ -53,7 +99,23 @@ const getStatusText = (workStatus) => {
   return workStatus || '-'
 }
 
+const getStatusClass = (workStatus) => {
+  if (workStatus === 'DISPATCH_WAITING') return 'amber'
+  if (workStatus === 'COMPLETED' || workStatus === 'GATE_OUT') return 'green'
+  if (workStatus === 'IN_PROGRESS') return 'blue'
+  return ''
+}
+
+const loadData = () => {
+  workOrderStore.loadWorkOrders().catch(() => {})
+  carrierStore.loadCarriers().catch(() => {})
+  containerStore.loadContainers().catch(() => {})
+  driverStore.loadDrivers().catch(() => {})
+  vehicleStore.loadVehicles().catch(() => {})
+}
+
 onMounted(() => {
+  loadData()
   refreshTimer = setInterval(() => {
     if (!workOrderStore.loading && processingId.value === null) {
       workOrderStore.loadWorkOrders().catch(() => {})
@@ -73,6 +135,7 @@ onUnmounted(() => {
         <h2>운송사 작업 요청 승인관리</h2>
         <span class="status-pill amber">배차 대기 {{ carrierRequests.length }}건</span>
       </div>
+
       <div class="table-wrap">
         <table class="data-table">
           <thead>
@@ -89,23 +152,27 @@ onUnmounted(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in carrierRequests" :key="order.work_order_id">
-              <td>{{ order.work_order_id }}</td>
-              <td>{{ getCarrierName(order.carrier_id) }}</td>
-              <td>{{ getPlateNumber(order.vehicle_id) }}</td>
-              <td>{{ getDriverName(order.driver_id) }}</td>
-              <td>{{ getContainerNumber(order.container_id) }}</td>
-              <td>{{ order.work_type }}</td>
-              <td>{{ order.reserved_time }}</td>
-              <td><span class="status-pill amber">{{ getStatusText(order.work_status) }}</span></td>
+            <tr v-for="order in carrierRequests" :key="getId(order, 'workOrderId')">
+              <td>{{ getId(order, 'workOrderId') }}</td>
+              <td>{{ getCarrierName(order) }}</td>
+              <td>{{ getPlateNumber(getId(order, 'vehicleId') || getId(order, 'trailerVehicleId')) }}</td>
+              <td>{{ getDriverName(getId(order, 'driverId')) }}</td>
+              <td>{{ getContainerNumber(getId(order, 'containerId')) }}</td>
+              <td>{{ getValue(order, 'workType', 'work_type') }}</td>
+              <td>{{ getValue(order, 'reservedTime', 'reserved_time') }}</td>
+              <td>
+                <span class="status-pill amber">
+                  {{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}
+                </span>
+              </td>
               <td>
                 <button
                   class="ghost-button"
                   type="button"
-                  :disabled="processingId === order.work_order_id"
+                  :disabled="processingId === getId(order, 'workOrderId')"
                   @click="processWorkOrder(order, 'approve')"
                 >
-                  {{ processingId === order.work_order_id ? '처리 중' : '작업 승인' }}
+                  {{ processingId === getId(order, 'workOrderId') ? '처리 중' : '작업 승인' }}
                 </button>
               </td>
             </tr>
@@ -121,56 +188,59 @@ onUnmounted(() => {
 
     <section class="panel">
       <div class="section-title">
-        <h2>기사 승낙 작업 관리</h2>
+        <h2>기사 할당 작업 관리</h2>
         <span class="status-pill green">작업 처리 {{ processingTasks.length }}건</span>
       </div>
+
       <div class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
               <th>작업번호</th>
-              <th>화물 종류</th>
               <th>컨테이너</th>
               <th>차량번호</th>
               <th>기사</th>
-              <th>자동 배정 섹터</th>
+              <th>야드 위치</th>
               <th>상태</th>
               <th>처리</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in processingTasks" :key="order.work_order_id">
-              <td>{{ order.work_order_id }}</td>
-              <td>{{ getContainer(order.container_id)?.shipping_line || '-' }}</td>
-              <td>{{ getContainerNumber(order.container_id) }}</td>
-              <td>{{ getPlateNumber(order.vehicle_id) }}</td>
-              <td>{{ getDriverName(order.driver_id) }}</td>
-              <td>{{ getSectorByContainerId(order.container_id)?.sector_name || '-' }}</td>
-              <td><span class="status-pill green">{{ getStatusText(order.work_status) }}</span></td>
+            <tr v-for="order in processingTasks" :key="getId(order, 'workOrderId')">
+              <td>{{ getId(order, 'workOrderId') }}</td>
+              <td>{{ getContainerNumber(getId(order, 'containerId')) }}</td>
+              <td>{{ getPlateNumber(getId(order, 'vehicleId') || getId(order, 'trailerVehicleId')) }}</td>
+              <td>{{ getDriverName(getId(order, 'driverId')) }}</td>
+              <td>{{ getYardLocation(getId(order, 'containerId')) }}</td>
+              <td>
+                <span class="status-pill" :class="getStatusClass(getValue(order, 'workStatus', 'work_status'))">
+                  {{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}
+                </span>
+              </td>
               <td>
                 <button
-                  v-if="order.work_status === 'GATE_IN'"
+                  v-if="getValue(order, 'workStatus', 'work_status') === 'GATE_IN'"
                   class="primary-button"
                   type="button"
-                  :disabled="processingId === order.work_order_id"
+                  :disabled="processingId === getId(order, 'workOrderId')"
                   @click="processWorkOrder(order, 'start')"
                 >
-                  {{ processingId === order.work_order_id ? '처리 중' : '작업 시작' }}
+                  {{ processingId === getId(order, 'workOrderId') ? '처리 중' : '작업 시작' }}
                 </button>
                 <button
-                  v-else-if="order.work_status === 'IN_PROGRESS'"
+                  v-else-if="getValue(order, 'workStatus', 'work_status') === 'IN_PROGRESS'"
                   class="primary-button"
                   type="button"
-                  :disabled="processingId === order.work_order_id"
+                  :disabled="processingId === getId(order, 'workOrderId')"
                   @click="processWorkOrder(order, 'complete')"
                 >
-                  {{ processingId === order.work_order_id ? '처리 중' : '작업 완료' }}
+                  {{ processingId === getId(order, 'workOrderId') ? '처리 중' : '작업 완료' }}
                 </button>
-                <span v-else>{{ getStatusText(order.work_status) }}</span>
+                <span v-else>{{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}</span>
               </td>
             </tr>
             <tr v-if="processingTasks.length === 0">
-              <td colspan="8">처리 중인 작업이 없습니다.</td>
+              <td colspan="7">처리 중인 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
