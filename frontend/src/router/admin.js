@@ -51,10 +51,6 @@ export default [
         meta: { role: 'admin', title: '작업 관리' },
       },
       {
-        path: 'tasks',
-        redirect: '/admin/work-orders',
-      },
-      {
         path: 'gate-logs',
         name: 'admin-gate-logs',
         component: AdminGateLogsView,
