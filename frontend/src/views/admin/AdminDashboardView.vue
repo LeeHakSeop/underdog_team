@@ -19,6 +19,16 @@ const recognitionRate = computed(() => {
   return total === 0 ? 0 : Math.round((success / total) * 100)
 })
 
+const getStatusText = (workStatus) => {
+  if (workStatus === 'DISPATCH_WAITING') return '작업 요청'
+  if (workStatus === 'APPROVED') return '입차 대기'
+  if (workStatus === 'GATE_IN') return '입차 완료'
+  if (workStatus === 'IN_PROGRESS') return '작업 진행'
+  if (workStatus === 'COMPLETED') return '출차 대기'
+  if (workStatus === 'GATE_OUT') return '출차 완료'
+  return workStatus || '-'
+}
+
 const metricCards = computed(() => [
   {
     label: '가입 승인 대기',
@@ -28,25 +38,25 @@ const metricCards = computed(() => [
   {
     label: '오늘 게이트 처리',
     value: (summary.value.todayGateIn || 0) + (summary.value.todayGateOut || 0),
-    hint: `입차 ${summary.value.todayGateIn || 0} / 출차 ${summary.value.todayGateOut || 0}`,
+    hint: `입차 ${summary.value.todayGateIn || 0}건 / 출차 ${summary.value.todayGateOut || 0}건`,
   },
   {
     label: '번호판 인식 성공률',
     value: `${recognitionRate.value}%`,
-    hint: `성공 ${summary.value.recognitionSuccess || 0} / 실패 ${summary.value.recognitionFail || 0}`,
+    hint: `성공 ${summary.value.recognitionSuccess || 0}건 / 실패 ${summary.value.recognitionFail || 0}건`,
   },
   {
     label: '미처리 예외',
     value: summary.value.exceptionOpen || 0,
-    hint: 'exception_log 기준',
+    hint: '미처리 예외 로그 기준',
   },
 ])
 
 const workCards = computed(() => [
   { label: '전체 작업', value: summary.value.workTotal || 0 },
-  { label: '대기', value: summary.value.workReady || 0 },
-  { label: '진행', value: summary.value.workInProgress || 0 },
-  { label: '완료', value: summary.value.workDone || 0 },
+  { label: '대기 작업', value: summary.value.workReady || 0 },
+  { label: '진행 작업', value: summary.value.workInProgress || 0 },
+  { label: '완료 작업', value: summary.value.workDone || 0 },
 ])
 
 const getWorkCount = (workStatus) => {
@@ -109,14 +119,14 @@ onUnmounted(() => {
   <div class="page-stack">
     <section class="panel">
       <div class="section-title">
-        <h2>관리자 대시보드</h2>
+        <h2>운영 통계 요약</h2>
         <button class="ghost-button" type="button" @click="dashboardStore.loadDashboard">
-          새로고침
+          통계 새로고침
         </button>
       </div>
 
       <div v-if="loading" class="empty-box">
-        대시보드 현황을 불러오는 중입니다.
+        통계 데이터를 불러오는 중입니다.
       </div>
 
       <div v-else-if="error" class="empty-box warning">
@@ -134,8 +144,8 @@ onUnmounted(() => {
 
     <section v-if="!loading && !error" class="panel">
       <div class="section-title">
-        <h2>전체 작업 흐름</h2>
-        <span class="status-pill">5초마다 갱신</span>
+        <h2>작업 흐름 통계</h2>
+        <span class="status-pill">5초 갱신</span>
       </div>
 
       <div class="work-flow-grid">
@@ -161,7 +171,7 @@ onUnmounted(() => {
     <section class="grid-2 dashboard-grid">
       <article class="panel">
         <div class="section-title">
-          <h2>작업 진행 현황</h2>
+          <h2>작업 상태별 집계</h2>
           <span class="status-pill">{{ summary.workTotal || 0 }}건</span>
         </div>
 
@@ -182,7 +192,7 @@ onUnmounted(() => {
             </thead>
             <tbody>
               <tr v-for="status in workStatusList" :key="status.workStatus">
-                <td>{{ status.workStatus }}</td>
+                <td>{{ getStatusText(status.workStatus) }}</td>
                 <td>{{ status.workCount }}</td>
               </tr>
               <tr v-if="workStatusList.length === 0">
@@ -195,7 +205,7 @@ onUnmounted(() => {
 
       <article class="panel">
         <div class="section-title">
-          <h2>야드 섹터 현황</h2>
+          <h2>야드 섹터 요약</h2>
           <span class="status-pill">{{ sectorList.length }}개</span>
         </div>
 
@@ -222,7 +232,7 @@ onUnmounted(() => {
 
     <section class="panel">
       <div class="section-title">
-        <h2>최근 작업 정보</h2>
+          <h2>최근 작업 요약</h2>
         <RouterLink class="ghost-button" to="/admin/work-orders">상세 보기</RouterLink>
       </div>
 

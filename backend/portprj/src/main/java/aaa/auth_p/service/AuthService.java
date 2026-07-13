@@ -47,13 +47,13 @@ public class AuthService {
         UserDTO user = mapper.findByLoginId(dto.getLoginId());
 
         if (user == null || !checkPassword(dto.getPassword(), user.getPassword())) {
-            throw new RuntimeException("?꾩씠???먮뒗 鍮꾨?踰덊샇媛 ?쇱튂?섏? ?딆뒿?덈떎.");
+            throw new RuntimeException("아이디 또는 비밀번호가 일치하지 않습니다.");
         }
 
         if (dto.getRoleCode() != null
                 && !dto.getRoleCode().isBlank()
                 && !dto.getRoleCode().equals(user.getRoleCode())) {
-            throw new RuntimeException("?좏깮??濡쒓렇???좏삎??怨꾩젙 沅뚰븳怨??ㅻ쫭?덈떎.");
+            throw new RuntimeException("선택한 로그인 유형이 계정 권한과 일치하지 않습니다.");
         }
 
         validateLoginStatus(user);
@@ -90,14 +90,14 @@ public class AuthService {
     private void validateLoginStatus(UserDTO user) {
         if ("PENDING".equals(user.getStatus())) {
             if ("DRIVER".equals(user.getRoleCode())) {
-                throw new RuntimeException("吏?뺥븳 ?댁넚?ъ쓽 媛???뱀씤 ??濡쒓렇?명븷 ???덉뒿?덈떎.");
+                throw new RuntimeException("지정한 운송사의 가입 승인 후 로그인할 수 있습니다.");
             }
 
             if ("CARRIER".equals(user.getRoleCode())) {
-                throw new RuntimeException("愿由ъ옄 ?뱀씤 ??濡쒓렇?명븷 ???덉뒿?덈떎.");
+                throw new RuntimeException("관리자 승인 후 로그인할 수 있습니다.");
             }
 
-            throw new RuntimeException("?뱀씤 ??濡쒓렇?명븷 ???덉뒿?덈떎.");
+            throw new RuntimeException("승인 후 로그인할 수 있습니다.");
         }
 
         if ("CARRIER_APPROVED".equals(user.getStatus())) {
@@ -105,11 +105,11 @@ public class AuthService {
         }
 
         if ("REJECTED".equals(user.getStatus())) {
-            throw new RuntimeException("媛???먮뒗 ?뱀씤 ?붿껌??諛섎젮?섏뿀?듬땲??");
+            throw new RuntimeException("가입 또는 승인 요청이 반려되었습니다.");
         }
 
         if (!"ACTIVE".equals(user.getStatus())) {
-            throw new RuntimeException("濡쒓렇?명븷 ???녿뒗 怨꾩젙 ?곹깭?낅땲??");
+            throw new RuntimeException("로그인할 수 없는 계정 상태입니다.");
         }
     }
 
@@ -117,11 +117,11 @@ public class AuthService {
         DriverDTO driver = driverMapper.findByUserId(user.getUserId());
 
         if (driver == null) {
-            throw new RuntimeException("湲곗궗 ?뺣낫瑜?李얠쓣 ???놁뒿?덈떎.");
+            throw new RuntimeException("기사 정보를 찾을 수 없습니다.");
         }
 
         if (!Boolean.TRUE.equals(driver.getIsRegistered())) {
-            throw new RuntimeException("吏?뺥븳 ?댁넚?ъ쓽 媛???뱀씤 ??濡쒓렇?명븷 ???덉뒿?덈떎.");
+            throw new RuntimeException("지정한 운송사의 가입 승인 후 로그인할 수 있습니다.");
         }
 
         if (!Boolean.TRUE.equals(driver.getCanEnter())) {
@@ -152,7 +152,7 @@ public class AuthService {
         validateRegister(dto);
 
         if (mapper.countByLoginId(dto.getLoginId()) > 0) {
-            throw new RuntimeException("?대? ?ъ슜 以묒씤 ?꾩씠?붿엯?덈떎.");
+            throw new RuntimeException("이미 사용 중인 아이디입니다.");
         }
 
         /*
@@ -217,13 +217,13 @@ public class AuthService {
                 "ACTIVE",
                 "REJECTED"
         ).contains(status)) {
-            throw new RuntimeException("?곹깭媛믪씠 ?щ컮瑜댁? ?딆뒿?덈떎.");
+            throw new RuntimeException("상태값이 올바르지 않습니다.");
         }
 
         UserDTO user = mapper.findById(userId);
 
         if (user == null) {
-            throw new RuntimeException("?ъ슜?먮? 李얠쓣 ???놁뒿?덈떎.");
+            throw new RuntimeException("사용자를 찾을 수 없습니다.");
         }
 
         if ("ACTIVE".equals(status)) {
@@ -265,7 +265,7 @@ public class AuthService {
         if ("DRIVER".equals(user.getRoleCode())
                 && !"CARRIER_APPROVED".equals(user.getStatus())) {
             throw new RuntimeException(
-                    "湲곗궗???댁넚???뱀씤怨??몃젅?쇰윭 諛곗젙 ??理쒖쥌 ?뱀씤?????덉뒿?덈떎."
+                    "기사는 운송사 승인과 트레일러 배정 후 최종 승인할 수 있습니다."
             );
         }
     }
@@ -289,15 +289,15 @@ public class AuthService {
 
     private void validateRegister(RegisterDTO dto) {
         if (dto.getLoginId() == null || dto.getLoginId().isBlank()) {
-            throw new RuntimeException("?꾩씠?붾뒗 ?꾩닔?낅땲??");
+            throw new RuntimeException("아이디는 필수입니다.");
         }
 
         if (dto.getPassword() == null || dto.getPassword().length() < 4) {
-            throw new RuntimeException("鍮꾨?踰덊샇??4???댁긽 ?낅젰?섏꽭??");
+            throw new RuntimeException("비밀번호는 4자 이상 입력하세요.");
         }
 
         if (dto.getUserName() == null || dto.getUserName().isBlank()) {
-            throw new RuntimeException("?대쫫? ?꾩닔?낅땲??");
+            throw new RuntimeException("이름은 필수입니다.");
         }
 
         if (!List.of(
@@ -306,7 +306,7 @@ public class AuthService {
                 "DRIVER"
         ).contains(dto.getRoleCode())) {
             throw new RuntimeException(
-                    "??븷? ADMIN, CARRIER, DRIVER 以??섎굹?ъ빞 ?⑸땲??"
+                    "역할은 ADMIN, CARRIER, DRIVER 중 하나여야 합니다."
             );
         }
     }
@@ -314,47 +314,47 @@ public class AuthService {
     private void validateCarrierRegister(RegisterDTO dto) {
         if (dto.getCarrierName() == null
                 || dto.getCarrierName().isBlank()) {
-            throw new RuntimeException("?댁넚?щ챸? ?꾩닔?낅땲??");
+            throw new RuntimeException("운송사명은 필수입니다.");
         }
 
         if (dto.getManagerName() == null
                 || dto.getManagerName().isBlank()) {
-            throw new RuntimeException("?댁넚???대떦?먮챸? ?꾩닔?낅땲??");
+            throw new RuntimeException("운송사 담당자명은 필수입니다.");
         }
 
         if (dto.getCarrierContact() == null
                 || dto.getCarrierContact().isBlank()) {
-            throw new RuntimeException("?댁넚???곕씫泥섎뒗 ?꾩닔?낅땲??");
+            throw new RuntimeException("운송사 연락처는 필수입니다.");
         }
     }
 
     private void validateDriverRegister(RegisterDTO dto) {
         if (dto.getDriverName() == null
                 || dto.getDriverName().isBlank()) {
-            throw new RuntimeException("湲곗궗紐낆? ?꾩닔?낅땲??");
+            throw new RuntimeException("기사명은 필수입니다.");
         }
 
         if (dto.getDriverContact() == null
                 || dto.getDriverContact().isBlank()) {
-            throw new RuntimeException("湲곗궗 ?곕씫泥섎뒗 ?꾩닔?낅땲??");
+            throw new RuntimeException("기사 연락처는 필수입니다.");
         }
 
         if (dto.getCarrierId() == null) {
-            throw new RuntimeException("?뚯냽 ?댁넚?щ뒗 ?꾩닔?낅땲??");
+            throw new RuntimeException("소속 운송사는 필수입니다.");
         }
     }
 
     private void insertDriverTractor(RegisterDTO dto) {
         if (dto.getPlateNumber() == null || dto.getPlateNumber().isBlank()) {
-            throw new RuntimeException("湲곗궗 ?몃옓??李⑤웾踰덊샇???꾩닔?낅땲??");
+            throw new RuntimeException("기사 트랙터 차량번호는 필수입니다.");
         }
 
         if (dto.getTractorNo() == null || dto.getTractorNo().isBlank()) {
-            throw new RuntimeException("?몃옓??踰덊샇???꾩닔?낅땲??");
+            throw new RuntimeException("트랙터 번호는 필수입니다.");
         }
 
         if (vehicleMapper.findByPlateNumber(dto.getPlateNumber()) != null) {
-            throw new RuntimeException("?대? ?깅줉??李⑤웾踰덊샇?낅땲??");
+            throw new RuntimeException("이미 등록된 차량번호입니다.");
         }
 
         VehicleDTO vehicle = new VehicleDTO();

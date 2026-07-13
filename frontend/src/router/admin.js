@@ -18,12 +18,17 @@ export default [
         path: 'main',
         name: 'admin-main',
         component: AdminMainView,
+<<<<<<< HEAD
         meta: { role: 'admin', title: '관리자 메인' },
+=======
+        meta: { role: 'ADMIN', title: '관제 상황판' },
+>>>>>>> origin/pjh
       },
       {
         path: 'dashboard',
         name: 'admin-dashboard',
         component: AdminDashboardView,
+<<<<<<< HEAD
         meta: { role: 'admin', title: '센터 현황' },
       },
       {
@@ -37,6 +42,9 @@ export default [
         name: 'admin-plate-recognition',
         component: AdminPlateRecognitionView,
         meta: { role: 'admin', title: 'AI 번호판 인식' },
+=======
+        meta: { role: 'ADMIN', title: '통계 요약' },
+>>>>>>> origin/pjh
       },
       {
         path: 'members',
@@ -70,7 +78,17 @@ export default [
         path: 'events',
         name: 'admin-events',
         component: AdminEventsView,
+<<<<<<< HEAD
         meta: { role: 'admin', title: '알림/이벤트' },
+=======
+        meta: { role: 'ADMIN', title: '알림/이벤트' },
+      },
+      {
+        path: 'plate-recognition',
+        name: 'plate-recognition',
+        component: AdminPlateRecognitionView,
+        meta: { role: 'ADMIN', title: 'AI 번호판 인식' },
+>>>>>>> origin/pjh
       },
     ],
   },
