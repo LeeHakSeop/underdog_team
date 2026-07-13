@@ -25,6 +25,11 @@ const icons = {
     ['path', { d: 'M13 10h7v10h-7z' }],
     ['path', { d: 'M4 13h7v7H4z' }],
   ],
+  map: [
+    ['path', { d: 'M4 6.5 9 4l6 2.5L20 4v13.5l-5 2-6-2.5-5 2z' }],
+    ['path', { d: 'M9 4v13' }],
+    ['path', { d: 'M15 6.5v13' }],
+  ],
   clipboard: [
     ['path', { d: 'M9 4h6l1 2h3v15H5V6h3z' }],
     ['path', { d: 'M9 4h6v4H9z' }],
@@ -129,6 +134,7 @@ const menus = {
   admin: [
     { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
     { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
+    { label: '감만부두 운영 맵', path: '/admin/yard-map', icon: 'map' },
     { label: 'AI 번호판 인식', path: '/admin/plate-recognition', icon: 'scan' },
     { label: '가입 회원 관리', path: '/admin/members', icon: 'users' },
     { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
