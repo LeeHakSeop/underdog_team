@@ -112,7 +112,7 @@ public interface WorkOrderMapper {
             WHERE (wo.trailer_vehicle_id = #{vehicleId}
                OR wo.vehicle_id = #{vehicleId})
               AND COALESCE(wo.is_approved, FALSE) = TRUE
-              AND wo.work_status IN ('GATE_IN', 'IN_PROGRESS')
+              AND wo.work_status IN ('APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
             ORDER BY wo.reserved_time DESC NULLS LAST, wo.work_order_id DESC
             LIMIT 1
             """)

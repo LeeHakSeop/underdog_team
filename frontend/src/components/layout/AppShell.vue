@@ -17,6 +17,7 @@ const icons = {
   bell: [['path', { d: 'M6 17h12l-1.5-2.5V10a4.5 4.5 0 0 0-9 0v4.5z' }], ['path', { d: 'M10 20h4' }], ['path', { d: 'M12 4V2.5' }]],
   approval: [['path', { d: 'M5 4h14v16H5z' }], ['path', { d: 'm8 12 3 3 5-6' }]],
   driver: [['circle', { cx: '12', cy: '7', r: '3' }], ['path', { d: 'M5 21a7 7 0 0 1 14 0' }], ['path', { d: 'm16 12 2 2 4-5' }]],
+  scan: [['path', { d: 'M4 7V5a1 1 0 0 1 1-1h2' }], ['path', { d: 'M17 4h2a1 1 0 0 1 1 1v2' }], ['path', { d: 'M20 17v2a1 1 0 0 1-1 1h-2' }], ['path', { d: 'M7 20H5a1 1 0 0 1-1-1v-2' }], ['path', { d: 'M7 12h10' }], ['path', { d: 'M9 9h6v6H9z' }]],
   list: [['path', { d: 'M8 6h13' }], ['path', { d: 'M8 12h13' }], ['path', { d: 'M8 18h13' }], ['path', { d: 'M3 6h1' }], ['path', { d: 'M3 12h1' }], ['path', { d: 'M3 18h1' }]],
   menu: [['path', { d: 'M4 7h16' }], ['path', { d: 'M4 12h16' }], ['path', { d: 'M4 17h16' }]],
   logout: [['path', { d: 'M10 5H5v14h5' }], ['path', { d: 'M14 8l4 4-4 4' }], ['path', { d: 'M8 12h10' }]],
@@ -51,8 +52,9 @@ const menus = {
     { label: '내 차량', path: '/driver/vehicles', icon: 'truck' },
   ],
   ADMIN: [
-    { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
-    { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
+    { label: '관제 상황판', path: '/admin/main', icon: 'cctv' },
+    { label: '통계 요약', path: '/admin/dashboard', icon: 'dashboard' },
+    { label: 'AI 번호판 인식', path: '/admin/plate-recognition', icon: 'scan' },
     { label: '가입 인원관리', path: '/admin/members', icon: 'users' },
     { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
     { label: '차량 출입 조회', path: '/admin/gate-logs', icon: 'truck' },
@@ -122,8 +124,8 @@ const logout = () => {
       <div class="side-footer">
         <div class="side-note">
           <b>실시간 운영 현황</b>
-          <span>센터 현황 메뉴에서</span>
-          <span>DB 연동 데이터를 확인하세요.</span>
+          <span>관제 상황판은 5초마다</span>
+          <span>DB 연동 데이터를 갱신합니다.</span>
         </div>
         <button class="logout-button" type="button" title="로그아웃" @click="logout">
           <MenuIcon name="logout" />
@@ -160,10 +162,14 @@ const logout = () => {
 }
 
 .sidebar {
+  position: sticky;
+  top: 0;
   display: flex;
+  height: 100vh;
   min-width: 0;
   flex-direction: column;
   gap: 10px;
+  overflow-y: auto;
   padding: 12px;
   color: #ffffff;
   background: #26384d;

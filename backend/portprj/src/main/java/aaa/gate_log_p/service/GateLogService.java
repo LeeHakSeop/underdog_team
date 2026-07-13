@@ -10,7 +10,6 @@ import aaa.gate_log_p.model.GateProcessRequestDTO;
 import aaa.gate_log_p.model.GateProcessResultDTO;
 import aaa.work_order_p.model.WorkOrderDTO;
 import aaa.work_order_p.service.WorkOrderService;
-import aaa.work_order_p.model.WorkOrderDTO;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
