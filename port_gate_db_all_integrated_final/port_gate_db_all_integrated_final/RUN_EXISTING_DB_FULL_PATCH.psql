@@ -1,0 +1,12 @@
+\set ON_ERROR_STOP on
+\echo '=============================================='
+\echo 'Port Gate DB full integration patch start'
+\echo '=============================================='
+\ir patches/01_all_schema_relation_patch.sql
+\ir patches/02_exception_trailer_realtime_unified.sql
+\ir patches/03_train_dataset_8972_and_200_trailers.sql
+\ir patches/04_low_visibility_ocr_exception_seed.sql
+\ir patches/05_final_integrity_and_sequences.sql
+\echo '=============================================='
+\echo 'Patch completed successfully'
+\echo '=============================================='
