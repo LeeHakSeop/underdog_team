@@ -5,13 +5,8 @@ import AdminGateLogsView from '@/views/admin/AdminGateLogsView.vue'
 import AdminContainersView from '@/views/admin/AdminContainersView.vue'
 import AdminEventsView from '@/views/admin/AdminEventsView.vue'
 import AdminMembersView from '@/views/admin/AdminMembersView.vue'
-<<<<<<< HEAD
-import AdminWorkOrdersView from '@/views/admin/AdminWorkOrdersView.vue'
 import AdminPlateRecognitionView from '@/views/admin/AdminPlateRecognitionView.vue'
 import AdminYardMapView from '@/views/admin/AdminYardMapView.vue'
-=======
-import AdminPlateRecognitionView from '@/views/admin/AdminPlateRecognitionView.vue'
->>>>>>> origin/hakseop
 
 export default [
   {
@@ -76,19 +71,6 @@ export default [
         name: 'admin-events',
         component: AdminEventsView,
         meta: { role: 'admin', title: '알림/이벤트' },
-      },
-      {
-<<<<<<< HEAD
-        path: 'members',
-        name: 'admin-members',
-        component: AdminMembersView,
-        meta: { role: 'admin', title: '가입 회원 관리' },
-=======
-        path: 'plate-recognition',
-        name: 'plate-recognition',
-        component: AdminPlateRecognitionView,
-        meta: { role: 'ADMIN', title: '인식조회' },
->>>>>>> origin/hakseop
       },
     ],
   },
