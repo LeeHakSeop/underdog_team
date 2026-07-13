@@ -6,24 +6,37 @@ import AdminContainersView from '@/views/admin/AdminContainersView.vue'
 import AdminEventsView from '@/views/admin/AdminEventsView.vue'
 import AdminMembersView from '@/views/admin/AdminMembersView.vue'
 import AdminPlateRecognitionView from '@/views/admin/AdminPlateRecognitionView.vue'
+import AdminYardMapView from '@/views/admin/AdminYardMapView.vue'
 
 export default [
   {
     path: '/admin',
     redirect: '/admin/main',
-    meta: { role: 'ADMIN' },
+    meta: { role: 'admin' },
     children: [
       {
         path: 'main',
         name: 'admin-main',
         component: AdminMainView,
-        meta: { role: 'ADMIN', title: '관제 상황판' },
+        meta: { role: 'admin', title: '관리자 메인' },
       },
       {
         path: 'dashboard',
         name: 'admin-dashboard',
         component: AdminDashboardView,
-        meta: { role: 'ADMIN', title: '통계 요약' },
+        meta: { role: 'admin', title: '센터 현황' },
+      },
+      {
+        path: 'yard-map',
+        name: 'admin-yard-map',
+        component: AdminYardMapView,
+        meta: { role: 'admin', title: '운영 맵' },
+      },
+      {
+        path: 'plate-recognition',
+        name: 'admin-plate-recognition',
+        component: AdminPlateRecognitionView,
+        meta: { role: 'admin', title: 'AI 번호판 인식' },
       },
       {
         path: 'members',
@@ -35,7 +48,7 @@ export default [
         path: 'work-orders',
         name: 'admin-work-orders',
         component: AdminWorkOrdersView,
-        meta: { role: 'ADMIN', title: '작업 관리' },
+        meta: { role: 'admin', title: '작업 관리' },
       },
       {
         path: 'tasks',
@@ -45,25 +58,19 @@ export default [
         path: 'gate-logs',
         name: 'admin-gate-logs',
         component: AdminGateLogsView,
-        meta: { role: 'ADMIN', title: '차량 출입 조회' },
+        meta: { role: 'admin', title: '차량 출입 조회' },
       },
       {
         path: 'containers',
         name: 'admin-containers',
         component: AdminContainersView,
-        meta: { role: 'ADMIN', title: '컨테이너 조회' },
+        meta: { role: 'admin', title: '컨테이너 조회' },
       },
       {
         path: 'events',
         name: 'admin-events',
         component: AdminEventsView,
-        meta: { role: 'ADMIN', title: '알림/이벤트' },
-      },
-      {
-        path: 'plate-recognition',
-        name: 'plate-recognition',
-        component: AdminPlateRecognitionView,
-        meta: { role: 'ADMIN', title: 'AI 번호판 인식' },
+        meta: { role: 'admin', title: '알림/이벤트' },
       },
     ],
   },

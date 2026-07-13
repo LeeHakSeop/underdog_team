@@ -15,8 +15,11 @@ AI_v2_crnn_package/
     summary.txt
 
   scripts/
+    eval_preprocess_ablation.py
+    eval_preprocess_ablation.ps1
     evaluate_crnn_ocr.py
     evaluate_crnn_ocr.ps1
+    plate_preprocess.py
     plate_postprocess.py
     train_crnn_ocr.py
 
@@ -45,6 +48,18 @@ model/summary.txt
 학습 조건과 검증 성능 요약입니다.
 
 ```text
+scripts/eval_preprocess_ablation.py
+```
+
+best.pt를 고정하고 OpenCV 전처리 조건별 OCR 평가 CSV를 생성하는 파일입니다.
+
+```text
+scripts/eval_preprocess_ablation.ps1
+```
+
+Windows PowerShell에서 전처리 ablation 평가를 실행하기 위한 파일입니다.
+
+```text
 scripts/evaluate_crnn_ocr.py
 ```
 
@@ -55,6 +70,12 @@ scripts/evaluate_crnn_ocr.ps1
 ```
 
 Windows PowerShell에서 평가 명령어를 짧게 실행하기 위한 파일입니다.
+
+```text
+scripts/plate_preprocess.py
+```
+
+OpenCV 기반 전처리 함수 모음입니다.
 
 ```text
 scripts/plate_postprocess.py
@@ -82,6 +103,7 @@ torch
 torchvision
 pillow
 openpyxl
+opencv-python
 ```
 
 ## 4. labels.csv 형식
@@ -130,6 +152,30 @@ PowerShell에서 실행합니다.
   -Output runs\ocr\eval_crnn `
   -Split val `
   -Device auto
+```
+
+전처리 조건별 평가 예시:
+
+```powershell
+.\scripts\eval_preprocess_ablation.ps1 `
+  -LabelsCsv C:\hakseop\data\labels.csv `
+  -Model model\best.pt `
+  -ImageRoot C:\hakseop\data `
+  -Output runs\ocr\preprocess_ablation `
+  -Split val `
+  -Modes "none,gray,clahe,sharpen,threshold" `
+  -Device auto
+```
+
+생성 파일:
+
+```text
+runs/ocr/preprocess_ablation/summary_val.csv
+runs/ocr/preprocess_ablation/evaluation_val_none.csv
+runs/ocr/preprocess_ablation/evaluation_val_gray.csv
+runs/ocr/preprocess_ablation/evaluation_val_clahe.csv
+runs/ocr/preprocess_ablation/evaluation_val_sharpen.csv
+runs/ocr/preprocess_ablation/evaluation_val_threshold.csv
 ```
 
 ## 6. Device 옵션
