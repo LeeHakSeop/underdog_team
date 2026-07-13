@@ -134,7 +134,7 @@ const menus = {
     { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
     { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
 
-    { label: '감만부두 운영 맵', path: '/admin/yard-map', icon: 'map' },
+    { label: '운영 맵', path: '/admin/yard-map', icon: 'map' },
     { label: 'AI 번호판 인식', path: '/admin/plate-recognition', icon: 'scan' },
     { label: '가입 회원 관리', path: '/admin/members', icon: 'users' },
 

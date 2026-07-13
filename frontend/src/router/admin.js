@@ -30,7 +30,7 @@ export default [
         path: 'yard-map',
         name: 'admin-yard-map',
         component: AdminYardMapView,
-        meta: { role: 'admin', title: '감만부두 운영 맵' },
+        meta: { role: 'admin', title: '운영 맵' },
       },
       {
         path: 'plate-recognition',
