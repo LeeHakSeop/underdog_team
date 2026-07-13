@@ -254,6 +254,13 @@ const submitGateProcess = async () => {
         </div>
       </div>
 
+      <ol class="process-steps" aria-label="번호판 출입 처리 단계">
+        <li :class="{ complete: tractorResult }"><b>1</b><span>트랙터 인식</span></li>
+        <li :class="{ complete: trailerResult }"><b>2</b><span>트레일러 인식</span></li>
+        <li :class="{ complete: canProcessGate }"><b>3</b><span>정보 검증</span></li>
+        <li :class="{ complete: gateLogStore.processResult?.success }"><b>4</b><span>출입 처리</span></li>
+      </ol>
+
       <div class="gate-process-panel">
         <div>
           <span>최종 출입 처리 요청 데이터</span>
@@ -305,7 +312,8 @@ const submitGateProcess = async () => {
           </div>
 
           <label class="file-box" for="tractorImage">
-            <span>트랙터 이미지 선택</span>
+            <b>트랙터 이미지 업로드</b>
+            <span>{{ tractorFile?.name || 'JPG, PNG 파일을 선택하세요' }}</span>
             <input id="tractorImage" accept="image/*" type="file" @change="selectTractorFile" />
           </label>
 
@@ -413,7 +421,8 @@ const submitGateProcess = async () => {
           </div>
 
           <label class="file-box" for="trailerImage">
-            <span>트레일러 이미지 선택</span>
+            <b>트레일러 이미지 업로드</b>
+            <span>{{ trailerFile?.name || 'JPG, PNG 파일을 선택하세요' }}</span>
             <input id="trailerImage" accept="image/*" type="file" @change="selectTrailerFile" />
           </label>
 
@@ -687,10 +696,21 @@ const submitGateProcess = async () => {
   min-height: 90px;
   place-items: center;
   color: var(--blue-700);
+  gap: 5px;
   background: #f4f9ff;
   border: 1px dashed #8db5dc;
   border-radius: 4px;
   font-weight: 800;
+}
+
+.file-box b {
+  color: var(--blue-700);
+  font-size: 14px;
+}
+
+.file-box span {
+  color: var(--ink-500);
+  font-size: 12px;
 }
 
 .file-box input {
@@ -795,11 +815,53 @@ const submitGateProcess = async () => {
   font-weight: 800;
 }
 
+.process-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.process-steps li {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  color: var(--ink-500);
+  background: #f7f9fb;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+
+.process-steps b {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  background: #e3eaf2;
+  border-radius: 999px;
+}
+
+.process-steps li.complete {
+  color: #155e38;
+  background: #eefaf3;
+  border-color: #9dd8b8;
+}
+
+.process-steps li.complete b {
+  color: #ffffff;
+  background: var(--green-600);
+}
+
 @media (max-width: 900px) {
   .top-control-area,
   .gate-process-panel,
   .recognition-layout,
-  .result-grid {
+  .result-grid,
+  .process-steps {
     grid-template-columns: 1fr;
   }
 }

@@ -14,14 +14,14 @@ public interface DashboardMapper {
                 (SELECT COUNT(*) FROM users WHERE status = 'PENDING') AS pendingUsers,
                 (SELECT COUNT(*) FROM users WHERE role_code = 'CARRIER' AND status = 'PENDING') AS pendingCarriers,
                 (SELECT COUNT(*) FROM users WHERE role_code = 'DRIVER' AND status = 'PENDING') AS pendingDrivers,
-                (SELECT COUNT(*) FROM gate_log WHERE in_out_type = 'IN' AND DATE(entry_time) = CURRENT_DATE) AS todayGateIn,
-                (SELECT COUNT(*) FROM gate_log WHERE in_out_type = 'OUT' AND DATE(exit_time) = CURRENT_DATE) AS todayGateOut,
+                (SELECT COUNT(*) FROM gate_log WHERE in_out_type = 'IN' AND process_result = 'GATE_SUCCESS' AND DATE(entry_time) = CURRENT_DATE) AS todayGateIn,
+                (SELECT COUNT(*) FROM gate_log WHERE in_out_type = 'OUT' AND process_result = 'GATE_SUCCESS' AND DATE(exit_time) = CURRENT_DATE) AS todayGateOut,
                 (SELECT COUNT(*) FROM plate_recognition) AS recognitionTotal,
                 (SELECT COUNT(*) FROM plate_recognition WHERE is_success = true) AS recognitionSuccess,
                 (SELECT COUNT(*) FROM plate_recognition WHERE is_success = false) AS recognitionFail,
                 (SELECT COUNT(*) FROM exception_log WHERE process_status IS NULL OR process_status <> 'PROCESSED') AS exceptionOpen,
                 (SELECT COUNT(*) FROM work_order) AS workTotal,
-                (SELECT COUNT(*) FROM work_order WHERE work_status IN ('DISPATCH_WAITING', 'READY', 'WAITING')) AS workReady,
+                (SELECT COUNT(*) FROM work_order WHERE work_status IN ('DISPATCH_WAITING', 'APPROVED', 'READY', 'WAITING')) AS workReady,
                 (SELECT COUNT(*) FROM work_order WHERE work_status IN ('GATE_IN', 'IN_PROGRESS', 'WORKING')) AS workInProgress,
                 (SELECT COUNT(*) FROM work_order WHERE work_status IN ('GATE_OUT', 'DONE', 'COMPLETED')) AS workDone
             """)

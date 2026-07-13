@@ -1,4 +1,4 @@
-﻿CREATE TABLE work_order(work_order_id BIGSERIAL PRIMARY KEY, work_type VARCHAR(30), 
+CREATE TABLE work_order(work_order_id BIGSERIAL PRIMARY KEY, work_type VARCHAR(30),
 vehicle_id BIGINT REFERENCES vehicle(vehicle_id),
 tractor_vehicle_id BIGINT REFERENCES vehicle(vehicle_id),
 trailer_vehicle_id BIGINT REFERENCES vehicle(vehicle_id),
@@ -309,3 +309,4 @@ VALUES
 (298,'諛섏텧',298,298,298,'2026-07-03 09:30:00','寃뚯씠?몄쭊??,true),
 (299,'諛섏엯',299,299,299,'2026-07-03 09:40:00','?대룞以?,true),
 (300,'?섏감',300,300,300,'2026-07-03 09:50:00','?곸감?꾨즺',true);
+

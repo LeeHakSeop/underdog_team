@@ -11,7 +11,9 @@ export const roleOptions = [
 
 const readJson = (key, fallback) => {
   try {
-    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback))
+    return JSON.parse(
+      localStorage.getItem(key) || JSON.stringify(fallback),
+    )
   } catch {
     return fallback
   }
@@ -22,7 +24,10 @@ const writeJson = (key, value) => {
 }
 
 export const findRole = (roleCode) => {
-  return roleOptions.find((role) => role.code === roleCode) || roleOptions[0]
+  return (
+    roleOptions.find((role) => role.code === roleCode) ||
+    roleOptions[0]
+  )
 }
 
 export const readCurrentUser = () => {
@@ -34,7 +39,11 @@ export const clearCurrentUser = () => {
   localStorage.removeItem(TOKEN_KEY)
 }
 
-export const loginAccount = async ({ username, password, roleCode }) => {
+export const loginAccount = async ({
+  username,
+  password,
+  roleCode,
+}) => {
   const data = await login({
     loginId: username,
     password,
@@ -54,7 +63,13 @@ export const loginAccount = async ({ username, password, roleCode }) => {
     displayName: data.userName || data.loginId,
   }
 
-  localStorage.setItem(TOKEN_KEY, data.token)
+  const token = data.token || data.accessToken
+
+  if (!token) {
+    throw new Error('로그인 토큰을 받지 못했습니다.')
+  }
+
+  localStorage.setItem(TOKEN_KEY, token)
   writeJson(USER_KEY, user)
 
   return {
@@ -64,7 +79,7 @@ export const loginAccount = async ({ username, password, roleCode }) => {
 }
 
 export const registerAccount = async (account) => {
-  return await register({
+  return register({
     loginId: account.username,
     password: account.password,
     userName: account.displayName || account.username,

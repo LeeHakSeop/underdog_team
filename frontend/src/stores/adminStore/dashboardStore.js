@@ -10,7 +10,11 @@ export const useDashboardStore = defineStore('dashboard', {
 
   actions: {
     async loadDashboard() {
-      this.loading = true
+      const firstLoad = this.dashboard === null
+
+      if (firstLoad) {
+        this.loading = true
+      }
       this.error = ''
 
       try {
@@ -19,7 +23,9 @@ export const useDashboardStore = defineStore('dashboard', {
         this.error = '대시보드 현황을 불러오지 못했습니다.'
         throw error
       } finally {
-        this.loading = false
+        if (firstLoad) {
+          this.loading = false
+        }
       }
     },
   },

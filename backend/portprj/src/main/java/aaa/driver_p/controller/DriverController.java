@@ -8,6 +8,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@CrossOrigin(origins = {
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://200.200.200.66:5173"
+})
 @RestController
 @RequestMapping("/api/driver")
 public class DriverController {
@@ -37,7 +42,10 @@ public class DriverController {
     }
 
     @PutMapping("/modify/{driverId}")
-    public DriverDTO modify(@PathVariable Long driverId, @RequestBody DriverDTO dto) {
+    public DriverDTO modify(
+            @PathVariable Long driverId,
+            @RequestBody DriverDTO dto
+    ) {
         dto.setDriverId(driverId);
         driverService.update(dto);
         return driverService.detail(driverId);
@@ -49,12 +57,16 @@ public class DriverController {
     }
 
     @GetMapping("/my-work-orders")
-    public List<DriverWorkOrderDTO> myWorkOrders(@RequestParam String userName) {
+    public List<DriverWorkOrderDTO> myWorkOrders(
+            @RequestParam String userName
+    ) {
         return driverService.myWorkOrders(userName);
     }
 
     @GetMapping("/my-work-orders/user/{userId}")
-    public List<DriverWorkOrderDTO> myWorkOrdersByUserId(@PathVariable Long userId) {
+    public List<DriverWorkOrderDTO> myWorkOrdersByUserId(
+            @PathVariable Long userId
+    ) {
         return driverService.myWorkOrdersByUserId(userId);
     }
 }

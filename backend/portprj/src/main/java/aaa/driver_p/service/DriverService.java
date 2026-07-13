@@ -35,7 +35,17 @@ public class DriverService {
 
     public int update(DriverDTO dto) {
         setDefaultValues(dto);
-        return driverMapper.update(dto);
+        int result = driverMapper.update(dto);
+
+        if (dto.getUserId() != null) {
+            if (Boolean.TRUE.equals(dto.getCanEnter())) {
+                userMapper.updateStatus(dto.getUserId(), "ACTIVE");
+            } else if (Boolean.TRUE.equals(dto.getIsRegistered())) {
+                userMapper.updateStatus(dto.getUserId(), "CARRIER_APPROVED");
+            }
+        }
+
+        return result;
     }
 
     public int delete(Long driverId) {
@@ -54,8 +64,16 @@ public class DriverService {
             throw new RuntimeException("기사 계정만 승인할 수 있습니다.");
         }
 
-        driverMapper.updateApprovalByUserId(userId, true, false);
-        userMapper.updateStatus(userId, "CARRIER_APPROVED");
+        driverMapper.updateApprovalByUserId(
+                userId,
+                true,
+                false
+        );
+
+        userMapper.updateStatus(
+                userId,
+                "CARRIER_APPROVED"
+        );
     }
 
     public List<DriverWorkOrderDTO> myWorkOrders(String userName) {
@@ -70,6 +88,7 @@ public class DriverService {
         if (dto.getIsRegistered() == null) {
             dto.setIsRegistered(false);
         }
+
         if (dto.getCanEnter() == null) {
             dto.setCanEnter(false);
         }

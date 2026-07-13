@@ -33,6 +33,10 @@ public class VehicleService {
     }
 
     public TractorVehicleInfoDTO findTractorInfo(String plateNumber) {
+        if (plateNumber == null || plateNumber.isBlank()) {
+            throw new IllegalArgumentException("차량번호는 필수입니다.");
+        }
+
         return vehicleMapper.findTractorInfoByPlateNumber(plateNumber);
     }
 
@@ -46,22 +50,34 @@ public class VehicleService {
 
     @Transactional
     public int insert(VehicleDTO dto) {
-        setDefaultValues(dto);
+        validateInsert(dto);
 
         if (vehicleMapper.findByPlateNumber(dto.getPlateNumber()) != null) {
             throw new IllegalArgumentException("이미 등록된 차량번호입니다.");
         }
+
+        dto.setIsRegistered(false);
+        dto.setVehicleStatus("승인대기");
 
         return vehicleMapper.insert(dto);
     }
 
     @Transactional
     public int update(VehicleDTO dto) {
-        setDefaultValues(dto);
+        validateUpdate(dto);
 
         VehicleDTO old = vehicleMapper.findByPlateNumber(dto.getPlateNumber());
+
         if (old != null && !old.getVehicleId().equals(dto.getVehicleId())) {
             throw new IllegalArgumentException("이미 등록된 차량번호입니다.");
+        }
+
+        if (dto.getIsRegistered() == null) {
+            dto.setIsRegistered(false);
+        }
+
+        if (dto.getVehicleStatus() == null || dto.getVehicleStatus().isBlank()) {
+            dto.setVehicleStatus("승인대기");
         }
 
         return vehicleMapper.update(dto);
@@ -92,24 +108,59 @@ public class VehicleService {
         boolean approved = Boolean.TRUE.equals(dto.getIsRegistered());
         String vehicleStatus = approved ? "정상" : "승인거절";
 
-        int result = vehicleMapper.updateApproval(vehicleId, approved, vehicleStatus);
+        int result = vehicleMapper.updateApproval(
+                vehicleId,
+                approved,
+                vehicleStatus
+        );
 
-        driverMapper.updateApprovalByDriverId(vehicle.getDriverId(), true, approved);
+        driverMapper.updateApprovalByDriverId(
+                vehicle.getDriverId(),
+                true,
+                approved
+        );
 
         if (driver.getUserId() != null) {
-            userMapper.updateStatus(driver.getUserId(), approved ? "ACTIVE" : "CARRIER_APPROVED");
+            userMapper.updateStatus(
+                    driver.getUserId(),
+                    approved ? "ACTIVE" : "CARRIER_APPROVED"
+            );
         }
 
         return result;
     }
 
-    private void setDefaultValues(VehicleDTO dto) {
-        if (dto.getIsRegistered() == null) {
-            dto.setIsRegistered(false);
+    private void validateInsert(VehicleDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("차량 정보는 필수입니다.");
         }
 
-        if (dto.getVehicleStatus() == null || dto.getVehicleStatus().isBlank()) {
-            dto.setVehicleStatus("승인대기");
+        if (dto.getPlateNumber() == null || dto.getPlateNumber().isBlank()) {
+            throw new IllegalArgumentException("차량번호는 필수입니다.");
         }
+
+        if (dto.getVehicleType() == null || dto.getVehicleType().isBlank()) {
+            throw new IllegalArgumentException("차량종류는 필수입니다.");
+        }
+
+        if (dto.getTonnage() == null || dto.getTonnage().isBlank()) {
+            throw new IllegalArgumentException("톤수는 필수입니다.");
+        }
+
+        if (dto.getDriverId() == null) {
+            throw new IllegalArgumentException("배정 기사는 필수입니다.");
+        }
+
+        if (dto.getCarrierId() == null) {
+            throw new IllegalArgumentException("운송사 ID는 필수입니다.");
+        }
+    }
+
+    private void validateUpdate(VehicleDTO dto) {
+        if (dto == null || dto.getVehicleId() == null) {
+            throw new IllegalArgumentException("차량 ID는 필수입니다.");
+        }
+
+        validateInsert(dto);
     }
 }

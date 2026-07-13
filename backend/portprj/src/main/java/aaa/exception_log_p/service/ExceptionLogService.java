@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-public class ExceptionLogService {
+public class  ExceptionLogService {
 
     @Resource
     ExceptionLogMapper mapper;
@@ -29,6 +29,9 @@ public class ExceptionLogService {
     }
 
     public int updateProcess(Long exceptionLogId, ExceptionLogDTO dto) {
+        if (dto == null) {
+            dto = new ExceptionLogDTO();
+        }
         dto.setExceptionLogId(exceptionLogId);
         if (dto.getProcessedTime() == null) {
             dto.setProcessedTime(LocalDateTime.now());
@@ -37,5 +40,15 @@ public class ExceptionLogService {
             dto.setProcessStatus("PROCESSED");
         }
         return mapper.updateProcess(dto);
+    }
+
+    public int updateProcessByGateLogId(Long gateLogId, String managerAction) {
+        if (gateLogId == null) {
+            return 0;
+        }
+        if (managerAction == null || managerAction.isBlank()) {
+            managerAction = "수동 보정 완료";
+        }
+        return mapper.updateProcessByGateLogId(gateLogId, managerAction, LocalDateTime.now());
     }
 }

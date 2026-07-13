@@ -35,6 +35,9 @@ const driverForm = ref({
   driverName: '',
   driverContact: '',
   carrierId: '',
+  plateNumber: '',
+  tonnage: '25T',
+  tractorNo: '',
 })
 
 const emptyVehicleForm = {
@@ -81,8 +84,19 @@ const resetForm = () => {
     driverName: '',
     driverContact: '',
     carrierId: '',
+    plateNumber: '',
+    tonnage: '25T',
+    tractorNo: '',
   }
 }
+
+const driverVehicleForm = computed(() => ({
+  plateNumber: driverForm.value.plateNumber,
+  vehicleType: 'TRACTOR',
+  tonnage: driverForm.value.tonnage,
+  tractorNo: driverForm.value.tractorNo,
+  chassisNo: '',
+}))
 
 const validateAccount = () => {
   if (!accountForm.value.username.trim()) {
@@ -127,6 +141,13 @@ const validateDriver = () => {
 
   if (!driverForm.value.carrierId) {
     throw new Error('소속 운송사를 선택하세요.')
+  }
+  if (!driverForm.value.plateNumber.trim()) {
+    throw new Error('트랙터 차량번호를 입력하세요.')
+  }
+
+  if (!driverForm.value.tractorNo.trim()) {
+    throw new Error('트랙터 번호를 입력하세요.')
   }
 }
 
@@ -193,6 +214,10 @@ const buildPayload = () => {
     driverName: driverForm.value.driverName,
     driverContact: driverForm.value.driverContact,
     carrierId: Number(driverForm.value.carrierId),
+    plateNumber: driverForm.value.plateNumber,
+    vehicleType: 'TRACTOR',
+    tonnage: driverForm.value.tonnage,
+    tractorNo: driverForm.value.tractorNo,
   }
 }
 
@@ -257,7 +282,7 @@ const submitSignup = async () => {
           :account-form="accountForm"
           :carrier-form="carrierForm"
           :driver-form="driverForm"
-          :vehicle-form="emptyVehicleForm"
+          :vehicle-form="signupRole === 'DRIVER' ? driverVehicleForm : emptyVehicleForm"
         />
       </div>
 
@@ -313,7 +338,7 @@ const submitSignup = async () => {
       :account-form="accountForm"
       :carrier-form="carrierForm"
       :driver-form="driverForm"
-      :vehicle-form="emptyVehicleForm"
+      :vehicle-form="signupRole === 'DRIVER' ? driverVehicleForm : emptyVehicleForm"
       :current-step="currentStep"
     />
   </div>

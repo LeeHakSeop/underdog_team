@@ -1,9 +1,18 @@
+// stores/vehicleStore.js
 import { defineStore } from 'pinia'
-import { createVehicle, deleteVehicle, fetchVehicles, updateVehicle, updateVehicleApproval } from '@/api/vehicleApi'
+import {
+  createVehicle,
+  deleteVehicle,
+  fetchVehicleByDriver,
+  fetchVehicles,
+  updateVehicle,
+  updateVehicleApproval,
+} from '@/api/vehicleApi'
 
 export const useVehicleStore = defineStore('vehicle', {
   state: () => ({
     vehicles: [],
+    myVehicle: null,
     loading: false,
     error: '',
   }),
@@ -14,9 +23,9 @@ export const useVehicleStore = defineStore('vehicle', {
       this.error = ''
 
       try {
-        this.vehicles = await fetchVehicles()
+        this.vehicles = (await fetchVehicles()) || []
       } catch (error) {
-        this.error = '차량 목록을 불러오지 못했습니다.'
+        this.error = error.message || '차량 목록을 불러오지 못했습니다.'
         throw error
       } finally {
         this.loading = false
@@ -31,7 +40,21 @@ export const useVehicleStore = defineStore('vehicle', {
         await createVehicle(vehicle)
         await this.loadVehicles()
       } catch (error) {
-        this.error = '차량 등록에 실패했습니다.'
+        this.error = error.message || '차량 등록에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async loadVehicleByDriver(driverId) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        this.myVehicle = await fetchVehicleByDriver(driverId)
+      } catch (error) {
+        this.error = '내 차량 정보를 불러오지 못했습니다.'
         throw error
       } finally {
         this.loading = false
@@ -46,7 +69,7 @@ export const useVehicleStore = defineStore('vehicle', {
         await updateVehicle(vehicleId, vehicle)
         await this.loadVehicles()
       } catch (error) {
-        this.error = '차량 수정에 실패했습니다.'
+        this.error = error.message || '차량 수정에 실패했습니다.'
         throw error
       } finally {
         this.loading = false
@@ -61,7 +84,7 @@ export const useVehicleStore = defineStore('vehicle', {
         await updateVehicleApproval(vehicleId, isRegistered)
         await this.loadVehicles()
       } catch (error) {
-        this.error = '차량 승인 처리에 실패했습니다.'
+        this.error = error.message || '차량 승인 처리에 실패했습니다.'
         throw error
       } finally {
         this.loading = false
@@ -76,7 +99,7 @@ export const useVehicleStore = defineStore('vehicle', {
         await deleteVehicle(vehicleId)
         await this.loadVehicles()
       } catch (error) {
-        this.error = '차량 삭제에 실패했습니다.'
+        this.error = error.message || '차량 삭제에 실패했습니다.'
         throw error
       } finally {
         this.loading = false
@@ -84,4 +107,3 @@ export const useVehicleStore = defineStore('vehicle', {
     },
   },
 })
-

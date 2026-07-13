@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDriverStore } from '@/stores/driverStore'
 
 const driverStore = useDriverStore()
 const { myWorkOrders, loading, error } = storeToRefs(driverStore)
+let refreshTimer = null
 
 const loginUser = computed(() => {
   return JSON.parse(localStorage.getItem('portGateUser') || 'null')
@@ -14,22 +15,39 @@ const currentWorkOrder = computed(() => {
   return myWorkOrders.value[0] || null
 })
 
+const passStatus = computed(() => {
+  if (!currentWorkOrder.value) return '대기'
+  if (currentWorkOrder.value.isApproved && currentWorkOrder.value.canEnter) return '출입 가능'
+  return '승인 대기'
+})
+
+const nextGuide = computed(() => {
+  if (!currentWorkOrder.value) return '배정된 작업이 없습니다.'
+  if (!currentWorkOrder.value.isApproved) return '관리자 승인 후 게이트 출입이 가능합니다.'
+  if (!currentWorkOrder.value.canEnter) return '기사 출입 가능 상태를 운송사 또는 관리자에게 확인하세요.'
+  return `${currentWorkOrder.value.sectorName || '지정 섹터'}로 이동 후 안내 메시지를 확인하세요.`
+})
+
 const getBooleanText = (value) => {
-  if (value === true) {
-    return '승인'
-  }
-
-  if (value === false) {
-    return '미승인'
-  }
-
+  if (value === true) return '승인'
+  if (value === false) return '미승인'
   return '-'
 }
 
 onMounted(() => {
   if (loginUser.value?.userId) {
     driverStore.loadMyWorkOrdersByUserId(loginUser.value.userId)
+
+    refreshTimer = setInterval(() => {
+      if (!driverStore.loading) {
+        driverStore.loadMyWorkOrdersByUserId(loginUser.value.userId).catch(() => {})
+      }
+    }, 5000)
   }
+})
+
+onUnmounted(() => {
+  clearInterval(refreshTimer)
 })
 </script>
 
@@ -42,7 +60,7 @@ onMounted(() => {
       </div>
 
       <div v-if="loading" class="empty-panel">
-        작업정보를 불러오는 중입니다.
+        작업 정보를 불러오는 중입니다.
       </div>
 
       <div v-else-if="error" class="empty-panel warning">
@@ -52,7 +70,7 @@ onMounted(() => {
       <div v-else-if="currentWorkOrder" class="work-summary">
         <div>
           <span>기사</span>
-          <strong>{{ currentWorkOrder.driverName }}</strong>
+          <strong>{{ currentWorkOrder.driverName || '-' }}</strong>
         </div>
         <div>
           <span>운송사</span>
@@ -77,8 +95,26 @@ onMounted(() => {
       </div>
 
       <div v-else class="empty-panel">
-        로그인한 기사에게 배정된 작업정보가 없습니다.
+        로그인한 기사에게 배정된 작업 정보가 없습니다.
       </div>
+    </section>
+
+    <section v-if="currentWorkOrder" class="driver-operation-panel">
+      <article class="driver-pass-card">
+        <span>최종 출입 상태</span>
+        <strong>{{ passStatus }}</strong>
+        <p>{{ nextGuide }}</p>
+      </article>
+      <article class="driver-pass-card">
+        <span>목적지</span>
+        <strong>{{ currentWorkOrder.sectorName || '-' }}</strong>
+        <p>{{ currentWorkOrder.guideMessage || '야드 안내 메시지가 없습니다.' }}</p>
+      </article>
+      <article class="driver-pass-card">
+        <span>예약 시간</span>
+        <strong>{{ currentWorkOrder.reservedTime || '-' }}</strong>
+        <p>{{ currentWorkOrder.containerNumber || '-' }} / {{ currentWorkOrder.workType || '-' }}</p>
+      </article>
     </section>
 
     <section v-if="currentWorkOrder" class="grid-2 driver-grid">
@@ -90,42 +126,17 @@ onMounted(() => {
 
         <table class="data-table">
           <tbody>
-            <tr>
-              <th>컨테이너 번호</th>
-              <td>{{ currentWorkOrder.containerNumber || '-' }}</td>
-            </tr>
-            <tr>
-              <th>컨테이너 크기</th>
-              <td>{{ currentWorkOrder.containerSize || '-' }}</td>
-            </tr>
-            <tr>
-              <th>컨테이너 위치</th>
-              <td>{{ currentWorkOrder.containerLocation || '-' }}</td>
-            </tr>
+            <tr><th>컨테이너 번호</th><td>{{ currentWorkOrder.containerNumber || '-' }}</td></tr>
+            <tr><th>컨테이너 크기</th><td>{{ currentWorkOrder.containerSize || '-' }}</td></tr>
+            <tr><th>컨테이너 위치</th><td>{{ currentWorkOrder.containerLocation || '-' }}</td></tr>
             <tr>
               <th>블록 / 베이 / 로우</th>
-              <td>
-                {{ currentWorkOrder.block || '-' }}
-                / {{ currentWorkOrder.bay || '-' }}
-                / {{ currentWorkOrder.rowNo || '-' }}
-              </td>
+              <td>{{ currentWorkOrder.block || '-' }} / {{ currentWorkOrder.bay || '-' }} / {{ currentWorkOrder.rowNo || '-' }}</td>
             </tr>
-            <tr>
-              <th>야드 섹터</th>
-              <td>{{ currentWorkOrder.sectorName || '-' }}</td>
-            </tr>
-            <tr>
-              <th>섹터 상태</th>
-              <td>{{ currentWorkOrder.sectorStatus || '-' }}</td>
-            </tr>
-            <tr>
-              <th>대체 대기장소</th>
-              <td>{{ currentWorkOrder.altWaitingArea || '-' }}</td>
-            </tr>
-            <tr>
-              <th>안내 메시지</th>
-              <td>{{ currentWorkOrder.guideMessage || '-' }}</td>
-            </tr>
+            <tr><th>야드 섹터</th><td>{{ currentWorkOrder.sectorName || '-' }}</td></tr>
+            <tr><th>섹터 상태</th><td>{{ currentWorkOrder.sectorStatus || '-' }}</td></tr>
+            <tr><th>대체 대기장소</th><td>{{ currentWorkOrder.altWaitingArea || '-' }}</td></tr>
+            <tr><th>안내 메시지</th><td>{{ currentWorkOrder.guideMessage || '-' }}</td></tr>
           </tbody>
         </table>
       </article>
@@ -138,30 +149,12 @@ onMounted(() => {
 
         <table class="data-table">
           <tbody>
-            <tr>
-              <th>기사 연락처</th>
-              <td>{{ currentWorkOrder.driverContact || '-' }}</td>
-            </tr>
-            <tr>
-              <th>기사 출입 가능</th>
-              <td>{{ currentWorkOrder.canEnter ? '가능' : '불가' }}</td>
-            </tr>
-            <tr>
-              <th>운송사 연락처</th>
-              <td>{{ currentWorkOrder.carrierContact || '-' }}</td>
-            </tr>
-            <tr>
-              <th>차량 유형</th>
-              <td>{{ currentWorkOrder.vehicleType || '-' }}</td>
-            </tr>
-            <tr>
-              <th>차량 상태</th>
-              <td>{{ currentWorkOrder.vehicleStatus || '-' }}</td>
-            </tr>
-            <tr>
-              <th>예약 시간</th>
-              <td>{{ currentWorkOrder.reservedTime || '-' }}</td>
-            </tr>
+            <tr><th>기사 연락처</th><td>{{ currentWorkOrder.driverContact || '-' }}</td></tr>
+            <tr><th>기사 출입 가능</th><td>{{ currentWorkOrder.canEnter ? '가능' : '불가' }}</td></tr>
+            <tr><th>운송사 연락처</th><td>{{ currentWorkOrder.carrierContact || '-' }}</td></tr>
+            <tr><th>차량 유형</th><td>{{ currentWorkOrder.vehicleType || '-' }}</td></tr>
+            <tr><th>차량 상태</th><td>{{ currentWorkOrder.vehicleStatus || '-' }}</td></tr>
+            <tr><th>예약 시간</th><td>{{ currentWorkOrder.reservedTime || '-' }}</td></tr>
           </tbody>
         </table>
       </article>
@@ -197,7 +190,7 @@ onMounted(() => {
               <td>{{ getBooleanText(order.isApproved) }}</td>
             </tr>
             <tr v-if="myWorkOrders.length === 0">
-              <td colspan="7">조회된 작업정보가 없습니다.</td>
+              <td colspan="7">조회된 작업 정보가 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -253,8 +246,44 @@ onMounted(() => {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
 }
 
+.driver-operation-panel {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.driver-pass-card {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  background: #f7f9fb;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--blue-700);
+  border-radius: 2px;
+}
+
+.driver-pass-card span {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.driver-pass-card strong {
+  color: var(--ink-900);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.driver-pass-card p {
+  margin: 0;
+  color: var(--ink-700);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 @media (max-width: 900px) {
   .work-summary,
+  .driver-operation-panel,
   .driver-grid {
     grid-template-columns: 1fr;
   }

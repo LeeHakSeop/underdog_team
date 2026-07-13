@@ -161,4 +161,34 @@ public interface PlateRecognitionMapper {
             """)
     @Options(useGeneratedKeys = true, keyProperty = "plateRecognitionId", keyColumn = "plate_recognition_id")
     int insertPlateRecognition(PlateRecognitionDTO dto);
+
+    @Select("""
+            SELECT
+                plate_recognition_id AS plateRecognitionId,
+                gate_log_id AS gateLogId,
+                vehicle_image AS vehicleImage,
+                recognized_plate AS recognizedPlate,
+                plate_type AS plateType,
+                is_success AS isSuccess,
+                confidence,
+                manual_correction AS manualCorrection,
+                error_message AS errorMessage,
+                recognition_time AS recognitionTime
+            FROM plate_recognition
+            WHERE plate_recognition_id = #{plateRecognitionId}
+            """)
+    PlateRecognitionDTO detail(Long plateRecognitionId);
+
+    @Update("""
+            UPDATE plate_recognition
+            SET
+                manual_correction = #{manualCorrection},
+                is_success = TRUE,
+                error_message = NULL
+            WHERE plate_recognition_id = #{plateRecognitionId}
+            """)
+    int updateManualCorrection(
+            @Param("plateRecognitionId") Long plateRecognitionId,
+            @Param("manualCorrection") String manualCorrection
+    );
 }

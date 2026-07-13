@@ -20,11 +20,18 @@ const approvedCarriers = computed(() =>
   ),
 )
 
+const tonnageOptions = ['25T', '20FT', '40FT']
+
 const updateField = (key, value) => {
   emit('update:modelValue', {
     ...props.modelValue,
     [key]: value,
   })
+}
+
+const generateCode = (prefix) => {
+  const number = Math.floor(Math.random() * 900000 + 100000)
+  return `${prefix}-${number}`
 }
 
 const loadCarriers = async () => {
@@ -47,7 +54,7 @@ onMounted(loadCarriers)
     <div class="section-head">
       <p class="section-label">STEP 2</p>
       <h3>기사 정보</h3>
-      <p>기사 정보와 가입을 신청할 운송사를 선택하세요.</p>
+      <p>기사 정보와 가입을 요청할 운송사를 선택하세요.</p>
     </div>
 
     <div class="form-grid">
@@ -69,14 +76,14 @@ onMounted(loadCarriers)
       </div>
 
       <div class="field field-full">
-        <label>가입 신청 운송사</label>
+        <label>가입 요청 운송사</label>
 
         <select
           :value="modelValue.carrierId || ''"
           @change="updateField('carrierId', Number($event.target.value))"
         >
           <option disabled value="">
-            운송사를 선택하세요
+            운송사를 선택하세요.
           </option>
 
           <option
@@ -85,6 +92,45 @@ onMounted(loadCarriers)
             :value="carrier.carrierId"
           >
             {{ carrier.carrierName }} / 담당자 {{ carrier.managerName || '-' }}
+          </option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>트랙터 차량번호</label>
+        <input
+          placeholder="예) 부산80바1234"
+          :value="modelValue.plateNumber"
+          @input="updateField('plateNumber', $event.target.value)"
+        />
+      </div>
+
+      <div class="field">
+        <label>트랙터 번호</label>
+        <div class="inline-field">
+          <input
+            placeholder="예) TR-202607"
+            :value="modelValue.tractorNo"
+            @input="updateField('tractorNo', $event.target.value)"
+          />
+          <button class="inline-action-button" type="button" @click="updateField('tractorNo', generateCode('TR'))">
+            자동
+          </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>톤수</label>
+        <select
+          :value="modelValue.tonnage"
+          @change="updateField('tonnage', $event.target.value)"
+        >
+          <option
+            v-for="tonnage in tonnageOptions"
+            :key="tonnage"
+            :value="tonnage"
+          >
+            {{ tonnage }}
           </option>
         </select>
       </div>
@@ -153,6 +199,32 @@ onMounted(loadCarriers)
   border-radius: 4px;
 }
 
+.inline-field {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+
+.inline-field input {
+  flex: 1;
+  min-width: 0;
+}
+
+.inline-action-button {
+  width: 64px;
+  flex-shrink: 0;
+  color: #ffffff;
+  background: var(--blue-700);
+  border: 1px solid var(--blue-700);
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.inline-action-button:hover {
+  background: #1d4e89;
+}
+
 .loading,
 .empty-message {
   color: var(--ink-500);
@@ -173,6 +245,15 @@ onMounted(loadCarriers)
 
   .field-full {
     grid-column: auto;
+  }
+
+  .inline-field {
+    flex-direction: column;
+  }
+
+  .inline-action-button {
+    width: 100%;
+    min-height: 36px;
   }
 }
 </style>
