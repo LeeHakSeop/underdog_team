@@ -34,6 +34,32 @@ const getPlateNumber = (vehicleId) => {
   return getValue(vehicle, 'plateNumber', 'plate_number') || vehicleId || '-'
 }
 
+const getWorkOrderPlateText = (order) => {
+  if (!order) return '-'
+
+  const tractorId = getId(order, 'tractorVehicleId')
+  const trailerId = getId(order, 'trailerVehicleId') || getId(order, 'vehicleId')
+
+  if (tractorId && trailerId && tractorId !== trailerId) {
+    return `${getPlateNumber(tractorId)} / ${getPlateNumber(trailerId)}`
+  }
+
+  return getPlateNumber(trailerId || tractorId || getId(order, 'vehicleId'))
+}
+
+const getGateLogPlateText = (log) => {
+  if (!log) return '-'
+
+  const tractorId = getId(log, 'tractorVehicleId')
+  const trailerId = getId(log, 'trailerVehicleId') || getId(log, 'vehicleId')
+
+  if (tractorId && trailerId && tractorId !== trailerId) {
+    return `${getPlateNumber(tractorId)} / ${getPlateNumber(trailerId)}`
+  }
+
+  return getPlateNumber(trailerId || tractorId || getId(log, 'vehicleId'))
+}
+
 const getVehicle = (vehicleId) => {
   return vehicleStore.vehicles.find((item) => getId(item, 'vehicleId') === vehicleId) || null
 }
@@ -71,10 +97,17 @@ const statusText = (status) => {
 
 const gateText = (type) => (type === 'OUT' ? '출차' : '입차')
 
+const isGateProcessLog = (log) => {
+  const processResult = getValue(log, 'processResult', 'process_result')
+  return processResult === 'GATE_SUCCESS' || processResult === 'GATE_FAIL'
+}
+
+const operationalGateLogs = computed(() => gateLogStore.gateLogs.filter(isGateProcessLog))
+
 const latestGateLogs = computed(() => gateLogStore.gateLogs.slice(0, 8))
 
-const todayGateIn = computed(() => gateLogStore.gateLogs.filter((log) => getValue(log, 'inOutType', 'in_out_type') === 'IN').length)
-const todayGateOut = computed(() => gateLogStore.gateLogs.filter((log) => getValue(log, 'inOutType', 'in_out_type') === 'OUT').length)
+const todayGateIn = computed(() => operationalGateLogs.value.filter((log) => getValue(log, 'inOutType', 'in_out_type') === 'IN').length)
+const todayGateOut = computed(() => operationalGateLogs.value.filter((log) => getValue(log, 'inOutType', 'in_out_type') === 'OUT').length)
 const activeWorkCount = computed(() =>
   workOrderStore.workOrders.filter((order) => ['GATE_IN', 'IN_PROGRESS'].includes(getWorkStatus(order))).length,
 )
@@ -95,7 +128,7 @@ const gateCells = computed(() => {
     OUT: [],
   }
 
-  gateLogStore.gateLogs.forEach((log) => {
+  operationalGateLogs.value.forEach((log) => {
     const inOutType = getValue(log, 'inOutType', 'in_out_type') === 'OUT' ? 'OUT' : 'IN'
     logsByType[inOutType].push(log)
   })
@@ -104,7 +137,7 @@ const gateCells = computed(() => {
 
   return gateSlots.map((slot) => {
     const log =
-      gateLogStore.gateLogs.find((item) => {
+      operationalGateLogs.value.find((item) => {
         const gateNumber = getValue(item, 'gateNumber', 'gate_number')
         return gateNumber === slot.gateNumber && !usedLogs.has(item)
       }) ||
@@ -121,7 +154,7 @@ const gateCells = computed(() => {
       ...slot,
       processResult: log ? getValue(log, 'processResult', 'process_result') || '대기' : '대기',
       vehicleId,
-      recognizedVehicleNo: vehicleId ? getPlateNumber(vehicleId) : '',
+      recognizedVehicleNo: log ? getGateLogPlateText(log) : '',
       entryTime: log ? getValue(log, 'entryTime', 'entry_time') : '',
       exitTime: log ? getValue(log, 'exitTime', 'exit_time') : '',
     }
@@ -279,7 +312,7 @@ onUnmounted(() => {
           <section>
             <h3>차량 / 기사 / 운송사</h3>
             <dl>
-              <div><dt>차량</dt><dd>{{ selectedGate?.vehicleId ? getPlateNumber(selectedGate.vehicleId) : '-' }}</dd></div>
+              <div><dt>차량</dt><dd>{{ matchedOrder ? getWorkOrderPlateText(matchedOrder) : selectedGate?.recognizedVehicleNo || '-' }}</dd></div>
               <div><dt>기사</dt><dd>{{ selectedDriverName }}</dd></div>
               <div><dt>운송사</dt><dd>{{ selectedCarrierName }}</dd></div>
             </dl>
@@ -329,7 +362,7 @@ onUnmounted(() => {
         </div>
         <div class="work-lane">
           <div v-for="order in activeOrders" :key="getId(order, 'workOrderId')" class="work-row">
-            <b>{{ getPlateNumber(getId(order, 'vehicleId') || getId(order, 'trailerVehicleId')) }}</b>
+            <b>{{ getWorkOrderPlateText(order) }}</b>
             <span>{{ getContainerNumber(getId(order, 'containerId')) }}</span>
             <small>{{ statusText(getWorkStatus(order)) }}</small>
           </div>
@@ -368,7 +401,7 @@ onUnmounted(() => {
         </div>
         <div v-for="log in latestGateLogs" :key="log.gateLogId || log.gate_log_id" class="compact-row">
           <span>{{ log.entryTime || log.entry_time || log.exitTime || log.exit_time || '-' }}</span>
-          <span>{{ getPlateNumber(getId(log, 'vehicleId')) }}</span>
+          <span>{{ getGateLogPlateText(log) }}</span>
           <span>{{ log.gateName || log.gate_name || '-' }}</span>
           <span>{{ gateText(log.inOutType || log.in_out_type) }}</span>
           <span>{{ log.processResult || log.process_result || '-' }}</span>
