@@ -201,10 +201,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.driver-page {
-  max-width: 1180px;
-}
-
 .work-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -245,6 +241,20 @@ onUnmounted(() => {
 
 .driver-grid {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+}
+
+.driver-grid .data-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.driver-grid .data-table th {
+  width: 96px;
+}
+
+.driver-grid .data-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .driver-operation-panel {
