@@ -42,7 +42,9 @@ const assignableDrivers = computed(() =>
   myDrivers.value.filter(
     (driver) =>
       driver.isRegistered === true &&
-      driver.canEnter === false,
+      // 트랙터가 이미 최종 승인된 기사도 트레일러를 추가 배정할 수 있어야 한다.
+      // canEnter는 출입 승인 상태이므로 트레일러 배정 가능 여부로 제한하지 않는다.
+      driver.driverId != null,
   ),
 )
 
@@ -96,7 +98,7 @@ const validate = () => {
   }
 
   if (!selectedDriver.value) {
-    throw new Error('운송사 승인 완료 및 관리자 최종 승인 전 기사만 배정할 수 있습니다.')
+    throw new Error('운송사 가입 승인이 완료된 소속 기사만 배정할 수 있습니다.')
   }
 
   if (!form.value.plateNumber.trim()) {
@@ -174,7 +176,7 @@ onMounted(loadData)
           <div class="field full">
             <label for="driverId">배정 기사</label>
             <select id="driverId" v-model.number="form.driverId">
-              <option disabled :value="null">운송사 승인 완료 기사를 선택하세요</option>
+              <option disabled :value="null">운송사 가입 승인 완료 기사를 선택하세요</option>
               <option
                 v-for="driver in assignableDrivers"
                 :key="driver.driverId"

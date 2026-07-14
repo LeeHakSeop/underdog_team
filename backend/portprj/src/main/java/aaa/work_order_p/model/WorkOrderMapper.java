@@ -132,4 +132,12 @@ public interface WorkOrderMapper {
             WHERE work_order_id = #{workOrderId}
             """)
     int approve(Long workOrderId);
+
+    @Update("""
+            UPDATE work_order
+            SET is_approved = false,
+                work_status = 'REJECTED'
+            WHERE work_order_id = #{workOrderId}
+            """)
+    int reject(Long workOrderId);
 }

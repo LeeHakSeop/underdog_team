@@ -17,6 +17,8 @@ import java.util.List;
 public class WorkOrderService {
 
     private static final String STATUS_DISPATCH_WAITING = "DISPATCH_WAITING";
+    private static final String STATUS_REQUESTED = "REQUESTED";
+    private static final String STATUS_PENDING = "PENDING";
     private static final String STATUS_APPROVED = "APPROVED";
     private static final String STATUS_GATE_IN = "GATE_IN";
     private static final String STATUS_IN_PROGRESS = "IN_PROGRESS";
@@ -60,12 +62,29 @@ public class WorkOrderService {
     public WorkOrderDTO approve(Long workOrderId) {
         WorkOrderDTO workOrder = getWorkOrder(workOrderId);
 
-        if (!STATUS_DISPATCH_WAITING.equals(workOrder.getWorkStatus())) {
+        if (!isRequestWaiting(workOrder.getWorkStatus())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "승인 대기 작업만 승인할 수 있습니다.");
         }
 
         mapper.approve(workOrderId);
         return mapper.detail(workOrderId);
+    }
+
+    public WorkOrderDTO reject(Long workOrderId) {
+        WorkOrderDTO workOrder = getWorkOrder(workOrderId);
+
+        if (!isRequestWaiting(workOrder.getWorkStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "승인 대기 작업만 반려할 수 있습니다.");
+        }
+
+        mapper.reject(workOrderId);
+        return mapper.detail(workOrderId);
+    }
+
+    private boolean isRequestWaiting(String workStatus) {
+        return STATUS_DISPATCH_WAITING.equals(workStatus)
+                || STATUS_REQUESTED.equals(workStatus)
+                || STATUS_PENDING.equals(workStatus);
     }
 
     @Transactional
