@@ -203,11 +203,6 @@ const logout = () => {
       </nav>
 
       <div class="side-footer">
-        <div class="side-note">
-          <b>실시간 운영 현황</b>
-          <span>관제 상황판은 5초마다</span>
-          <span>DB 연동 데이터를 갱신합니다.</span>
-        </div>
         <button class="logout-button" type="button" title="로그아웃" @click="logout">
           <MenuIcon name="logout" />
           <span class="logout-label">로그아웃</span>
