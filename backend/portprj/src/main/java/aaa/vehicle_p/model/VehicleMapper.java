@@ -34,6 +34,7 @@ public interface VehicleMapper {
                 WHEN v.is_registered THEN '예'
                 ELSE '아니오'
             END AS registeredText,
+            d.driver_id AS driverId,
             c.carrier_name AS carrierName,
             d.driver_name AS driverName,
             v.vehicle_status AS vehicleStatus,
@@ -44,7 +45,10 @@ public interface VehicleMapper {
         LEFT JOIN LATERAL (
             SELECT driver_id
             FROM work_order
-            WHERE vehicle_id = v.vehicle_id
+            WHERE (tractor_vehicle_id = v.vehicle_id
+               OR vehicle_id = v.vehicle_id)
+              AND COALESCE(is_approved, FALSE) = TRUE
+              AND work_status IN ('APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
             ORDER BY reserved_time DESC NULLS LAST,
                      work_order_id DESC
             LIMIT 1
@@ -52,7 +56,7 @@ public interface VehicleMapper {
         LEFT JOIN driver d
             ON wo.driver_id = d.driver_id
         WHERE v.plate_number = #{plateNumber}
-          AND v.vehicle_type = 'TRACTOR'
+          AND v.vehicle_type IN ('TRACTOR', '트랙터')
         """)
     TractorVehicleInfoDTO findTractorInfoByPlateNumber(
             @Param("plateNumber") String plateNumber
@@ -171,6 +175,9 @@ public interface VehicleMapper {
             user_id AS userId
         FROM vehicle
         WHERE driver_id = #{driverId}
+          AND vehicle_type IN ('TRACTOR', '트랙터')
+        ORDER BY vehicle_id DESC
+        LIMIT 1
         """)
     VehicleDTO findByDriverId(@Param("driverId") Long driverId);
 

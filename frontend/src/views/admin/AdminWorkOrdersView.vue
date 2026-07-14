@@ -58,7 +58,7 @@ const carrierRequests = computed(() => {
   return workOrderStore.workOrders.filter((order) => {
     const status = getValue(order, 'workStatus', 'work_status')
     const isApproved = getValue(order, 'isApproved', 'is_approved')
-    return ['DISPATCH_WAITING', 'REQUESTED', 'PENDING'].includes(status) && isApproved !== true
+    return status === 'DISPATCH_WAITING' && isApproved !== true
   })
 })
 
@@ -105,7 +105,7 @@ const getStatusText = (workStatus) => {
   if (workStatus === 'IN_PROGRESS') return '작업 진행 중'
   if (workStatus === 'COMPLETED') return '출차 대기'
   if (workStatus === 'GATE_OUT') return '출차 완료'
-  if (workStatus === 'REJECTED') return '반려'
+  if (workStatus === 'CANCELED') return '반려'
   return workStatus || '-'
 }
 

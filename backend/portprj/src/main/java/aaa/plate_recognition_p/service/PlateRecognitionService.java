@@ -111,8 +111,8 @@ public class PlateRecognitionService {
         }
 
         boolean matched = vehicle != null;
-        boolean isTractor = vehicle != null && "TRACTOR".equalsIgnoreCase(vehicle.getVehicleType());
-        boolean isTrailer = vehicle != null && "TRAILER".equalsIgnoreCase(vehicle.getVehicleType());
+        boolean isTractor = vehicle != null && isVehicleType(vehicle.getVehicleType(), "TRACTOR", "트랙터");
+        boolean isTrailer = vehicle != null && isVehicleType(vehicle.getVehicleType(), "TRAILER", "트레일러");
 
         PlateRecognitionResultDTO result = new PlateRecognitionResultDTO();
         result.setAiResult(aiResult);
@@ -380,11 +380,11 @@ public class PlateRecognitionService {
         }
 
         if (!Boolean.TRUE.equals(aiResult.getDetected())) {
-            return "PLATE_NOT_RECOGNIZED";
+            return "PLATE_NOT_DETECTED";
         }
 
         if (aiResult.getPlateNumber() == null) {
-            return "PLATE_NOT_RECOGNIZED";
+            return "PLATE_NOT_DETECTED";
         }
 
         if (!matched) {
@@ -437,7 +437,7 @@ public class PlateRecognitionService {
             return "WORK_ORDER_NOT_FOUND";
         }
 
-        if (workOrder != null && workOrder.getContainerId() != null && result.getContainer() == null) {
+        if (isTrailer && workOrder != null && workOrder.getContainerId() != null && result.getContainer() == null) {
             return "CONTAINER_NOT_FOUND";
         }
 
@@ -488,6 +488,20 @@ public class PlateRecognitionService {
                 || carrierStatus.equalsIgnoreCase("NORMAL");
     }
 
+    private boolean isVehicleType(String vehicleType, String... acceptedTypes) {
+        if (vehicleType == null) {
+            return false;
+        }
+
+        for (String acceptedType : acceptedTypes) {
+            if (vehicleType.equalsIgnoreCase(acceptedType)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private ExceptionLogDTO createExceptionLog(
             GateLogDTO gateLog,
             FastApiPlateResponseDTO aiResult,
@@ -525,8 +539,8 @@ public class PlateRecognitionService {
     ) {
         StringBuilder message = new StringBuilder();
 
-        if ("PLATE_NOT_RECOGNIZED".equals(businessExceptionType)) {
-            return "PLATE_NOT_RECOGNIZED";
+        if ("PLATE_NOT_DETECTED".equals(businessExceptionType)) {
+            return "PLATE_NOT_DETECTED";
         }
 
         if ("AI_SERVER_ERROR".equals(businessExceptionType)) {
@@ -571,7 +585,7 @@ public class PlateRecognitionService {
             return "AI 서버 응답이 없습니다.";
         }
 
-        if ("PLATE_NOT_RECOGNIZED".equals(exceptionType)) {
+        if ("PLATE_NOT_DETECTED".equals(exceptionType)) {
             return "번호판을 인식하지 못했습니다.";
         }
 
@@ -701,9 +715,9 @@ public class PlateRecognitionService {
 
         System.out.println("vehicleType: " + vehicle.getVehicleType());
 
-        if ("TRACTOR".equalsIgnoreCase(vehicle.getVehicleType())) {
+        if (isVehicleType(vehicle.getVehicleType(), "TRACTOR", "트랙터")) {
             printTractorLog(tractorVehicleInfo);
-        } else if ("TRAILER".equalsIgnoreCase(vehicle.getVehicleType())) {
+        } else if (isVehicleType(vehicle.getVehicleType(), "TRAILER", "트레일러")) {
             printTrailerLog(trailerWorkInfo);
         } else {
             System.out.println("plateNumber: " + vehicle.getPlateNumber());

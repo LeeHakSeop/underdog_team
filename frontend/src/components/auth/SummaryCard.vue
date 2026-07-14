@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { vehicleTypeLabel } from '@/config/vehicleType'
 
 const props = defineProps({
   signupRole: {
@@ -114,15 +115,7 @@ const roleName = computed(() =>
       class="summary-item"
     >
       <label>차량종류</label>
-      <strong>{{ vehicleForm.vehicleType || '-' }}</strong>
-    </div>
-
-    <div
-      v-if="signupRole==='DRIVER'"
-      class="summary-item"
-    >
-      <label>톤수</label>
-      <strong>{{ vehicleForm.tonnage || '-' }}</strong>
+      <strong>{{ vehicleTypeLabel(vehicleForm.vehicleType) }}</strong>
     </div>
 
     <div class="status-box">

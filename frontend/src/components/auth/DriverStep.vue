@@ -20,8 +20,6 @@ const approvedCarriers = computed(() =>
   ),
 )
 
-const tonnageOptions = ['25T', '20FT', '40FT']
-
 const updateField = (key, value) => {
   emit('update:modelValue', {
     ...props.modelValue,
@@ -119,21 +117,6 @@ onMounted(loadCarriers)
         </div>
       </div>
 
-      <div class="field">
-        <label>톤수</label>
-        <select
-          :value="modelValue.tonnage"
-          @change="updateField('tonnage', $event.target.value)"
-        >
-          <option
-            v-for="tonnage in tonnageOptions"
-            :key="tonnage"
-            :value="tonnage"
-          >
-            {{ tonnage }}
-          </option>
-        </select>
-      </div>
     </div>
 
     <div v-if="loading" class="loading">

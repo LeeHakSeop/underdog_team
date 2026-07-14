@@ -92,13 +92,13 @@ INSERT INTO exception_log (
     exception_type,
     exception_message,
     plate_number,
-    occured_time,
+    occurred_time,
     process_status,
     manager_action,
     processed_time
 ) VALUES
-('컨테이너 보류', 'REEFER 컨테이너 반출 가능 여부 확인 필요', '05우1935', CURRENT_TIMESTAMP - INTERVAL '15 minute', 'UNPROCESSED', NULL, NULL),
-('게이트 검토', '게이트 02에서 관리자 확인 필요', '05우1935', CURRENT_TIMESTAMP - INTERVAL '8 minute', 'PROCESSED', '관리자 확인 완료', CURRENT_TIMESTAMP - INTERVAL '3 minute');
+('CONTAINER_EXIT_NOT_ALLOWED', '컨테이너 반출 승인 상태가 아닙니다.', '05우1935', CURRENT_TIMESTAMP - INTERVAL '15 minute', 'UNPROCESSED', NULL, NULL),
+('WORK_ORDER_NOT_APPROVED', '작업 지시가 승인되지 않았습니다.', '05우1935', CURRENT_TIMESTAMP - INTERVAL '8 minute', 'PROCESSED', '관리자 확인 완료', CURRENT_TIMESTAMP - INTERVAL '3 minute');
 
 SELECT setval('yard_sector_sector_id_seq', COALESCE((SELECT MAX(sector_id) FROM yard_sector), 1), true);
 SELECT setval('container_container_id_seq', COALESCE((SELECT MAX(container_id) FROM container), 1), true);

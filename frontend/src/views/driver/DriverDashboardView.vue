@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDriverStore } from '@/stores/driverStore'
+import { vehicleTypeLabel } from '@/config/vehicleType'
 
 const driverStore = useDriverStore()
 const { myWorkOrders, loading, error } = storeToRefs(driverStore)
@@ -144,7 +145,7 @@ onUnmounted(() => {
       <article class="panel">
         <div class="section-title">
           <h2>기사 / 차량 정보</h2>
-          <span class="status-pill">{{ currentWorkOrder.vehicleType || '-' }}</span>
+          <span class="status-pill">{{ vehicleTypeLabel(currentWorkOrder.vehicleType) }}</span>
         </div>
 
         <table class="data-table">
@@ -152,7 +153,7 @@ onUnmounted(() => {
             <tr><th>기사 연락처</th><td>{{ currentWorkOrder.driverContact || '-' }}</td></tr>
             <tr><th>기사 출입 가능</th><td>{{ currentWorkOrder.canEnter ? '가능' : '불가' }}</td></tr>
             <tr><th>운송사 연락처</th><td>{{ currentWorkOrder.carrierContact || '-' }}</td></tr>
-            <tr><th>차량 유형</th><td>{{ currentWorkOrder.vehicleType || '-' }}</td></tr>
+            <tr><th>차량 유형</th><td>{{ vehicleTypeLabel(currentWorkOrder.vehicleType) }}</td></tr>
             <tr><th>차량 상태</th><td>{{ currentWorkOrder.vehicleStatus || '-' }}</td></tr>
             <tr><th>예약 시간</th><td>{{ currentWorkOrder.reservedTime || '-' }}</td></tr>
           </tbody>

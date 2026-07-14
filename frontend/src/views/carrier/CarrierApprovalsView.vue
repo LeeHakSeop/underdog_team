@@ -4,6 +4,7 @@ import { readCurrentUser } from '@/stores/authStore'
 import { fetchCarriers } from '@/api/carrierApi'
 import { fetchDrivers } from '@/api/driverApi'
 import { fetchVehicles } from '@/api/vehicleApi'
+import { vehicleTypeLabel } from '@/config/vehicleType'
 
 const loading = ref(false)
 const errorMessage = ref('')
@@ -140,7 +141,7 @@ onMounted(loadData)
                 <tr v-for="vehicle in myVehicles" :key="vehicle.vehicleId">
                   <td>{{ vehicle.vehicleId }}</td>
                   <td>{{ vehicle.plateNumber }}</td>
-                  <td>{{ vehicle.vehicleType }}</td>
+                  <td>{{ vehicleTypeLabel(vehicle.vehicleType) }}</td>
                   <td>{{ vehicle.tonnage }}</td>
                   <td>
                     <span class="status-pill" :class="vehicle.isRegistered ? 'green' : 'red'">

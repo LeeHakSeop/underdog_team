@@ -5,28 +5,35 @@ import aaa.work_order_p.model.TrailerWorkInfoDTO;
 import aaa.work_order_p.model.WorkOrderDTO;
 import aaa.work_order_p.model.WorkOrderMapper;
 import aaa.work_order_p.model.WorkOrderProcessResultDTO;
+import aaa.work_order_p.model.WorkStatusHistoryDTO;
+import aaa.work_order_p.model.WorkStatusHistoryMapper;
 import jakarta.annotation.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class WorkOrderService {
 
     private static final String STATUS_DISPATCH_WAITING = "DISPATCH_WAITING";
-    private static final String STATUS_REQUESTED = "REQUESTED";
-    private static final String STATUS_PENDING = "PENDING";
     private static final String STATUS_APPROVED = "APPROVED";
     private static final String STATUS_GATE_IN = "GATE_IN";
     private static final String STATUS_IN_PROGRESS = "IN_PROGRESS";
     private static final String STATUS_COMPLETED = "COMPLETED";
     private static final String STATUS_GATE_OUT = "GATE_OUT";
+    private static final String STATUS_CANCELED = "CANCELED";
+    private static final String SYSTEM_ACTOR = "SYSTEM";
 
     @Resource
     WorkOrderMapper mapper;
+
+    @Resource
+    WorkStatusHistoryMapper historyMapper;
 
     @Resource
     ContainerService containerService;
@@ -55,10 +62,20 @@ public class WorkOrderService {
         return mapper.findTrailerWorkInfoByVehicleId(vehicleId);
     }
 
-    public int updateStatus(Long workOrderId, String workStatus) {
-        return mapper.updateStatus(workOrderId, workStatus);
+    public WorkOrderDTO findLatestByTractorVehicleId(Long vehicleId) {
+        return mapper.findLatestByTractorVehicleId(vehicleId);
     }
 
+    public WorkOrderDTO findLatestByTrailerVehicleId(Long vehicleId) {
+        return mapper.findLatestByTrailerVehicleId(vehicleId);
+    }
+
+    @Transactional
+    public int updateStatus(Long workOrderId, String workStatus) {
+        return changeStatus(workOrderId, workStatus, SYSTEM_ACTOR, "작업 상태 변경", null);
+    }
+
+    @Transactional
     public WorkOrderDTO approve(Long workOrderId) {
         WorkOrderDTO workOrder = getWorkOrder(workOrderId);
 
@@ -66,10 +83,14 @@ public class WorkOrderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "승인 대기 작업만 승인할 수 있습니다.");
         }
 
-        mapper.approve(workOrderId);
+        int updated = mapper.approve(workOrderId);
+        if (updated > 0) {
+            saveHistory(workOrder, STATUS_APPROVED, SYSTEM_ACTOR, "관리자 승인", null);
+        }
         return mapper.detail(workOrderId);
     }
 
+    @Transactional
     public WorkOrderDTO reject(Long workOrderId) {
         WorkOrderDTO workOrder = getWorkOrder(workOrderId);
 
@@ -77,14 +98,41 @@ public class WorkOrderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "승인 대기 작업만 반려할 수 있습니다.");
         }
 
-        mapper.reject(workOrderId);
+        int updated = mapper.reject(workOrderId);
+        if (updated > 0) {
+            saveHistory(workOrder, STATUS_CANCELED, SYSTEM_ACTOR, "관리자 반려", null);
+        }
         return mapper.detail(workOrderId);
     }
 
     private boolean isRequestWaiting(String workStatus) {
-        return STATUS_DISPATCH_WAITING.equals(workStatus)
-                || STATUS_REQUESTED.equals(workStatus)
-                || STATUS_PENDING.equals(workStatus);
+        return STATUS_DISPATCH_WAITING.equals(workStatus);
+    }
+
+    @Transactional
+    public int changeStatus(Long workOrderId, String newStatus, String changedBy, String reason, String remark) {
+        WorkOrderDTO current = detail(workOrderId);
+        if (current == null || Objects.equals(current.getWorkStatus(), newStatus)) {
+            return 0;
+        }
+
+        int updated = mapper.updateStatus(workOrderId, newStatus);
+        if (updated > 0) {
+            saveHistory(current, newStatus, changedBy, reason, remark);
+        }
+        return updated;
+    }
+
+    private void saveHistory(WorkOrderDTO current, String newStatus, String changedBy, String reason, String remark) {
+        WorkStatusHistoryDTO history = new WorkStatusHistoryDTO();
+        history.setWorkOrderId(current.getWorkOrderId());
+        history.setPrevStatus(current.getWorkStatus());
+        history.setNewStatus(newStatus);
+        history.setChangedTime(LocalDateTime.now());
+        history.setChangedBy(changedBy == null || changedBy.isBlank() ? SYSTEM_ACTOR : changedBy);
+        history.setReason(reason);
+        history.setRemark(remark);
+        historyMapper.insert(history);
     }
 
     @Transactional

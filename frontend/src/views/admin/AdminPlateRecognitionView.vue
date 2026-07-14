@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { usePlateRecognitionStore } from '@/stores/adminStore/plateRecognitionStore'
 import { useGateLogStore } from '@/stores/adminStore/gateLogStore'
+import { vehicleTypeLabel } from '@/config/vehicleType'
 
 const plateRecognitionStore = usePlateRecognitionStore()
 const gateLogStore = useGateLogStore()
@@ -16,8 +17,17 @@ const trailerPreviewUrl = ref('')
 const tractorResult = computed(() => plateRecognitionStore.tractorResult)
 const trailerResult = computed(() => plateRecognitionStore.trailerResult)
 
+const normalizeVehicleType = (vehicleType) => {
+  const normalizedType = String(vehicleType || '').trim().toUpperCase()
+
+  if (normalizedType === 'TRACTOR' || vehicleType === '트랙터') return 'TRACTOR'
+  if (normalizedType === 'TRAILER' || vehicleType === '트레일러') return 'TRAILER'
+
+  return normalizedType
+}
+
 const getVehicleType = (result) => {
-  return result?.vehicle?.vehicleType || ''
+  return normalizeVehicleType(result?.vehicle?.vehicleType)
 }
 
 const getBooleanText = (value) => {
@@ -41,7 +51,7 @@ const getPassText = (result, expectedType) => {
     return '불가'
   }
 
-  if (getVehicleType(result) !== expectedType) {
+  if (getVehicleType(result) !== normalizeVehicleType(expectedType)) {
     return '불가'
   }
 
@@ -61,8 +71,8 @@ const getAlertMessage = (result, expectedType, label) => {
     return `${label} 번호판이 등록 차량 정보에 없습니다.`
   }
 
-  if (getVehicleType(result) !== expectedType) {
-    return `${label} 영역에서 ${getVehicleType(result)} 차량이 조회되었습니다.`
+  if (getVehicleType(result) !== normalizeVehicleType(expectedType)) {
+    return `${label} 영역에서 ${vehicleTypeLabel(getVehicleType(result))} 차량이 조회되었습니다.`
   }
 
   if (result.needReview) {
@@ -88,16 +98,89 @@ const trailerAlertMessage = computed(() => {
   return getAlertMessage(trailerResult.value, 'TRAILER', '트레일러')
 })
 
+const getWorkOrder = (result) => {
+  return result?.workOrder || result?.trailerWorkInfo || null
+}
+
+const tractorWorkOrder = computed(() => getWorkOrder(tractorResult.value))
+const trailerWorkOrder = computed(() => getWorkOrder(trailerResult.value))
+
+const workOrderMatch = computed(() => {
+  const tractorWorkOrderId = tractorWorkOrder.value?.workOrderId
+  const trailerWorkOrderId = trailerWorkOrder.value?.workOrderId
+
+  return Boolean(
+    tractorWorkOrderId &&
+    trailerWorkOrderId &&
+    tractorWorkOrderId === trailerWorkOrderId,
+  )
+})
+
+const workOrderMismatch = computed(() => {
+  const tractorWorkOrderId = tractorWorkOrder.value?.workOrderId
+  const trailerWorkOrderId = trailerWorkOrder.value?.workOrderId
+
+  return Boolean(
+    tractorWorkOrderId &&
+    trailerWorkOrderId &&
+    tractorWorkOrderId !== trailerWorkOrderId,
+  )
+})
+
+const workOrderMatchMessage = computed(() => {
+  if (!tractorResult.value || !trailerResult.value) {
+    return '트랙터와 트레일러 번호판을 모두 조회하세요.'
+  }
+
+  if (!tractorWorkOrder.value || !trailerWorkOrder.value) {
+    return '두 차량에 연결된 WorkOrder를 확인할 수 없습니다.'
+  }
+
+  if (workOrderMismatch.value) {
+    return `WorkOrder가 일치하지 않습니다. 트랙터 #${tractorWorkOrder.value.workOrderId} / 트레일러 #${trailerWorkOrder.value.workOrderId}`
+  }
+
+  return `WorkOrder #${tractorWorkOrder.value.workOrderId}가 일치합니다.`
+})
+
+const gateDecisionMessage = computed(() => {
+  if (workOrderMatch.value && !isReadyForGateProcess.value) {
+    const blockedItems = []
+
+    if (tractorPassText.value !== '가능') {
+      blockedItems.push(`트랙터: ${tractorAlertMessage.value}`)
+    }
+
+    if (trailerPassText.value !== '가능') {
+      blockedItems.push(`트레일러: ${trailerAlertMessage.value}`)
+    }
+
+    return blockedItems.join(' / ') || '번호판 검증 결과를 확인하세요.'
+  }
+
+  return workOrderMatchMessage.value
+})
+
+const matchedWorkOrder = computed(() => {
+  if (!workOrderMatch.value) return null
+
+  return trailerWorkOrder.value
+})
+
 const isReadyForGateProcess = computed(() => {
-  return tractorPassText.value === '가능' && trailerPassText.value === '가능'
+  return (
+    tractorPassText.value === '가능' &&
+    trailerPassText.value === '가능' &&
+    workOrderMatch.value
+  )
 })
 
 const gateProcessPayload = computed(() => {
   return {
     tractorVehicleId: tractorResult.value?.vehicle?.vehicleId || null,
     trailerVehicleId: trailerResult.value?.vehicle?.vehicleId || null,
-    workOrderId: trailerResult.value?.workOrder?.workOrderId || trailerResult.value?.trailerWorkInfo?.workOrderId || null,
-    containerId: trailerResult.value?.workOrder?.containerId || trailerResult.value?.trailerWorkInfo?.containerId || null,
+    workOrderId: matchedWorkOrder.value?.workOrderId || null,
+    containerId: matchedWorkOrder.value?.containerId || null,
     sectorId: trailerResult.value?.container?.sectorId || trailerResult.value?.trailerWorkInfo?.sectorId || null,
     gateNumber: 'G01',
     gateName: 'AI_GATE',
@@ -121,12 +204,24 @@ const gateProcessMissingItems = computed(() => {
     missingItems.push('작업정보')
   }
 
+  if (!workOrderMatch.value) {
+    missingItems.push('트랙터·트레일러 공통 WorkOrder')
+  }
+
   if (!payload.containerId) {
     missingItems.push('컨테이너')
   }
 
   if (!payload.sectorId) {
     missingItems.push('야드 섹터')
+  }
+
+  if (tractorPassText.value !== '가능') {
+    missingItems.push('트랙터 번호판 검증')
+  }
+
+  if (trailerPassText.value !== '가능') {
+    missingItems.push('트레일러 번호판 검증')
   }
 
   return missingItems
@@ -160,7 +255,7 @@ const trailerSummaryText = computed(() => {
     return trailerAlertMessage.value
   }
 
-  const workType = trailerResult.value.workOrder?.workType || '작업 유형 없음'
+  const workType = trailerWorkOrder.value?.workType || '작업 유형 없음'
   const containerNumber = trailerResult.value.container?.containerNumber || '컨테이너 정보 없음'
   const sectorName = trailerResult.value.yardSector?.sectorName || '야드 정보 없음'
 
@@ -206,7 +301,11 @@ const submitGateProcess = async () => {
     return
   }
 
-  await gateLogStore.processGate(gateProcessPayload.value)
+  try {
+    await gateLogStore.processGate(gateProcessPayload.value)
+  } catch {
+    // store.error를 화면에 표시해 최종 처리 실패 원인을 안내합니다.
+  }
 }
 </script>
 
@@ -243,8 +342,8 @@ const submitGateProcess = async () => {
           <p>
             {{
               isReadyForGateProcess
-                ? '트랙터와 트레일러 번호판이 모두 일치합니다.'
-                : '번호판 불일치 또는 미등록 차량이 존재합니다.'
+                ? '트랙터와 트레일러 번호판이 같은 WorkOrder에 연결되었습니다.'
+                : gateDecisionMessage
             }}
           </p>
         </div>
@@ -279,6 +378,37 @@ const submitGateProcess = async () => {
           <span>출입 구분: {{ selectedInOutType === 'OUT' ? '출차' : '입차' }}</span>
         </div>
 
+        <div
+          v-if="matchedWorkOrder"
+          class="matched-work-order"
+        >
+          <div class="matched-work-order-head">
+            <span>일치 WorkOrder 종합 정보</span>
+            <strong>#{{ matchedWorkOrder.workOrderId }} · {{ matchedWorkOrder.workType || '-' }}</strong>
+          </div>
+          <div class="matched-work-order-grid">
+            <div><span>작업 상태</span><strong>{{ matchedWorkOrder.workStatus || '-' }}</strong></div>
+            <div><span>승인 여부</span><strong>{{ getBooleanText(matchedWorkOrder.isApproved) }}</strong></div>
+            <div><span>트랙터</span><strong>{{ tractorResult?.vehicle?.plateNumber || '-' }}</strong></div>
+            <div><span>트레일러</span><strong>{{ trailerResult?.vehicle?.plateNumber || '-' }}</strong></div>
+            <div><span>기사</span><strong>{{ tractorResult?.driver?.driverName || trailerResult?.driver?.driverName || '-' }}</strong></div>
+            <div><span>예약 시간</span><strong>{{ matchedWorkOrder.reservedTime || '-' }}</strong></div>
+            <div><span>컨테이너</span><strong>{{ trailerResult?.container?.containerNumber || matchedWorkOrder.containerId || '-' }}</strong></div>
+            <div><span>야드 섹터</span><strong>{{ trailerResult?.yardSector?.sectorName || trailerResult?.trailerWorkInfo?.sectorName || '-' }}</strong></div>
+          </div>
+        </div>
+
+        <div
+          v-else-if="workOrderMismatch"
+          class="matched-work-order warning"
+        >
+          <div class="matched-work-order-head">
+            <span>WorkOrder 일치 확인</span>
+            <strong>통과 불가</strong>
+          </div>
+          <p>{{ workOrderMatchMessage }}</p>
+        </div>
+
         <button
           class="primary-button gate-process-button"
           type="button"
@@ -293,6 +423,10 @@ const submitGateProcess = async () => {
           :class="['gate-process-result', gateLogStore.processResult.success ? 'success' : 'warning']"
         >
           {{ gateLogStore.processResult.message }}
+        </p>
+
+        <p v-if="gateLogStore.error" class="gate-process-result warning">
+          {{ gateLogStore.error }}
         </p>
       </div>
 
@@ -360,7 +494,7 @@ const submitGateProcess = async () => {
               </tr>
               <tr>
                 <th>차량 유형</th>
-                <td>{{ tractorResult?.vehicle?.vehicleType || '-' }}</td>
+                <td>{{ vehicleTypeLabel(tractorResult?.vehicle?.vehicleType) }}</td>
               </tr>
               <tr>
                 <th>등록 여부</th>
@@ -456,7 +590,7 @@ const submitGateProcess = async () => {
             <span>작업정보 조회 요약</span>
             <strong>{{ trailerSummaryText }}</strong>
             <p>
-              작업 승인: {{ getBooleanText(trailerResult?.workOrder?.isApproved) }}
+              작업 승인: {{ getBooleanText(trailerWorkOrder?.isApproved) }}
               / 안내: {{ trailerResult?.yardSector?.guideMessage || '-' }}
             </p>
           </div>
@@ -469,7 +603,7 @@ const submitGateProcess = async () => {
               </tr>
               <tr>
                 <th>차량 유형</th>
-                <td>{{ trailerResult?.vehicle?.vehicleType || '-' }}</td>
+                <td>{{ vehicleTypeLabel(trailerResult?.vehicle?.vehicleType) }}</td>
               </tr>
               <tr>
                 <th>등록 여부</th>
@@ -481,19 +615,19 @@ const submitGateProcess = async () => {
               </tr>
               <tr>
                 <th>작업 유형</th>
-                <td>{{ trailerResult?.workOrder?.workType || '-' }}</td>
+                <td>{{ trailerWorkOrder?.workType || '-' }}</td>
               </tr>
               <tr>
                 <th>작업 상태</th>
-                <td>{{ trailerResult?.workOrder?.workStatus || '-' }}</td>
+                <td>{{ trailerWorkOrder?.workStatus || '-' }}</td>
               </tr>
               <tr>
                 <th>작업 승인</th>
-                <td>{{ getBooleanText(trailerResult?.workOrder?.isApproved) }}</td>
+                <td>{{ getBooleanText(trailerWorkOrder?.isApproved) }}</td>
               </tr>
               <tr>
                 <th>작업 예약 시간</th>
-                <td>{{ trailerResult?.workOrder?.reservedTime || '-' }}</td>
+                <td>{{ trailerWorkOrder?.reservedTime || '-' }}</td>
               </tr>
               <tr>
                 <th>컨테이너 번호</th>
@@ -673,6 +807,73 @@ const submitGateProcess = async () => {
   color: #155e38;
   background: #eefaf3;
   border-color: #9dd8b8;
+}
+
+.matched-work-order {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: #eefaf3;
+  border: 1px solid #9dd8b8;
+}
+
+.matched-work-order.warning {
+  color: #9f1d1d;
+  background: #fff4f4;
+  border-color: #e4a6a6;
+}
+
+.matched-work-order-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.matched-work-order-head span {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.matched-work-order-head strong {
+  color: var(--ink-900);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.matched-work-order-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.matched-work-order-grid div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+
+.matched-work-order-grid span {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.matched-work-order-grid strong {
+  overflow-wrap: anywhere;
+  color: var(--ink-900);
+  font-size: 13px;
+}
+
+.matched-work-order p {
+  margin: 0;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .recognition-layout {
@@ -855,10 +1056,16 @@ const submitGateProcess = async () => {
 @media (max-width: 900px) {
   .top-control-area,
   .gate-process-panel,
+  .matched-work-order-grid,
   .recognition-layout,
   .result-grid,
   .process-steps {
     grid-template-columns: 1fr;
+  }
+
+  .matched-work-order-head {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

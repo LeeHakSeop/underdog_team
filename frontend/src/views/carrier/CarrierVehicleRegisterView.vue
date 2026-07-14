@@ -3,7 +3,9 @@ import { computed, onMounted, ref } from 'vue'
 import { readCurrentUser } from '@/stores/authStore'
 import { fetchCarriers } from '@/api/carrierApi'
 import { fetchDrivers } from '@/api/driverApi'
-import { createVehicle } from '@/api/vehicleApi'
+import { createVehicle, fetchVehiclesByCarrier } from '@/api/vehicleApi'
+import { fetchTrailerWorkInfo, fetchWorkOrders } from '@/api/adminApi/workOrderApi'
+import { vehicleTypeLabel } from '@/config/vehicleType'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -12,6 +14,11 @@ const errorMessage = ref('')
 
 const carriers = ref([])
 const drivers = ref([])
+const assignedVehicles = ref([])
+const workOrders = ref([])
+const trailerWorkInfos = ref({})
+const workOrderLoading = ref(false)
+const workOrderError = ref('')
 
 const currentUser = readCurrentUser()
 
@@ -52,6 +59,104 @@ const selectedDriver = computed(() =>
   assignableDrivers.value.find((driver) => driver.driverId === form.value.driverId),
 )
 
+const isTrailerVehicle = (vehicleType) => {
+  const normalizedType = String(vehicleType || '').trim().toUpperCase()
+  return normalizedType === 'TRAILER' || vehicleType === '트레일러'
+}
+
+const getWorkOrderForVehicle = (vehicleId) => {
+  const trailerInfo = trailerWorkInfos.value[vehicleId]
+
+  if (trailerInfo?.workOrderId) {
+    return trailerInfo
+  }
+
+  return workOrders.value.find(
+    (workOrder) =>
+      workOrder.trailerVehicleId === vehicleId || workOrder.vehicleId === vehicleId,
+  ) || null
+}
+
+const assignedTrailerSummaries = computed(() => {
+  return assignedVehicles.value
+    .map((vehicle) => {
+      const workOrder = getWorkOrderForVehicle(vehicle.vehicleId)
+      const driverId = vehicle.driverId || workOrder?.driverId
+      const driver = drivers.value.find((item) => item.driverId === driverId)
+
+      return {
+        vehicle,
+        driver,
+        workOrder,
+      }
+    })
+    .sort((left, right) => (right.workOrder?.workOrderId || 0) - (left.workOrder?.workOrderId || 0))
+})
+
+const workStatusText = (workOrder) => {
+  if (!workOrder) return '작업지시 없음'
+
+  const statusMap = {
+    DISPATCH_WAITING: '배차 대기',
+    APPROVED: '승인 완료',
+    GATE_IN: '입차 완료',
+    IN_PROGRESS: '작업 진행 중',
+    COMPLETED: '작업 완료',
+    GATE_OUT: '출차 완료',
+    CANCELED: '취소',
+  }
+
+  return statusMap[workOrder.workStatus] || workOrder.workStatus || '상태 미정'
+}
+
+const workStatusClass = (workOrder) => {
+  if (!workOrder) return 'amber'
+  if (['COMPLETED', 'GATE_OUT'].includes(workOrder.workStatus)) return 'green'
+  if (workOrder.workStatus === 'CANCELED') return 'red'
+  return 'amber'
+}
+
+const loadAssignedWorkOrders = async () => {
+  workOrderLoading.value = true
+  workOrderError.value = ''
+
+  try {
+    if (!myCarrier.value?.carrierId) {
+      assignedVehicles.value = []
+      workOrders.value = []
+      trailerWorkInfos.value = {}
+      return
+    }
+
+    const [vehicleData, workOrderData] = await Promise.all([
+      fetchVehiclesByCarrier(myCarrier.value.carrierId),
+      fetchWorkOrders(),
+    ])
+
+    assignedVehicles.value = (vehicleData || []).filter((vehicle) => isTrailerVehicle(vehicle.vehicleType))
+    workOrders.value = workOrderData || []
+
+    const trailerInfoEntries = await Promise.all(
+      assignedVehicles.value.map(async (vehicle) => {
+        try {
+          return [vehicle.vehicleId, await fetchTrailerWorkInfo(vehicle.vehicleId)]
+        } catch {
+          return [vehicle.vehicleId, null]
+        }
+      }),
+    )
+
+    trailerWorkInfos.value = Object.fromEntries(trailerInfoEntries)
+  } catch (error) {
+    workOrderError.value = error.message || '작업지시 정보를 불러오지 못했습니다.'
+    assignedVehicles.value = []
+    workOrders.value = []
+    trailerWorkInfos.value = {}
+  } finally {
+    workOrderLoading.value = false
+  }
+}
+
 const loadData = async () => {
   loading.value = true
   errorMessage.value = ''
@@ -64,6 +169,7 @@ const loadData = async () => {
 
     carriers.value = carrierData || []
     drivers.value = driverData || []
+    await loadAssignedWorkOrders()
   } catch (error) {
     errorMessage.value = error.message || '데이터를 불러오지 못했습니다.'
   } finally {
@@ -158,6 +264,60 @@ onMounted(loadData)
 
       <div v-if="errorMessage" class="form-message error">
         {{ errorMessage }}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>기사·트레일러 종합 작업정보</h2>
+        <span class="status-pill green">{{ assignedTrailerSummaries.length }}건</span>
+      </div>
+
+      <div v-if="workOrderLoading" class="empty-box">
+        배정된 차량과 작업지시를 확인하는 중입니다.
+      </div>
+
+      <div v-else-if="workOrderError" class="empty-box warning-box">
+        {{ workOrderError }}
+      </div>
+
+      <div v-else-if="assignedTrailerSummaries.length === 0" class="empty-box">
+        기사에게 배정된 트레일러가 없습니다.
+      </div>
+
+      <div v-else class="assignment-summary-list">
+        <article
+          v-for="summary in assignedTrailerSummaries"
+          :key="summary.vehicle.vehicleId"
+          class="assignment-summary-card"
+        >
+          <div class="assignment-summary-head">
+            <div>
+              <strong>{{ summary.driver?.driverName || '기사 정보 없음' }}</strong>
+              <span>{{ summary.vehicle.plateNumber || '-' }} · {{ vehicleTypeLabel(summary.vehicle.vehicleType) }}</span>
+            </div>
+            <span class="status-pill" :class="workStatusClass(summary.workOrder)">
+              {{ workStatusText(summary.workOrder) }}
+            </span>
+          </div>
+
+          <div v-if="summary.workOrder" class="work-order-grid">
+            <div><span>WorkOrder</span><strong>#{{ summary.workOrder.workOrderId }}</strong></div>
+            <div><span>작업 유형</span><strong>{{ summary.workOrder.workType || '-' }}</strong></div>
+            <div><span>승인 여부</span><strong>{{ summary.workOrder.isApproved ? '승인' : '대기' }}</strong></div>
+            <div><span>예약 시간</span><strong>{{ summary.workOrder.reservedTime || '-' }}</strong></div>
+            <div><span>트랙터 ID</span><strong>{{ summary.workOrder.tractorVehicleId || '-' }}</strong></div>
+            <div><span>트레일러 ID</span><strong>{{ summary.workOrder.trailerVehicleId || summary.vehicle.vehicleId || '-' }}</strong></div>
+            <div><span>컨테이너</span><strong>{{ summary.workOrder.containerNumber || summary.workOrder.containerId || '-' }}</strong></div>
+            <div><span>야드 섹터</span><strong>{{ summary.workOrder.sectorName || summary.workOrder.sectorId || '-' }}</strong></div>
+            <div><span>작업 위치</span><strong>{{ summary.workOrder.yardLocation || summary.workOrder.containerLocation || '-' }}</strong></div>
+            <div><span>안내</span><strong>{{ summary.workOrder.guideMessage || summary.workOrder.workGuideMessage || '-' }}</strong></div>
+          </div>
+
+          <div v-else class="assignment-summary-empty">
+            차량 배정은 완료되었지만 연결된 WorkOrder가 없습니다. 작업지시가 생성되면 이 영역에 표시됩니다.
+          </div>
+        </article>
       </div>
     </section>
 
@@ -291,6 +451,12 @@ onMounted(loadData)
   border: 1px solid #fecaca;
 }
 
+.warning-box {
+  color: #9f1d1d;
+  background: #fff4f4;
+  border-color: #e4a6a6;
+}
+
 .empty-box {
   padding: 24px;
   color: var(--ink-500);
@@ -364,6 +530,76 @@ onMounted(loadData)
   gap: 6px;
 }
 
+.assignment-summary-list {
+  display: grid;
+  gap: 10px;
+}
+
+.assignment-summary-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: #f7f9fb;
+  border: 1px solid var(--line);
+}
+
+.assignment-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.assignment-summary-head strong,
+.assignment-summary-head span {
+  display: block;
+}
+
+.assignment-summary-head strong {
+  font-size: 16px;
+}
+
+.assignment-summary-head div span {
+  margin-top: 4px;
+  color: var(--ink-500);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.work-order-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.work-order-grid div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+
+.work-order-grid span {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.work-order-grid strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.assignment-summary-empty {
+  padding: 12px;
+  color: var(--ink-500);
+  background: #ffffff;
+  border: 1px dashed var(--line);
+  font-weight: 700;
+}
+
 @media (max-width: 760px) {
   .inline-field {
     flex-direction: column;
@@ -381,6 +617,15 @@ onMounted(loadData)
 
   .driver-actions {
     justify-items: start;
+  }
+
+  .assignment-summary-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .work-order-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

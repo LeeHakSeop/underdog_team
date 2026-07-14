@@ -36,14 +36,12 @@ const driverForm = ref({
   driverContact: '',
   carrierId: '',
   plateNumber: '',
-  tonnage: '25T',
   tractorNo: '',
 })
 
 const emptyVehicleForm = {
   plateNumber: '',
   vehicleType: '',
-  tonnage: '',
   tractorNo: '',
   chassisNo: '',
 }
@@ -85,15 +83,13 @@ const resetForm = () => {
     driverContact: '',
     carrierId: '',
     plateNumber: '',
-    tonnage: '25T',
     tractorNo: '',
   }
 }
 
 const driverVehicleForm = computed(() => ({
   plateNumber: driverForm.value.plateNumber,
-  vehicleType: 'TRACTOR',
-  tonnage: driverForm.value.tonnage,
+  vehicleType: '트랙터',
   tractorNo: driverForm.value.tractorNo,
   chassisNo: '',
 }))
@@ -216,7 +212,6 @@ const buildPayload = () => {
     carrierId: Number(driverForm.value.carrierId),
     plateNumber: driverForm.value.plateNumber,
     vehicleType: 'TRACTOR',
-    tonnage: driverForm.value.tonnage,
     tractorNo: driverForm.value.tractorNo,
   }
 }
