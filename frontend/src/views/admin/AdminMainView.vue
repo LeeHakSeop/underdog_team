@@ -38,6 +38,32 @@ const getPlateNumber = (vehicleId) => {
   return getValue(vehicle, 'plateNumber', 'plate_number') || vehicleId || '-'
 }
 
+const getWorkOrderPlateText = (order) => {
+  if (!order) return '-'
+
+  const tractorId = getId(order, 'tractorVehicleId')
+  const trailerId = getId(order, 'trailerVehicleId') || getId(order, 'vehicleId')
+
+  if (tractorId && trailerId && tractorId !== trailerId) {
+    return `${getPlateNumber(tractorId)} / ${getPlateNumber(trailerId)}`
+  }
+
+  return getPlateNumber(trailerId || tractorId || getId(order, 'vehicleId'))
+}
+
+const getGateLogPlateText = (log) => {
+  if (!log) return '-'
+
+  const tractorId = getId(log, 'tractorVehicleId')
+  const trailerId = getId(log, 'trailerVehicleId') || getId(log, 'vehicleId')
+
+  if (tractorId && trailerId && tractorId !== trailerId) {
+    return `${getPlateNumber(tractorId)} / ${getPlateNumber(trailerId)}`
+  }
+
+  return getPlateNumber(trailerId || tractorId || getId(log, 'vehicleId'))
+}
+
 const getVehicle = (vehicleId) => {
   return vehicleStore.vehicles.find((item) => getId(item, 'vehicleId') === vehicleId) || null
 }
@@ -75,10 +101,17 @@ const statusText = (status) => {
 
 const gateText = (type) => (type === 'OUT' ? '출차' : '입차')
 
+const isGateProcessLog = (log) => {
+  const processResult = getValue(log, 'processResult', 'process_result')
+  return processResult === 'GATE_SUCCESS' || processResult === 'GATE_FAIL'
+}
+
+const operationalGateLogs = computed(() => gateLogStore.gateLogs.filter(isGateProcessLog))
+
 const latestGateLogs = computed(() => gateLogStore.gateLogs.slice(0, 8))
 
-const todayGateIn = computed(() => gateLogStore.gateLogs.filter((log) => getValue(log, 'inOutType', 'in_out_type') === 'IN').length)
-const todayGateOut = computed(() => gateLogStore.gateLogs.filter((log) => getValue(log, 'inOutType', 'in_out_type') === 'OUT').length)
+const todayGateIn = computed(() => operationalGateLogs.value.filter((log) => getValue(log, 'inOutType', 'in_out_type') === 'IN').length)
+const todayGateOut = computed(() => operationalGateLogs.value.filter((log) => getValue(log, 'inOutType', 'in_out_type') === 'OUT').length)
 const activeWorkCount = computed(() =>
   workOrderStore.workOrders.filter((order) => ['GATE_IN', 'IN_PROGRESS'].includes(getWorkStatus(order))).length,
 )
@@ -99,7 +132,7 @@ const gateCells = computed(() => {
     OUT: [],
   }
 
-  gateLogStore.gateLogs.forEach((log) => {
+  operationalGateLogs.value.forEach((log) => {
     const inOutType = getValue(log, 'inOutType', 'in_out_type') === 'OUT' ? 'OUT' : 'IN'
     logsByType[inOutType].push(log)
   })
@@ -108,7 +141,7 @@ const gateCells = computed(() => {
 
   return gateSlots.map((slot) => {
     const log =
-      gateLogStore.gateLogs.find((item) => {
+      operationalGateLogs.value.find((item) => {
         const gateNumber = getValue(item, 'gateNumber', 'gate_number')
         return gateNumber === slot.gateNumber && !usedLogs.has(item)
       }) ||
@@ -125,7 +158,7 @@ const gateCells = computed(() => {
       ...slot,
       processResult: log ? getValue(log, 'processResult', 'process_result') || '대기' : '대기',
       vehicleId,
-      recognizedVehicleNo: vehicleId ? getPlateNumber(vehicleId) : '',
+      recognizedVehicleNo: log ? getGateLogPlateText(log) : '',
       entryTime: log ? getValue(log, 'entryTime', 'entry_time') : '',
       exitTime: log ? getValue(log, 'exitTime', 'exit_time') : '',
     }
@@ -239,6 +272,27 @@ const recognitionStatus = (result, expectedType) => {
   return getPassText(result, expectedType) === '가능' ? '정상' : '인식 불가'
 }
 
+const getGateRecognition = (gate, targetType) => gateRecognitionResults[gate.id]?.[targetType] || null
+
+const getGateOcrStatus = (gate) => {
+  const tractor = getGateRecognition(gate, 'tractor')
+  const trailer = getGateRecognition(gate, 'trailer')
+
+  if (!tractor && !trailer) return { text: 'OCR 대기', tone: 'idle' }
+  if (tractor?.needReview || trailer?.needReview) return { text: '확인 필요', tone: 'warning' }
+  if (tractor?.aiResult?.detected && trailer?.aiResult?.detected) return { text: 'OCR 성공', tone: 'success' }
+  return { text: 'OCR 실패', tone: 'danger' }
+}
+
+const getGateDbStatus = (gate) => {
+  const tractor = getGateRecognition(gate, 'tractor')
+  const trailer = getGateRecognition(gate, 'trailer')
+
+  if (!tractor && !trailer) return { text: 'DB 대기', tone: 'idle' }
+  if (tractor?.matched && trailer?.matched) return { text: 'DB 매칭', tone: 'success' }
+  return { text: '미등록/불일치', tone: 'danger' }
+}
+
 const selectGateImage = async (event, gate, targetType) => {
   const file = event.target.files?.[0] || null
   if (!file) return
@@ -289,6 +343,14 @@ onUnmounted(() => {
 
 <template>
   <div class="control-room">
+    <section class="ops-strip">
+      <article v-for="card in statusCards" :key="card.label" class="ops-card" :class="card.tone">
+        <span>{{ card.label }}</span>
+        <strong>{{ card.value }}건</strong>
+        <small>{{ card.detail }}</small>
+      </article>
+    </section>
+
     <section class="control-layout">
       <article class="cctv-wall" aria-label="4개 게이트 관제 현황">
         <article
@@ -300,7 +362,10 @@ onUnmounted(() => {
         >
           <span class="gate-head">
             <b>{{ gate.gateName }}</b>
-            <i>{{ gateText(gate.inOutType) }}</i>
+            <span class="gate-meta">
+              <i>{{ gateText(gate.inOutType) }}</i>
+              <em>LIVE</em>
+            </span>
           </span>
           <span class="gate-body">
             <label class="camera-upload" :for="`tractorImage-${gate.id}`" @click.stop>
@@ -321,6 +386,11 @@ onUnmounted(() => {
               </small>
               <input :id="`trailerImage-${gate.id}`" accept="image/*" type="file" @change="selectGateImage($event, gate, 'trailer')" />
             </label>
+          </span>
+          <span class="gate-summary">
+            <small :class="getGateOcrStatus(gate).tone">{{ getGateOcrStatus(gate).text }}</small>
+            <small :class="getGateDbStatus(gate).tone">{{ getGateDbStatus(gate).text }}</small>
+            <small :class="gate.vehicleId ? 'success' : 'idle'">{{ gate.vehicleId ? '작업 로그 있음' : '게이트 대기' }}</small>
           </span>
         </article>
       </article>
@@ -350,6 +420,7 @@ onUnmounted(() => {
               <div><dt>위치 / 블록-베이-로우</dt><dd>{{ trailerResult?.container?.containerLocation || '-' }} / {{ trailerResult?.container?.block || '-' }}-{{ trailerResult?.container?.bay || '-' }}-{{ trailerResult?.container?.rowNo || '-' }}</dd></div>
               <div><dt>야드 섹터 / 상태</dt><dd>{{ trailerResult?.yardSector?.sectorName || '-' }} / {{ trailerResult?.yardSector?.sectorStatus || '-' }}</dd></div>
               <div><dt>대체 대기 / 안내</dt><dd>{{ trailerResult?.yardSector?.altWaitingArea || '-' }} / {{ trailerResult?.yardSector?.guideMessage || '-' }}</dd></div>
+
             </dl>
           </section>
 
@@ -387,14 +458,6 @@ onUnmounted(() => {
       <p v-if="plateRecognitionStore.error || gateLogStore.error" class="process-result warning">{{ plateRecognitionStore.error || gateLogStore.error }}</p>
     </section>
 
-    <section class="ops-strip">
-      <article v-for="card in statusCards" :key="card.label" class="ops-card" :class="card.tone">
-        <span>{{ card.label }}</span>
-        <strong>{{ card.value }}건</strong>
-        <small>{{ card.detail }}</small>
-      </article>
-    </section>
-
     <section class="monitor-grid">
       <article class="panel dark-panel">
         <div class="section-title dark-title">
@@ -403,7 +466,7 @@ onUnmounted(() => {
         </div>
         <div class="work-lane">
           <div v-for="order in activeOrders" :key="getId(order, 'workOrderId')" class="work-row">
-            <b>{{ getPlateNumber(getId(order, 'vehicleId') || getId(order, 'trailerVehicleId')) }}</b>
+            <b>{{ getWorkOrderPlateText(order) }}</b>
             <span>{{ getContainerNumber(getId(order, 'containerId')) }}</span>
             <small>{{ statusText(getWorkStatus(order)) }}</small>
           </div>
@@ -442,7 +505,7 @@ onUnmounted(() => {
         </div>
         <div v-for="log in latestGateLogs" :key="log.gateLogId || log.gate_log_id" class="compact-row">
           <span>{{ log.entryTime || log.entry_time || log.exitTime || log.exit_time || '-' }}</span>
-          <span>{{ getPlateNumber(getId(log, 'vehicleId')) }}</span>
+          <span>{{ getGateLogPlateText(log) }}</span>
           <span>{{ log.gateName || log.gate_name || '-' }}</span>
           <span>{{ gateText(log.inOutType || log.in_out_type) }}</span>
           <span>{{ log.processResult || log.process_result || '-' }}</span>
@@ -568,7 +631,8 @@ onUnmounted(() => {
 }
 
 .gate-head b,
-.gate-head i {
+.gate-head i,
+.gate-head em {
   display: inline-flex;
   min-height: 22px;
   align-items: center;
@@ -580,6 +644,12 @@ onUnmounted(() => {
   font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
+}
+
+.gate-meta {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
 }
 
 .gate-head b {
@@ -594,6 +664,13 @@ onUnmounted(() => {
   flex: 0 0 auto;
   background: #2f7d57;
   border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.gate-head em {
+  color: #a6e6c3;
+  background: #123b2a;
+  border: 1px solid #2f7d57;
+  font-style: normal;
 }
 
 .gate-body {
@@ -662,6 +739,47 @@ onUnmounted(() => {
 }
 
 .camera-upload input { display: none; }
+
+.gate-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.gate-summary small {
+  overflow: hidden;
+  padding: 4px 6px;
+  color: #91a0c0;
+  background: #0c1220;
+  border: 1px solid #263353;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gate-summary small.success {
+  color: #a6e6c3;
+  background: #123b2a;
+  border-color: #2f7d57;
+}
+
+.gate-summary small.warning {
+  color: #ffe2a3;
+  background: #453312;
+  border-color: #b47c1c;
+}
+
+.gate-summary small.danger {
+  color: #ffd0ce;
+  background: #491e22;
+  border-color: #b8403a;
+}
+
+.gate-summary small.idle {
+  color: #91a0c0;
+}
 
 .recognition-panel {
   display: grid;

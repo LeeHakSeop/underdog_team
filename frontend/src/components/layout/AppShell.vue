@@ -131,8 +131,8 @@ const menus = {
     { label: '내 차량', path: '/driver/vehicles', icon: 'truck' },
   ],
   ADMIN: [
-    { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
-    { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
+    { label: '상황 관제판', path: '/admin/main', icon: 'cctv' },
+    { label: '통계 요약', path: '/admin/dashboard', icon: 'dashboard' },
 
     { label: '운영 맵', path: '/admin/yard-map', icon: 'map' },
     { label: 'AI 번호판 인식', path: '/admin/plate-recognition', icon: 'scan' },
