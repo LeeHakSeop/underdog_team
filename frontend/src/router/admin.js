@@ -1,7 +1,6 @@
 import AdminMainView from '@/views/admin/AdminMainView.vue'
 import AdminDashboardView from '@/views/admin/AdminDashboardView.vue'
 import AdminWorkOrdersView from '@/views/admin/AdminWorkOrdersView.vue'
-import AdminContainersView from '@/views/admin/AdminContainersView.vue'
 import AdminEventsView from '@/views/admin/AdminEventsView.vue'
 import AdminMembersView from '@/views/admin/AdminMembersView.vue'
 import AdminPlateRecognitionView from '@/views/admin/AdminPlateRecognitionView.vue'
@@ -48,12 +47,6 @@ export default [
         name: 'admin-work-orders',
         component: AdminWorkOrdersView,
         meta: { role: 'admin', title: '작업 관리' },
-      },
-      {
-        path: 'containers',
-        name: 'admin-containers',
-        component: AdminContainersView,
-        meta: { role: 'admin', title: '컨테이너 조회' },
       },
       {
         path: 'events',

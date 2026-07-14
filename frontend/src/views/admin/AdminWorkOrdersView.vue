@@ -13,6 +13,7 @@ const driverStore = useDriverStore()
 const vehicleStore = useVehicleStore()
 const processingId = ref(null)
 const processMessage = ref('')
+const containerQuery = ref('')
 let refreshTimer = null
 
 const getId = (row, key) => row?.[key] ?? row?.[key.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)]
@@ -64,6 +65,15 @@ const carrierRequests = computed(() => {
 
 const processingTasks = computed(() => {
   return workOrderStore.workOrders.filter((order) => !carrierRequests.value.includes(order))
+})
+
+const visibleContainers = computed(() => {
+  const query = containerQuery.value.trim().toLowerCase()
+  if (!query) return containerStore.containers
+
+  return containerStore.containers.filter((container) =>
+    String(getValue(container, 'containerNumber', 'container_number')).toLowerCase().includes(query),
+  )
 })
 
 const processWorkOrder = async (order, action) => {
@@ -210,7 +220,7 @@ onUnmounted(() => {
         <span class="status-pill green">작업 처리 {{ processingTasks.length }}건</span>
       </div>
 
-      <div class="table-wrap">
+      <div class="table-wrap work-table-scroll">
         <table class="data-table">
           <thead>
             <tr>
@@ -264,6 +274,50 @@ onUnmounted(() => {
         </table>
       </div>
     </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>컨테이너 조회</h2>
+        <div class="table-tools">
+          <input v-model="containerQuery" type="search" placeholder="컨테이너 번호 검색" />
+          <span class="status-pill">{{ visibleContainers.length }}건</span>
+        </div>
+      </div>
+
+      <div class="table-wrap work-table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>컨테이너 ID</th>
+              <th>컨테이너 번호</th>
+              <th>규격</th>
+              <th>선사</th>
+              <th>현재 위치</th>
+              <th>야드 위치</th>
+              <th>반출 가능</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="container in visibleContainers" :key="getId(container, 'containerId')">
+              <td>{{ getId(container, 'containerId') }}</td>
+              <td>{{ getValue(container, 'containerNumber', 'container_number') || '-' }}</td>
+              <td>{{ getValue(container, 'containerSize', 'container_size') || '-' }}</td>
+              <td>{{ getValue(container, 'shippingLine', 'shipping_line') || '-' }}</td>
+              <td>{{ getValue(container, 'containerLocation', 'container_location') || '-' }}</td>
+              <td>{{ getYardLocation(getId(container, 'containerId')) }}</td>
+              <td>
+                <span class="status-pill" :class="{ red: !(container.canExit ?? container.can_exit) }">
+                  {{ container.canExit ?? container.can_exit ? '가능' : '보류' }}
+                </span>
+              </td>
+            </tr>
+            <tr v-if="visibleContainers.length === 0">
+              <td colspan="7">컨테이너 데이터가 없습니다.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -281,5 +335,33 @@ onUnmounted(() => {
   margin-left: 6px;
   color: #9f1d1d;
   border-color: #e4a6a6;
+}
+
+.work-table-scroll {
+  max-height: 470px;
+  overflow: auto;
+}
+
+.work-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-tools input {
+  width: 200px;
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--ink-900);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-weight: 700;
 }
 </style>
