@@ -123,6 +123,7 @@ const menus = {
     { label: '업무 홈', path: '/carrier/dashboard', icon: 'home' },
     { label: '기사 가입 승인', path: '/carrier/driver-approval', icon: 'driver' },
     { label: '트레일러 배정', path: '/carrier/vehicle-register', icon: 'truck' },
+    { label: '기사 작업지시', path: '/carrier/work-orders', icon: 'clipboard' },
     { label: '승인 현황', path: '/carrier/approvals', icon: 'approval' },
   ],
   DRIVER: [

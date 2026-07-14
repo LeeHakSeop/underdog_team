@@ -5,6 +5,7 @@ import { getUsers, updateUserStatus } from '@/api/authApi'
 import { useCarrierStore } from '@/stores/carrierStore'
 import { useDriverStore } from '@/stores/driverStore'
 import { useVehicleStore } from '@/stores/vehicleStore'
+import { vehicleTypeLabel } from '@/config/vehicleType'
 
 const activeTab = ref('user')
 const loading = ref(false)
@@ -478,7 +479,7 @@ onMounted(loadData)
                 {{ getCarrier(vehicle.carrierId)?.carrierName || '-' }}
               </td>
               <td>{{ vehicle.plateNumber }}</td>
-              <td>{{ vehicle.vehicleType }}</td>
+              <td>{{ vehicleTypeLabel(vehicle.vehicleType) }}</td>
               <td>{{ vehicle.tonnage }}</td>
               <td>{{ vehicle.tractorNo || '-' }}</td>
               <td>{{ vehicle.chassisNo || '-' }}</td>

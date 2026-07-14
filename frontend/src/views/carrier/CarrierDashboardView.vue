@@ -44,6 +44,12 @@ const actionCards = computed(() => [
     text: '소속 기사와 차량 승인 상태를 확인합니다.',
     path: '/carrier/approvals',
   },
+  {
+    title: '기사 작업지시',
+    count: myDrivers.value.length,
+    text: '승인된 기사에게 작업지시를 등록합니다.',
+    path: '/carrier/work-orders',
+  },
 ])
 
 const loadData = () => {
