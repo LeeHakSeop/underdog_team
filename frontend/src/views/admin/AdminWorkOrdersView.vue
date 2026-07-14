@@ -40,6 +40,40 @@ const getPlateNumber = (vehicleId) => {
   return getValue(vehicle, 'plateNumber', 'plate_number') || '-'
 }
 
+const getVehicleForType = (order, vehicleType) => {
+  const vehicleIds = [
+    getId(order, 'tractorVehicleId'),
+    getId(order, 'trailerVehicleId'),
+    getId(order, 'vehicleId'),
+  ].filter(Boolean)
+
+  return vehicleIds
+    .map((vehicleId) => getVehicle(vehicleId))
+    .find((vehicle) => getValue(vehicle, 'vehicleType', 'vehicle_type') === vehicleType) || null
+}
+
+const getVehicleApprovalText = (vehicle) => {
+  if (!vehicle) return '미연결'
+  const isRegistered = getValue(vehicle, 'isRegistered', 'is_registered')
+  const vehicleStatus = getValue(vehicle, 'vehicleStatus', 'vehicle_status')
+  if (isRegistered === true && vehicleStatus === '정상') return '승인'
+  if (vehicleStatus === '승인거절') return '반려'
+  return '승인대기'
+}
+
+const getVehicleApprovalClass = (vehicle) => {
+  const status = getVehicleApprovalText(vehicle)
+  if (status === '승인') return 'green'
+  if (status === '반려') return 'red'
+  return 'amber'
+}
+
+const getDriverEntryText = (order) => {
+  const driver = driverStore.drivers.find((item) => getId(item, 'driverId') === getId(order, 'driverId'))
+  if (!driver) return '미연결'
+  return getValue(driver, 'canEnter', 'can_enter') === true ? '가능' : '불가'
+}
+
 const getContainer = (containerId) => {
   return containerStore.containers.find((item) => getId(item, 'containerId') === containerId) || null
 }
@@ -167,6 +201,9 @@ onUnmounted(() => {
               <th>컨테이너</th>
               <th>작업 유형</th>
               <th>예약</th>
+              <th>트랙터 승인</th>
+              <th>트레일러 승인</th>
+              <th>기사 출입</th>
               <th>상태</th>
               <th>처리</th>
             </tr>
@@ -180,6 +217,21 @@ onUnmounted(() => {
               <td>{{ getContainerNumber(getId(order, 'containerId')) }}</td>
               <td>{{ getValue(order, 'workType', 'work_type') }}</td>
               <td>{{ getValue(order, 'reservedTime', 'reserved_time') }}</td>
+              <td>
+                <span class="status-pill" :class="getVehicleApprovalClass(getVehicleForType(order, 'TRACTOR'))">
+                  {{ getVehicleApprovalText(getVehicleForType(order, 'TRACTOR')) }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="getVehicleApprovalClass(getVehicleForType(order, 'TRAILER'))">
+                  {{ getVehicleApprovalText(getVehicleForType(order, 'TRAILER')) }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="getDriverEntryText(order) === '가능' ? 'green' : 'red'">
+                  {{ getDriverEntryText(order) }}
+                </span>
+              </td>
               <td>
                 <span class="status-pill amber">
                   {{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}
@@ -205,7 +257,7 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="carrierRequests.length === 0">
-              <td colspan="9">배차 대기 작업이 없습니다.</td>
+              <td colspan="12">배차 대기 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -229,6 +281,9 @@ onUnmounted(() => {
               <th>차량번호</th>
               <th>기사</th>
               <th>야드 위치</th>
+              <th>트랙터 승인</th>
+              <th>트레일러 승인</th>
+              <th>기사 출입</th>
               <th>상태</th>
               <th>처리</th>
             </tr>
@@ -240,6 +295,21 @@ onUnmounted(() => {
               <td>{{ getPlateNumber(getId(order, 'vehicleId') || getId(order, 'trailerVehicleId')) }}</td>
               <td>{{ getDriverName(getId(order, 'driverId')) }}</td>
               <td>{{ getYardLocation(getId(order, 'containerId')) }}</td>
+              <td>
+                <span class="status-pill" :class="getVehicleApprovalClass(getVehicleForType(order, 'TRACTOR'))">
+                  {{ getVehicleApprovalText(getVehicleForType(order, 'TRACTOR')) }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="getVehicleApprovalClass(getVehicleForType(order, 'TRAILER'))">
+                  {{ getVehicleApprovalText(getVehicleForType(order, 'TRAILER')) }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="getDriverEntryText(order) === '가능' ? 'green' : 'red'">
+                  {{ getDriverEntryText(order) }}
+                </span>
+              </td>
               <td>
                 <span class="status-pill" :class="getStatusClass(getValue(order, 'workStatus', 'work_status'))">
                   {{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}
@@ -268,7 +338,7 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="processingTasks.length === 0">
-              <td colspan="7">처리 중인 작업이 없습니다.</td>
+              <td colspan="10">처리 중인 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
