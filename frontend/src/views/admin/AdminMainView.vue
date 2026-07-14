@@ -234,7 +234,7 @@ const getVehicleType = (result) => result?.vehicle?.vehicleType || ''
 const getBooleanText = (value) => (value === true ? '가능' : value === false ? '불가' : '-')
 
 const getPassText = (result, expectedType) => {
-  if (!result?.matched || getVehicleType(result) !== expectedType || result.needReview) return '불가'
+  if (!result?.matched || getVehicleType(result) !== expectedType) return '불가'
   return '가능'
 }
 
@@ -268,7 +268,8 @@ const canProcessGate = computed(() => isReadyForGateProcess.value && gateProcess
 
 const recognitionStatus = (result, expectedType) => {
   if (!result) return '인식 대기'
-  if (result.needReview) return 'RECOGNITION_NEED_REVIEW'
+  if (result.needReview && getPassText(result, expectedType) === '가능') return '확인 완료'
+  if (result.needReview) return '확인 필요'
   return getPassText(result, expectedType) === '가능' ? '정상' : '인식 불가'
 }
 
@@ -279,6 +280,13 @@ const getGateOcrStatus = (gate) => {
   const trailer = getGateRecognition(gate, 'trailer')
 
   if (!tractor && !trailer) return { text: 'OCR 대기', tone: 'idle' }
+  if (
+    (tractor?.needReview || trailer?.needReview) &&
+    getPassText(tractor, 'TRACTOR') === '가능' &&
+    getPassText(trailer, 'TRAILER') === '가능'
+  ) {
+    return { text: '확인 완료', tone: 'success' }
+  }
   if (tractor?.needReview || trailer?.needReview) return { text: '확인 필요', tone: 'warning' }
   if (tractor?.aiResult?.detected && trailer?.aiResult?.detected) return { text: 'OCR 성공', tone: 'success' }
   return { text: 'OCR 실패', tone: 'danger' }
