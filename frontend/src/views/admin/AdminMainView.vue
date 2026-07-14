@@ -198,46 +198,121 @@ const yardSectors = computed(() => {
 const tractorResult = computed(() => gateRecognitionResults[selectedGateId.value]?.tractor || null)
 const trailerResult = computed(() => gateRecognitionResults[selectedGateId.value]?.trailer || null)
 
-const getVehicleType = (result) => result?.vehicle?.vehicleType || ''
+const normalizeVehicleType = (vehicleType) => {
+  const normalizedType = String(vehicleType || '').trim().toUpperCase()
+
+  if (normalizedType === 'TRACTOR' || vehicleType === '트랙터') return 'TRACTOR'
+  if (normalizedType === 'TRAILER' || vehicleType === '트레일러') return 'TRAILER'
+
+  return normalizedType
+}
+
+const getVehicleType = (result) => normalizeVehicleType(result?.vehicle?.vehicleType)
 const getBooleanText = (value) => (value === true ? '가능' : value === false ? '불가' : '-')
 
 const getPassText = (result, expectedType) => {
-  if (!result?.matched || getVehicleType(result) !== expectedType || result.needReview) return '불가'
+  if (!result?.matched || !result?.aiResult?.detected) return '불가'
+  if (getVehicleType(result) !== normalizeVehicleType(expectedType)) return '불가'
+  if (result.needReview) return '불가'
   return '가능'
 }
 
 const tractorPassText = computed(() => getPassText(tractorResult.value, 'TRACTOR'))
 const trailerPassText = computed(() => getPassText(trailerResult.value, 'TRAILER'))
-const isReadyForGateProcess = computed(() => tractorPassText.value === '가능' && trailerPassText.value === '가능')
 
-const gateProcessPayload = computed(() => ({
+const getWorkOrder = (result) => result?.workOrder || result?.trailerWorkInfo || null
+
+const tractorWorkOrder = computed(() => getWorkOrder(tractorResult.value))
+const trailerWorkOrder = computed(() => getWorkOrder(trailerResult.value))
+const matchedWorkOrder = computed(() => trailerWorkOrder.value || tractorWorkOrder.value || null)
+
+const workOrderMatch = computed(() => {
+  const tractorWorkOrderId = getId(tractorWorkOrder.value, 'workOrderId')
+  const trailerWorkOrderId = getId(trailerWorkOrder.value, 'workOrderId')
+
+  return Boolean(
+    tractorWorkOrderId &&
+    trailerWorkOrderId &&
+    tractorWorkOrderId === trailerWorkOrderId,
+  )
+})
+
+const getContainerExitAllowed = () => {
+  const container = trailerResult.value?.container
+  const trailerWorkInfo = trailerResult.value?.trailerWorkInfo
+
+  return Boolean(
+    container?.canExit ??
+    container?.can_exit ??
+    trailerWorkInfo?.canExit ??
+    trailerWorkInfo?.can_exit,
+  )
+}
+
+const isWorkOrderGateStatusAllowed = (type) => {
+  const workStatus = getValue(matchedWorkOrder.value, 'workStatus', 'work_status')
+
+  if (type === 'OUT') {
+    return workStatus === 'COMPLETED' && getContainerExitAllowed()
+  }
+
+  return workStatus === 'APPROVED'
+}
+
+const selectedGateType = computed(() => selectedGate.value?.inOutType || 'IN')
+
+const buildGateProcessPayload = (type) => ({
   tractorVehicleId: tractorResult.value?.vehicle?.vehicleId || null,
   trailerVehicleId: trailerResult.value?.vehicle?.vehicleId || null,
-  workOrderId: trailerResult.value?.workOrder?.workOrderId || trailerResult.value?.trailerWorkInfo?.workOrderId || null,
-  containerId: trailerResult.value?.workOrder?.containerId || trailerResult.value?.trailerWorkInfo?.containerId || null,
+  workOrderId: getId(matchedWorkOrder.value, 'workOrderId'),
+  containerId: getId(matchedWorkOrder.value, 'containerId'),
   sectorId: trailerResult.value?.container?.sectorId || trailerResult.value?.trailerWorkInfo?.sectorId || null,
   gateNumber: selectedGate.value?.gateNumber || 'G01',
   gateName: selectedGate.value?.gateName || 'AI_GATE',
-  inOutType: processType.value,
-}))
+  inOutType: type,
+})
 
-const gateProcessMissingItems = computed(() => {
-  const payload = gateProcessPayload.value
-  return [
+const gateProcessPayload = computed(() => buildGateProcessPayload(processType.value))
+
+const getGateProcessMissingItems = (type) => {
+  const payload = buildGateProcessPayload(type)
+  const missingItems = [
     [payload.tractorVehicleId, '트랙터 차량'],
     [payload.trailerVehicleId, '트레일러 차량'],
     [payload.workOrderId, '작업정보'],
     [payload.containerId, '컨테이너'],
     [payload.sectorId, '야드 섹터'],
   ].filter(([value]) => !value).map(([, label]) => label)
-})
 
-const canProcessGate = computed(() => isReadyForGateProcess.value && gateProcessMissingItems.value.length === 0)
+  if (tractorPassText.value !== '가능') missingItems.push('트랙터 번호판 검증')
+  if (trailerPassText.value !== '가능') missingItems.push('트레일러 번호판 검증')
+  if (!workOrderMatch.value) missingItems.push('트랙터·트레일러 공통 WorkOrder')
+  if (selectedGateType.value !== type) missingItems.push(`${type === 'OUT' ? '출차' : '입차'} 게이트 선택`)
+  if (!isWorkOrderGateStatusAllowed(type)) {
+    missingItems.push(type === 'OUT' ? '출차 가능한 작업 상태' : '입차 가능한 작업 상태')
+  }
+
+  return missingItems
+}
+
+const gateProcessMissingItems = computed(() => getGateProcessMissingItems(processType.value))
+const canProcessGateFor = (type) => getGateProcessMissingItems(type).length === 0
+const canProcessGate = computed(() => canProcessGateFor(processType.value))
+
+const isReadyForGateProcess = computed(() => canProcessGate.value)
 
 const recognitionStatus = (result, expectedType) => {
   if (!result) return '인식 대기'
-  if (result.needReview) return 'RECOGNITION_NEED_REVIEW'
+  if (!result.aiResult?.detected) return '인식 실패'
+  if (!result.matched) return '등록 차량 아님'
+  if (getVehicleType(result) !== normalizeVehicleType(expectedType)) return '차량 유형 불일치'
+  if (result.needReview) return '관리자 확인 필요'
   return getPassText(result, expectedType) === '가능' ? '정상' : '인식 불가'
+}
+
+const isRecognitionWarning = (result, expectedType) => {
+  const status = recognitionStatus(result, expectedType)
+  return status !== '인식 대기' && status !== '정상'
 }
 
 const selectGateImage = async (event, gate, targetType) => {
@@ -245,6 +320,8 @@ const selectGateImage = async (event, gate, targetType) => {
   if (!file) return
 
   selectedGateId.value = gate.id
+  gateLogStore.processResult = null
+  gateLogStore.error = ''
   const key = `${gate.id}-${targetType}`
   const oldPreviewUrl = gatePreviewUrls[key]
   if (oldPreviewUrl) URL.revokeObjectURL(oldPreviewUrl)
@@ -259,8 +336,17 @@ const selectGateImage = async (event, gate, targetType) => {
   }
 }
 
-const submitGateProcess = async () => {
-  if (canProcessGate.value) await gateLogStore.processGate(gateProcessPayload.value)
+const submitGateProcess = async (type) => {
+  processType.value = type
+
+  if (!canProcessGateFor(type)) return
+
+  try {
+    await gateLogStore.processGate(buildGateProcessPayload(type))
+    if (gateLogStore.processResult?.success) loadData()
+  } catch {
+    // gateLogStore.error를 화면에 표시해 최종 처리 실패 원인을 안내합니다.
+  }
 }
 
 const loadData = () => {
@@ -308,7 +394,7 @@ onUnmounted(() => {
               <span>트랙터 인식</span>
               <img v-if="gatePreviewUrls[`${gate.id}-tractor`]" :src="gatePreviewUrls[`${gate.id}-tractor`]" alt="선택한 트랙터 이미지" />
               <b v-else>트랙터 이미지 업로드</b>
-              <small :class="{ review: recognitionStatus(gateRecognitionResults[gate.id]?.tractor, 'TRACTOR') === 'RECOGNITION_NEED_REVIEW' }">
+              <small :class="{ review: isRecognitionWarning(gateRecognitionResults[gate.id]?.tractor, 'TRACTOR') }">
                 {{ recognitionStatus(gateRecognitionResults[gate.id]?.tractor, 'TRACTOR') }}
               </small>
               <input :id="`tractorImage-${gate.id}`" accept="image/*" type="file" @change="selectGateImage($event, gate, 'tractor')" />
@@ -317,7 +403,7 @@ onUnmounted(() => {
               <span>트레일러 인식</span>
               <img v-if="gatePreviewUrls[`${gate.id}-trailer`]" :src="gatePreviewUrls[`${gate.id}-trailer`]" alt="선택한 트레일러 이미지" />
               <b v-else>트레일러 이미지 업로드</b>
-              <small :class="{ review: recognitionStatus(gateRecognitionResults[gate.id]?.trailer, 'TRAILER') === 'RECOGNITION_NEED_REVIEW' }">
+              <small :class="{ review: isRecognitionWarning(gateRecognitionResults[gate.id]?.trailer, 'TRAILER') }">
                 {{ recognitionStatus(gateRecognitionResults[gate.id]?.trailer, 'TRAILER') }}
               </small>
               <input :id="`trailerImage-${gate.id}`" accept="image/*" type="file" @change="selectGateImage($event, gate, 'trailer')" />
@@ -350,7 +436,7 @@ onUnmounted(() => {
               <div><dt>컨테이너 번호 / 크기</dt><dd>{{ trailerResult?.container?.containerNumber || '-' }} / {{ trailerResult?.container?.containerSize || '-' }}</dd></div>
               <div><dt>위치 / 블록-베이-로우</dt><dd>{{ trailerResult?.container?.containerLocation || '-' }} / {{ trailerResult?.container?.block || '-' }}-{{ trailerResult?.container?.bay || '-' }}-{{ trailerResult?.container?.rowNo || '-' }}</dd></div>
               <div><dt>야드 섹터 / 상태</dt><dd>{{ trailerResult?.yardSector?.sectorName || '-' }} / {{ trailerResult?.yardSector?.sectorStatus || '-' }}</dd></div>
-              <div><dt>대체 대기 / 안내</dt><dd>{{ trailerResult?.yardSector?.altWaitingArea || '-' }} / {{ trailerResult?.yardSector?.guideMessage || '-' }}</dd></div>
+              <div><dt>대체 대기 / 안내</dt><dd>{{ trailerResult?.yardSector?.altWaitingArea || '-' }} / {{ trailerResult?.trailerWorkInfo?.guideMessage || trailerResult?.yardSector?.guideMessage || '-' }}</dd></div>
             </dl>
           </section>
 
@@ -360,12 +446,14 @@ onUnmounted(() => {
               <div><dt>게이트</dt><dd>{{ selectedGate?.gateName || '-' }} / {{ gateText(selectedGate?.inOutType) }}</dd></div>
               <div><dt>트랙터 인식</dt><dd>{{ tractorResult?.aiResult?.plateNumber || '-' }} / {{ tractorPassText }}</dd></div>
               <div><dt>트레일러 인식</dt><dd>{{ trailerResult?.aiResult?.plateNumber || '-' }} / {{ trailerPassText }}</dd></div>
+              <div><dt>WorkOrder 일치</dt><dd>{{ workOrderMatch ? '일치' : '확인 필요' }}</dd></div>
+              <div><dt>출입 가능 상태</dt><dd>{{ isWorkOrderGateStatusAllowed(selectedGateType) ? '가능' : '확인 필요' }}</dd></div>
             </dl>
           </section>
         </div>
         <div class="process-actions side-process-actions">
-          <button class="primary-button process-button" type="button" :disabled="!canProcessGate || gateLogStore.loading" @click="processType = 'IN'; submitGateProcess()">{{ gateLogStore.loading && processType === 'IN' ? '처리 중' : '입차 처리' }}</button>
-          <button class="primary-button process-button out" type="button" :disabled="!canProcessGate || gateLogStore.loading" @click="processType = 'OUT'; submitGateProcess()">{{ gateLogStore.loading && processType === 'OUT' ? '처리 중' : '출차 처리' }}</button>
+          <button class="primary-button process-button" type="button" :disabled="!canProcessGateFor('IN') || gateLogStore.loading" @click="submitGateProcess('IN')">{{ gateLogStore.loading && processType === 'IN' ? '처리 중' : '입차 처리' }}</button>
+          <button class="primary-button process-button out" type="button" :disabled="!canProcessGateFor('OUT') || gateLogStore.loading" @click="submitGateProcess('OUT')">{{ gateLogStore.loading && processType === 'OUT' ? '처리 중' : '출차 처리' }}</button>
         </div>
       </aside>
     </section>
@@ -375,7 +463,7 @@ onUnmounted(() => {
         <div :class="['final-decision', canProcessGate ? 'success' : 'warning']">
           <span>최종 출입 판단</span>
           <strong>{{ canProcessGate ? '통과' : '불가' }}</strong>
-          <p>{{ canProcessGate ? '트랙터·트레일러·작업정보가 모두 확인되었습니다.' : `확인 필요: ${gateProcessMissingItems.join(', ') || '번호판 인식 결과'}` }}</p>
+          <p>{{ canProcessGate ? `${processType === 'OUT' ? '출차' : '입차'} 가능한 정보가 확인되었습니다.` : `확인 필요: ${gateProcessMissingItems.join(', ') || '번호판 인식 결과'}` }}</p>
         </div>
       </div>
       <ol class="process-steps" aria-label="번호판 출입 처리 단계">

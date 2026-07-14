@@ -87,18 +87,54 @@ public interface WorkOrderMapper {
                 ys.sector_name AS sectorName,
                 ys.block_name AS blockName,
                 ys.sector_status AS sectorStatus,
-                ys.guide_message AS guideMessage,
+                CASE
+                    WHEN wo.work_status = 'DISPATCH_WAITING'
+                        THEN '운송사 배차 승인 대기 중입니다.'
+                    WHEN wo.work_status = 'APPROVED'
+                        THEN '입차 승인 완료. 게이트에서 입차 처리 후 야드 섹터로 이동하세요.'
+                    WHEN wo.work_status = 'GATE_IN'
+                        THEN CONCAT('입차 처리 완료. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터로 이동하여 작업을 진행하세요.')
+                    WHEN wo.work_status = 'IN_PROGRESS'
+                        THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
+                    WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE
+                        THEN '작업 완료 및 출차 가능 상태입니다. 게이트에서 출차 처리하세요.'
+                    WHEN wo.work_status = 'COMPLETED'
+                        THEN '작업 완료. 출차 보류 및 관리자 확인 대기 중입니다.'
+                    WHEN wo.work_status = 'GATE_OUT'
+                        THEN '출차 처리가 완료되었습니다.'
+                    WHEN wo.work_status = 'CANCELED'
+                        THEN '취소된 작업지시입니다.'
+                    ELSE COALESCE(ys.guide_message, '작업 상태를 확인하세요.')
+                END AS guideMessage,
+                c.can_exit AS canExit,
                 ys.alt_waiting_area AS altWaitingArea,
                 CONCAT(
                     '컨테이너 번호는 ', c.container_number,
                     '이고, 작업 유형은 ', wo.work_type,
                     '입니다. 이동 위치는 ', COALESCE(ys.sector_name, c.container_location),
                     ' / ', COALESCE(c.block, '-'), '-', COALESCE(c.bay, '-'), '-', COALESCE(c.row_no, '-'),
-                    CASE
-                        WHEN ys.guide_message IS NOT NULL AND ys.guide_message <> ''
-                        THEN CONCAT('. 안내: ', ys.guide_message)
-                        ELSE ''
-                    END,
+                    CONCAT(
+                        '. 안내: ',
+                        CASE
+                            WHEN wo.work_status = 'DISPATCH_WAITING'
+                                THEN '운송사 배차 승인 대기 중입니다.'
+                            WHEN wo.work_status = 'APPROVED'
+                                THEN '입차 승인 완료. 게이트에서 입차 처리 후 야드 섹터로 이동하세요.'
+                            WHEN wo.work_status = 'GATE_IN'
+                                THEN CONCAT('입차 처리 완료. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터로 이동하여 작업을 진행하세요.')
+                            WHEN wo.work_status = 'IN_PROGRESS'
+                                THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
+                            WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE
+                                THEN '작업 완료 및 출차 가능 상태입니다. 게이트에서 출차 처리하세요.'
+                            WHEN wo.work_status = 'COMPLETED'
+                                THEN '작업 완료. 출차 보류 및 관리자 확인 대기 중입니다.'
+                            WHEN wo.work_status = 'GATE_OUT'
+                                THEN '출차 처리가 완료되었습니다.'
+                            WHEN wo.work_status = 'CANCELED'
+                                THEN '취소된 작업지시입니다.'
+                            ELSE COALESCE(ys.guide_message, '작업 상태를 확인하세요.')
+                        END
+                    ),
                     CASE
                         WHEN ys.alt_waiting_area IS NOT NULL AND ys.alt_waiting_area <> ''
                         THEN CONCAT('. 대체 대기 위치: ', ys.alt_waiting_area)
