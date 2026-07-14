@@ -118,6 +118,50 @@ public interface WorkOrderMapper {
             """)
     TrailerWorkInfoDTO findTrailerWorkInfoByVehicleId(Long vehicleId);
 
+    @Select("""
+            SELECT
+                work_order_id AS workOrderId,
+                work_type AS workType,
+                vehicle_id AS vehicleId,
+                tractor_vehicle_id AS tractorVehicleId,
+                trailer_vehicle_id AS trailerVehicleId,
+                driver_id AS driverId,
+                container_id AS containerId,
+                reserved_time AS reservedTime,
+                work_status AS workStatus,
+                is_approved AS isApproved
+            FROM work_order
+            WHERE (tractor_vehicle_id = #{vehicleId}
+               OR vehicle_id = #{vehicleId})
+              AND COALESCE(is_approved, FALSE) = TRUE
+              AND work_status IN ('APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+            ORDER BY reserved_time DESC NULLS LAST, work_order_id DESC
+            LIMIT 1
+            """)
+    WorkOrderDTO findLatestByTractorVehicleId(Long vehicleId);
+
+    @Select("""
+            SELECT
+                work_order_id AS workOrderId,
+                work_type AS workType,
+                vehicle_id AS vehicleId,
+                tractor_vehicle_id AS tractorVehicleId,
+                trailer_vehicle_id AS trailerVehicleId,
+                driver_id AS driverId,
+                container_id AS containerId,
+                reserved_time AS reservedTime,
+                work_status AS workStatus,
+                is_approved AS isApproved
+            FROM work_order
+            WHERE (trailer_vehicle_id = #{vehicleId}
+               OR vehicle_id = #{vehicleId})
+              AND COALESCE(is_approved, FALSE) = TRUE
+              AND work_status IN ('APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+            ORDER BY reserved_time DESC NULLS LAST, work_order_id DESC
+            LIMIT 1
+            """)
+    WorkOrderDTO findLatestByTrailerVehicleId(Long vehicleId);
+
     @Update("""
             UPDATE work_order
             SET work_status = #{workStatus}
@@ -136,7 +180,7 @@ public interface WorkOrderMapper {
     @Update("""
             UPDATE work_order
             SET is_approved = false,
-                work_status = 'REJECTED'
+                work_status = 'CANCELED'
             WHERE work_order_id = #{workOrderId}
             """)
     int reject(Long workOrderId);

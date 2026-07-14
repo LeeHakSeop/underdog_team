@@ -110,7 +110,25 @@ public class GateLogService {
         }
 
         if (!Boolean.TRUE.equals(workOrder.getIsApproved())) {
-            return "WORK_NOT_APPROVED";
+            return "WORK_ORDER_NOT_APPROVED";
+        }
+
+        WorkOrderDTO tractorWorkOrder = workOrderService.findLatestByTractorVehicleId(dto.getTractorVehicleId());
+        WorkOrderDTO trailerWorkOrder = workOrderService.findLatestByTrailerVehicleId(dto.getTrailerVehicleId());
+
+        if (tractorWorkOrder != null && trailerWorkOrder != null) {
+            boolean sameWorkOrder = Objects.equals(
+                    tractorWorkOrder.getWorkOrderId(),
+                    trailerWorkOrder.getWorkOrderId()
+            );
+            boolean requestMatchesWorkOrder = Objects.equals(
+                    dto.getWorkOrderId(),
+                    tractorWorkOrder.getWorkOrderId()
+            );
+
+            if (!sameWorkOrder || !requestMatchesWorkOrder) {
+                return "WORK_ORDER_MISMATCH";
+            }
         }
 
         if (workOrder.getContainerId() != null && !workOrder.getContainerId().equals(dto.getContainerId())) {
@@ -282,6 +300,9 @@ public class GateLogService {
         if ("WORK_ORDER_NOT_APPROVED".equals(failReason)) {
             return "승인되지 않은 작업지시입니다.";
         }
+        if ("WORK_ORDER_MISMATCH".equals(failReason)) {
+            return "트랙터와 트레일러가 같은 WorkOrder에 연결되어 있지 않습니다.";
+        }
         if ("WORK_ORDER_UPDATE_FAILED".equals(failReason)) {
             return "작업 상태 변경에 실패했습니다.";
         }
@@ -326,7 +347,7 @@ public class GateLogService {
             return "작업정보를 찾을 수 없습니다.";
         }
 
-        if ("WORK_NOT_APPROVED".equals(failReason)) {
+        if ("WORK_ORDER_NOT_APPROVED".equals(failReason)) {
             return "승인되지 않은 작업입니다.";
         }
 

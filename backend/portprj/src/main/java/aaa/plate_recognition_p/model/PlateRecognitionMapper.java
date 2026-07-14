@@ -49,9 +49,11 @@ public interface PlateRecognitionMapper {
                 work_status,
                 is_approved
             FROM work_order
-            WHERE tractor_vehicle_id = #{vehicleId}
-               OR vehicle_id = #{vehicleId}
-            ORDER BY work_order_id DESC
+            WHERE (tractor_vehicle_id = #{vehicleId}
+               OR vehicle_id = #{vehicleId})
+              AND COALESCE(is_approved, FALSE) = TRUE
+              AND work_status IN ('APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+            ORDER BY reserved_time DESC NULLS LAST, work_order_id DESC
             LIMIT 1
             """)
     WorkOrderDTO findLatestWorkOrderByTractor(Long vehicleId);
@@ -69,9 +71,11 @@ public interface PlateRecognitionMapper {
                 work_status,
                 is_approved
             FROM work_order
-            WHERE trailer_vehicle_id = #{vehicleId}
-               OR vehicle_id = #{vehicleId}
-            ORDER BY work_order_id DESC
+            WHERE (trailer_vehicle_id = #{vehicleId}
+               OR vehicle_id = #{vehicleId})
+              AND COALESCE(is_approved, FALSE) = TRUE
+              AND work_status IN ('APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+            ORDER BY reserved_time DESC NULLS LAST, work_order_id DESC
             LIMIT 1
             """)
     WorkOrderDTO findLatestWorkOrderByTrailer(Long vehicleId);

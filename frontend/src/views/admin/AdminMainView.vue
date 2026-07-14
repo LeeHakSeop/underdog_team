@@ -7,6 +7,7 @@ import { useDriverStore } from '@/stores/driverStore'
 import { useVehicleStore } from '@/stores/vehicleStore'
 import { useCarrierStore } from '@/stores/carrierStore'
 import { usePlateRecognitionStore } from '@/stores/adminStore/plateRecognitionStore'
+import { vehicleTypeLabel } from '@/config/vehicleType'
 
 const gateLogStore = useGateLogStore()
 const workOrderStore = useWorkOrderStore()
@@ -330,7 +331,7 @@ onUnmounted(() => {
           <section>
             <h3>트랙터 조회 정보</h3>
             <dl>
-              <div><dt>차량 번호 / 유형</dt><dd>{{ tractorResult?.vehicle?.plateNumber || '-' }} / {{ tractorResult?.vehicle?.vehicleType || '-' }}</dd></div>
+              <div><dt>차량 번호 / 유형</dt><dd>{{ tractorResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(tractorResult?.vehicle?.vehicleType) }}</dd></div>
               <div><dt>차량 등록 / 상태</dt><dd>{{ getBooleanText(tractorResult?.vehicle?.isRegistered) }} / {{ tractorResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
               <div><dt>기사</dt><dd>{{ tractorResult?.driver?.driverName || '-' }} / {{ tractorResult?.driver?.driverContact || '-' }}</dd></div>
               <div><dt>기사 등록 / 출입</dt><dd>{{ getBooleanText(tractorResult?.driver?.isRegistered) }} / {{ getBooleanText(tractorResult?.driver?.canEnter) }}</dd></div>
@@ -342,7 +343,7 @@ onUnmounted(() => {
           <section>
             <h3>트레일러 조회 정보</h3>
             <dl>
-              <div><dt>차량 번호 / 유형</dt><dd>{{ trailerResult?.vehicle?.plateNumber || '-' }} / {{ trailerResult?.vehicle?.vehicleType || '-' }}</dd></div>
+              <div><dt>차량 번호 / 유형</dt><dd>{{ trailerResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(trailerResult?.vehicle?.vehicleType) }}</dd></div>
               <div><dt>차량 등록 / 상태</dt><dd>{{ getBooleanText(trailerResult?.vehicle?.isRegistered) }} / {{ trailerResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
               <div><dt>작업 유형 / 상태</dt><dd>{{ trailerResult?.workOrder?.workType || '-' }} / {{ trailerResult?.workOrder?.workStatus || '-' }}</dd></div>
               <div><dt>작업 승인 / 예약</dt><dd>{{ getBooleanText(trailerResult?.workOrder?.isApproved) }} / {{ trailerResult?.workOrder?.reservedTime || '-' }}</dd></div>

@@ -1,4 +1,4 @@
-"exception_type","exception_message","plate_number","occured_time","process_status","manager_action","processed_time"
+"exception_type","exception_message","plate_number","occurred_time","process_status","manager_action","processed_time"
 "번호판 인식 실패","번호판을 정상적으로 인식하지 못했습니다.","부산12가1009","2026-07-03 08:40:10","처리완료","관리자가 수동으로 번호판 입력","2026-07-03 08:42:30"
 "미등록 차량","등록되지 않은 차량입니다.","부산99가4321","2026-07-03 09:10:15","처리완료","출입 거부 후 운송사 확인","2026-07-03 09:18:20"
 "작업오더 없음","해당 차량의 작업오더가 존재하지 않습니다.","부산12가1015","2026-07-03 09:30:00","처리완료","작업오더 재등록","2026-07-03 09:40:00"
