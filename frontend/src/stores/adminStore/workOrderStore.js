@@ -4,6 +4,7 @@ import {
   completeWorkOrder,
   createWorkOrder,
   fetchWorkOrders,
+  rejectWorkOrder,
   startWorkOrder,
 } from '@/api/adminApi/workOrderApi'
 
@@ -52,6 +53,18 @@ export const useWorkOrderStore = defineStore('workOrder', {
         await this.loadWorkOrders()
       } catch (error) {
         this.error = error.message || '작업 승인에 실패했습니다.'
+        throw error
+      }
+    },
+
+    async reject(workOrderId) {
+      this.error = ''
+
+      try {
+        await rejectWorkOrder(workOrderId)
+        await this.loadWorkOrders()
+      } catch (error) {
+        this.error = error.message || '작업 반려에 실패했습니다.'
         throw error
       }
     },

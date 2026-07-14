@@ -42,6 +42,11 @@ public class WorkOrderController {
         return service.approve(workOrderId);
     }
 
+    @PatchMapping("/{workOrderId}/reject")
+    public WorkOrderDTO reject(@PathVariable Long workOrderId) {
+        return service.reject(workOrderId);
+    }
+
     @PatchMapping("/{workOrderId}/start")
     public WorkOrderProcessResultDTO start(@PathVariable Long workOrderId) {
         return service.start(workOrderId);

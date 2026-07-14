@@ -55,11 +55,15 @@ const getYardLocation = (containerId) => {
 }
 
 const carrierRequests = computed(() => {
-  return workOrderStore.workOrders.filter((order) => getValue(order, 'workStatus', 'work_status') === 'DISPATCH_WAITING')
+  return workOrderStore.workOrders.filter((order) => {
+    const status = getValue(order, 'workStatus', 'work_status')
+    const isApproved = getValue(order, 'isApproved', 'is_approved')
+    return ['DISPATCH_WAITING', 'REQUESTED', 'PENDING'].includes(status) && isApproved !== true
+  })
 })
 
 const processingTasks = computed(() => {
-  return workOrderStore.workOrders.filter((order) => getValue(order, 'workStatus', 'work_status') !== 'DISPATCH_WAITING')
+  return workOrderStore.workOrders.filter((order) => !carrierRequests.value.includes(order))
 })
 
 const processWorkOrder = async (order, action) => {
@@ -71,6 +75,11 @@ const processWorkOrder = async (order, action) => {
     if (action === 'approve') {
       await workOrderStore.approve(workOrderId)
       processMessage.value = '작업 승인이 완료되었습니다.'
+    }
+
+    if (action === 'reject') {
+      await workOrderStore.reject(workOrderId)
+      processMessage.value = '작업 요청을 반려했습니다.'
     }
 
     if (action === 'start') {
@@ -96,6 +105,7 @@ const getStatusText = (workStatus) => {
   if (workStatus === 'IN_PROGRESS') return '작업 진행 중'
   if (workStatus === 'COMPLETED') return '출차 대기'
   if (workStatus === 'GATE_OUT') return '출차 완료'
+  if (workStatus === 'REJECTED') return '반려'
   return workStatus || '-'
 }
 
@@ -173,6 +183,14 @@ onUnmounted(() => {
                   @click="processWorkOrder(order, 'approve')"
                 >
                   {{ processingId === getId(order, 'workOrderId') ? '처리 중' : '작업 승인' }}
+                </button>
+                <button
+                  class="ghost-button reject-button"
+                  type="button"
+                  :disabled="processingId === getId(order, 'workOrderId')"
+                  @click="processWorkOrder(order, 'reject')"
+                >
+                  반려
                 </button>
               </td>
             </tr>
@@ -257,5 +275,11 @@ onUnmounted(() => {
   background: #f8fbfe;
   border: 1px solid var(--line);
   font-weight: 800;
+}
+
+.reject-button {
+  margin-left: 6px;
+  color: #9f1d1d;
+  border-color: #e4a6a6;
 }
 </style>

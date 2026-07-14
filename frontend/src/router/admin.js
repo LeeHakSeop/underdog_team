@@ -1,7 +1,6 @@
 import AdminMainView from '@/views/admin/AdminMainView.vue'
 import AdminDashboardView from '@/views/admin/AdminDashboardView.vue'
 import AdminWorkOrdersView from '@/views/admin/AdminWorkOrdersView.vue'
-import AdminGateLogsView from '@/views/admin/AdminGateLogsView.vue'
 import AdminContainersView from '@/views/admin/AdminContainersView.vue'
 import AdminEventsView from '@/views/admin/AdminEventsView.vue'
 import AdminMembersView from '@/views/admin/AdminMembersView.vue'
@@ -49,12 +48,6 @@ export default [
         name: 'admin-work-orders',
         component: AdminWorkOrdersView,
         meta: { role: 'admin', title: '작업 관리' },
-      },
-      {
-        path: 'gate-logs',
-        name: 'admin-gate-logs',
-        component: AdminGateLogsView,
-        meta: { role: 'admin', title: '차량 출입 조회' },
       },
       {
         path: 'containers',
