@@ -272,6 +272,27 @@ const recognitionStatus = (result, expectedType) => {
   return getPassText(result, expectedType) === '가능' ? '정상' : '인식 불가'
 }
 
+const getGateRecognition = (gate, targetType) => gateRecognitionResults[gate.id]?.[targetType] || null
+
+const getGateOcrStatus = (gate) => {
+  const tractor = getGateRecognition(gate, 'tractor')
+  const trailer = getGateRecognition(gate, 'trailer')
+
+  if (!tractor && !trailer) return { text: 'OCR 대기', tone: 'idle' }
+  if (tractor?.needReview || trailer?.needReview) return { text: '확인 필요', tone: 'warning' }
+  if (tractor?.aiResult?.detected && trailer?.aiResult?.detected) return { text: 'OCR 성공', tone: 'success' }
+  return { text: 'OCR 실패', tone: 'danger' }
+}
+
+const getGateDbStatus = (gate) => {
+  const tractor = getGateRecognition(gate, 'tractor')
+  const trailer = getGateRecognition(gate, 'trailer')
+
+  if (!tractor && !trailer) return { text: 'DB 대기', tone: 'idle' }
+  if (tractor?.matched && trailer?.matched) return { text: 'DB 매칭', tone: 'success' }
+  return { text: '미등록/불일치', tone: 'danger' }
+}
+
 const selectGateImage = async (event, gate, targetType) => {
   const file = event.target.files?.[0] || null
   if (!file) return
@@ -322,6 +343,14 @@ onUnmounted(() => {
 
 <template>
   <div class="control-room">
+    <section class="ops-strip">
+      <article v-for="card in statusCards" :key="card.label" class="ops-card" :class="card.tone">
+        <span>{{ card.label }}</span>
+        <strong>{{ card.value }}건</strong>
+        <small>{{ card.detail }}</small>
+      </article>
+    </section>
+
     <section class="control-layout">
       <article class="cctv-wall" aria-label="4개 게이트 관제 현황">
         <article
@@ -333,7 +362,10 @@ onUnmounted(() => {
         >
           <span class="gate-head">
             <b>{{ gate.gateName }}</b>
-            <i>{{ gateText(gate.inOutType) }}</i>
+            <span class="gate-meta">
+              <i>{{ gateText(gate.inOutType) }}</i>
+              <em>LIVE</em>
+            </span>
           </span>
           <span class="gate-body">
             <label class="camera-upload" :for="`tractorImage-${gate.id}`" @click.stop>
@@ -355,6 +387,11 @@ onUnmounted(() => {
               <input :id="`trailerImage-${gate.id}`" accept="image/*" type="file" @change="selectGateImage($event, gate, 'trailer')" />
             </label>
           </span>
+          <span class="gate-summary">
+            <small :class="getGateOcrStatus(gate).tone">{{ getGateOcrStatus(gate).text }}</small>
+            <small :class="getGateDbStatus(gate).tone">{{ getGateDbStatus(gate).text }}</small>
+            <small :class="gate.vehicleId ? 'success' : 'idle'">{{ gate.vehicleId ? '작업 로그 있음' : '게이트 대기' }}</small>
+          </span>
         </article>
       </article>
 
@@ -375,11 +412,6 @@ onUnmounted(() => {
           <section>
             <h3>트레일러 조회 정보</h3>
             <dl>
-<<<<<<< HEAD
-              <div><dt>차량</dt><dd>{{ matchedOrder ? getWorkOrderPlateText(matchedOrder) : selectedGate?.recognizedVehicleNo || '-' }}</dd></div>
-              <div><dt>기사</dt><dd>{{ selectedDriverName }}</dd></div>
-              <div><dt>운송사</dt><dd>{{ selectedCarrierName }}</dd></div>
-=======
               <div><dt>차량 번호 / 유형</dt><dd>{{ trailerResult?.vehicle?.plateNumber || '-' }} / {{ trailerResult?.vehicle?.vehicleType || '-' }}</dd></div>
               <div><dt>차량 등록 / 상태</dt><dd>{{ getBooleanText(trailerResult?.vehicle?.isRegistered) }} / {{ trailerResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
               <div><dt>작업 유형 / 상태</dt><dd>{{ trailerResult?.workOrder?.workType || '-' }} / {{ trailerResult?.workOrder?.workStatus || '-' }}</dd></div>
@@ -388,7 +420,7 @@ onUnmounted(() => {
               <div><dt>위치 / 블록-베이-로우</dt><dd>{{ trailerResult?.container?.containerLocation || '-' }} / {{ trailerResult?.container?.block || '-' }}-{{ trailerResult?.container?.bay || '-' }}-{{ trailerResult?.container?.rowNo || '-' }}</dd></div>
               <div><dt>야드 섹터 / 상태</dt><dd>{{ trailerResult?.yardSector?.sectorName || '-' }} / {{ trailerResult?.yardSector?.sectorStatus || '-' }}</dd></div>
               <div><dt>대체 대기 / 안내</dt><dd>{{ trailerResult?.yardSector?.altWaitingArea || '-' }} / {{ trailerResult?.yardSector?.guideMessage || '-' }}</dd></div>
->>>>>>> origin/KSM
+
             </dl>
           </section>
 
@@ -424,14 +456,6 @@ onUnmounted(() => {
       </ol>
       <p v-if="gateLogStore.processResult" :class="['process-result', gateLogStore.processResult.success ? 'success' : 'warning']">{{ gateLogStore.processResult.message }}</p>
       <p v-if="plateRecognitionStore.error || gateLogStore.error" class="process-result warning">{{ plateRecognitionStore.error || gateLogStore.error }}</p>
-    </section>
-
-    <section class="ops-strip">
-      <article v-for="card in statusCards" :key="card.label" class="ops-card" :class="card.tone">
-        <span>{{ card.label }}</span>
-        <strong>{{ card.value }}건</strong>
-        <small>{{ card.detail }}</small>
-      </article>
     </section>
 
     <section class="monitor-grid">
@@ -607,7 +631,8 @@ onUnmounted(() => {
 }
 
 .gate-head b,
-.gate-head i {
+.gate-head i,
+.gate-head em {
   display: inline-flex;
   min-height: 22px;
   align-items: center;
@@ -619,6 +644,12 @@ onUnmounted(() => {
   font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
+}
+
+.gate-meta {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
 }
 
 .gate-head b {
@@ -633,6 +664,13 @@ onUnmounted(() => {
   flex: 0 0 auto;
   background: #2f7d57;
   border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.gate-head em {
+  color: #a6e6c3;
+  background: #123b2a;
+  border: 1px solid #2f7d57;
+  font-style: normal;
 }
 
 .gate-body {
@@ -701,6 +739,47 @@ onUnmounted(() => {
 }
 
 .camera-upload input { display: none; }
+
+.gate-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.gate-summary small {
+  overflow: hidden;
+  padding: 4px 6px;
+  color: #91a0c0;
+  background: #0c1220;
+  border: 1px solid #263353;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gate-summary small.success {
+  color: #a6e6c3;
+  background: #123b2a;
+  border-color: #2f7d57;
+}
+
+.gate-summary small.warning {
+  color: #ffe2a3;
+  background: #453312;
+  border-color: #b47c1c;
+}
+
+.gate-summary small.danger {
+  color: #ffd0ce;
+  background: #491e22;
+  border-color: #b8403a;
+}
+
+.gate-summary small.idle {
+  color: #91a0c0;
+}
 
 .recognition-panel {
   display: grid;
