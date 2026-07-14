@@ -5,6 +5,7 @@ import { useContainerStore } from '@/stores/adminStore/containerStore'
 import { useDriverStore } from '@/stores/driverStore'
 import { useVehicleStore } from '@/stores/vehicleStore'
 import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
+import { fetchYardSectors } from '@/api/adminApi/yardSectorApi'
 
 const workOrderStore = useWorkOrderStore()
 const carrierStore = useCarrierStore()
@@ -14,6 +15,10 @@ const vehicleStore = useVehicleStore()
 const processingId = ref(null)
 const processMessage = ref('')
 const containerQuery = ref('')
+const containerMessage = ref('')
+const editingContainerId = ref(null)
+const containerForm = ref({})
+const yardSectors = ref([])
 let refreshTimer = null
 
 const getId = (row, key) => row?.[key] ?? row?.[key.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)]
@@ -110,6 +115,83 @@ const visibleContainers = computed(() => {
   )
 })
 
+const emptyContainerForm = () => ({
+  containerNumber: '',
+  containerSize: '20FT',
+  shippingLine: '',
+  containerLocation: '',
+  block: '',
+  bay: '',
+  rowNo: '',
+  sectorId: '',
+  sealNumber: '',
+  canExit: true,
+})
+
+const openContainerCreate = () => {
+  editingContainerId.value = null
+  containerMessage.value = ''
+  containerForm.value = emptyContainerForm()
+}
+
+const openContainerEdit = (container) => {
+  editingContainerId.value = getId(container, 'containerId')
+  containerMessage.value = ''
+  containerForm.value = {
+    containerNumber: getValue(container, 'containerNumber', 'container_number'),
+    containerSize: getValue(container, 'containerSize', 'container_size'),
+    shippingLine: getValue(container, 'shippingLine', 'shipping_line'),
+    containerLocation: getValue(container, 'containerLocation', 'container_location'),
+    block: container.block || '',
+    bay: container.bay || '',
+    rowNo: getValue(container, 'rowNo', 'row_no'),
+    sectorId: getId(container, 'sectorId') ?? '',
+    sealNumber: getValue(container, 'sealNumber', 'seal_number'),
+    canExit: container.canExit ?? container.can_exit ?? true,
+  }
+}
+
+const closeContainerForm = () => {
+  editingContainerId.value = null
+  containerForm.value = {}
+}
+
+const saveContainer = async () => {
+  containerMessage.value = ''
+  const payload = {
+    ...containerForm.value,
+    sectorId: containerForm.value.sectorId == null || containerForm.value.sectorId === ''
+      ? null
+      : Number(containerForm.value.sectorId),
+  }
+
+  try {
+    if (editingContainerId.value) {
+      await containerStore.editContainer(editingContainerId.value, payload)
+      containerMessage.value = '컨테이너 정보를 수정했습니다.'
+    } else {
+      await containerStore.addContainer(payload)
+      containerMessage.value = '컨테이너를 등록했습니다.'
+    }
+    closeContainerForm()
+  } catch (error) {
+    containerMessage.value = error.message || '컨테이너 저장에 실패했습니다.'
+  }
+}
+
+const removeContainer = async (container) => {
+  const containerId = getId(container, 'containerId')
+  if (!window.confirm(`${getValue(container, 'containerNumber', 'container_number')} 컨테이너를 삭제할까요?`)) return
+
+  containerMessage.value = ''
+  try {
+    await containerStore.removeContainer(containerId)
+    containerMessage.value = '컨테이너를 삭제했습니다.'
+  } catch (error) {
+    containerMessage.value = error.message || '컨테이너 삭제에 실패했습니다.'
+  }
+}
+
 const processWorkOrder = async (order, action) => {
   const workOrderId = getId(order, 'workOrderId')
   processingId.value = workOrderId
@@ -166,6 +248,7 @@ const loadData = () => {
   containerStore.loadContainers().catch(() => {})
   driverStore.loadDrivers().catch(() => {})
   vehicleStore.loadVehicles().catch(() => {})
+  fetchYardSectors().then((data) => { yardSectors.value = data || [] }).catch(() => {})
 }
 
 onMounted(() => {
@@ -351,8 +434,34 @@ onUnmounted(() => {
         <div class="table-tools">
           <input v-model="containerQuery" type="search" placeholder="컨테이너 번호 검색" />
           <span class="status-pill">{{ visibleContainers.length }}건</span>
+          <button class="primary-button" type="button" @click="openContainerCreate">컨테이너 추가</button>
         </div>
       </div>
+
+      <form v-if="Object.keys(containerForm).length" class="container-form" @submit.prevent="saveContainer">
+        <strong>{{ editingContainerId ? '컨테이너 수정' : '컨테이너 등록' }}</strong>
+        <input v-model.trim="containerForm.containerNumber" required placeholder="컨테이너 번호 *" />
+        <select v-model="containerForm.containerSize"><option>20FT</option><option>40FT</option><option>45FT</option></select>
+        <input v-model.trim="containerForm.shippingLine" placeholder="선사" />
+        <input v-model.trim="containerForm.containerLocation" placeholder="현재 위치" />
+        <input v-model.trim="containerForm.block" placeholder="블록" />
+        <input v-model.trim="containerForm.bay" placeholder="베이" />
+        <input v-model.trim="containerForm.rowNo" placeholder="로우" />
+        <select v-model="containerForm.sectorId">
+          <option value="">야드 섹터 미지정</option>
+          <option v-for="sector in yardSectors" :key="sector.sectorId" :value="sector.sectorId">
+            {{ sector.sectorName }} (ID {{ sector.sectorId }})
+          </option>
+        </select>
+        <input v-model.trim="containerForm.sealNumber" placeholder="봉인 번호" />
+        <label class="exit-check"><input v-model="containerForm.canExit" type="checkbox" /> 반출 가능</label>
+        <div class="container-form-actions">
+          <button class="primary-button" type="submit" :disabled="containerStore.loading">{{ containerStore.loading ? '저장 중' : '저장' }}</button>
+          <button class="ghost-button" type="button" @click="closeContainerForm">취소</button>
+        </div>
+      </form>
+
+      <p v-if="containerMessage" class="container-message">{{ containerMessage }}</p>
 
       <div class="table-wrap work-table-scroll">
         <table class="data-table">
@@ -365,6 +474,7 @@ onUnmounted(() => {
               <th>현재 위치</th>
               <th>야드 위치</th>
               <th>반출 가능</th>
+              <th>관리</th>
             </tr>
           </thead>
           <tbody>
@@ -380,9 +490,13 @@ onUnmounted(() => {
                   {{ container.canExit ?? container.can_exit ? '가능' : '보류' }}
                 </span>
               </td>
+              <td class="container-actions">
+                <button class="ghost-button" type="button" @click="openContainerEdit(container)">수정</button>
+                <button class="ghost-button reject-button" type="button" @click="removeContainer(container)">삭제</button>
+              </td>
             </tr>
             <tr v-if="visibleContainers.length === 0">
-              <td colspan="7">컨테이너 데이터가 없습니다.</td>
+              <td colspan="8">컨테이너 데이터가 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -433,5 +547,38 @@ onUnmounted(() => {
   border: 1px solid var(--line);
   border-radius: 4px;
   font-weight: 700;
+}
+
+.container-form {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 10px;
+  padding: 10px;
+  background: #f8fbfe;
+  border: 1px solid var(--line);
+}
+
+.container-form strong { color: var(--ink-900); }
+
+.container-form input,
+.container-form select {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 9px;
+  color: var(--ink-900);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.exit-check { color: var(--ink-700); font-size: 13px; font-weight: 800; }
+.container-form-actions, .container-actions { display: flex; gap: 6px; }
+.container-message { margin: 0 0 10px; color: var(--ink-700); font-weight: 800; }
+
+@media (max-width: 980px) {
+  .container-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>

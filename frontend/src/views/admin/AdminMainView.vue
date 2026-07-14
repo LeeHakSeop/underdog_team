@@ -19,7 +19,7 @@ const plateRecognitionStore = usePlateRecognitionStore()
 
 const selectedGateId = ref('G-01')
 const processType = ref('IN')
-const selectedOcrType = ref('paddle')
+const selectedOcrType = ref('crnn')
 const gatePreviewUrls = reactive({})
 const gateRecognitionResults = reactive({})
 let refreshTimer = null
@@ -231,7 +231,14 @@ const yardSectors = computed(() => {
 const tractorResult = computed(() => gateRecognitionResults[selectedGateId.value]?.tractor || null)
 const trailerResult = computed(() => gateRecognitionResults[selectedGateId.value]?.trailer || null)
 
-const getVehicleType = (result) => result?.vehicle?.vehicleType || ''
+const getVehicleType = (result) => {
+  const vehicleType = String(result?.vehicle?.vehicleType || '').trim().toUpperCase()
+
+  if (vehicleType === '트랙터') return 'TRACTOR'
+  if (vehicleType === '트레일러') return 'TRAILER'
+
+  return vehicleType
+}
 const getBooleanText = (value) => (value === true ? '가능' : value === false ? '불가' : '-')
 
 const getPassText = (result, expectedType) => {
