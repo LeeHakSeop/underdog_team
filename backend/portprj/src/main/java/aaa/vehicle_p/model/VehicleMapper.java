@@ -34,6 +34,7 @@ public interface VehicleMapper {
                 WHEN v.is_registered THEN '예'
                 ELSE '아니오'
             END AS registeredText,
+            d.driver_id AS driverId,
             c.carrier_name AS carrierName,
             d.driver_name AS driverName,
             v.vehicle_status AS vehicleStatus,

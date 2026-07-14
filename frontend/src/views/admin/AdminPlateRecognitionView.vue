@@ -147,6 +147,24 @@ const workOrderMatchMessage = computed(() => {
   return `WorkOrder #${tractorWorkOrder.value.workOrderId}가 일치합니다.`
 })
 
+const gateDecisionMessage = computed(() => {
+  if (workOrderMatch.value && !isReadyForGateProcess.value) {
+    const blockedItems = []
+
+    if (tractorPassText.value !== '가능') {
+      blockedItems.push(`트랙터: ${tractorAlertMessage.value}`)
+    }
+
+    if (trailerPassText.value !== '가능') {
+      blockedItems.push(`트레일러: ${trailerAlertMessage.value}`)
+    }
+
+    return blockedItems.join(' / ') || '번호판 검증 결과를 확인하세요.'
+  }
+
+  return workOrderMatchMessage.value
+})
+
 const matchedWorkOrder = computed(() => {
   if (!workOrderMatch.value) return null
 
@@ -200,6 +218,14 @@ const gateProcessMissingItems = computed(() => {
 
   if (!payload.sectorId) {
     missingItems.push('야드 섹터')
+  }
+
+  if (tractorPassText.value !== '가능') {
+    missingItems.push('트랙터 번호판 검증')
+  }
+
+  if (trailerPassText.value !== '가능') {
+    missingItems.push('트레일러 번호판 검증')
   }
 
   return missingItems
@@ -279,7 +305,11 @@ const submitGateProcess = async () => {
     return
   }
 
-  await gateLogStore.processGate(gateProcessPayload.value)
+  try {
+    await gateLogStore.processGate(gateProcessPayload.value)
+  } catch {
+    // store.error를 화면에 표시해 최종 처리 실패 원인을 안내합니다.
+  }
 }
 </script>
 
@@ -317,7 +347,7 @@ const submitGateProcess = async () => {
             {{
               isReadyForGateProcess
                 ? '트랙터와 트레일러 번호판이 같은 WorkOrder에 연결되었습니다.'
-                : workOrderMatchMessage
+                : gateDecisionMessage
             }}
           </p>
         </div>
@@ -397,6 +427,10 @@ const submitGateProcess = async () => {
           :class="['gate-process-result', gateLogStore.processResult.success ? 'success' : 'warning']"
         >
           {{ gateLogStore.processResult.message }}
+        </p>
+
+        <p v-if="gateLogStore.error" class="gate-process-result warning">
+          {{ gateLogStore.error }}
         </p>
       </div>
 

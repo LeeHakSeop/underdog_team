@@ -437,7 +437,7 @@ public class PlateRecognitionService {
             return "WORK_ORDER_NOT_FOUND";
         }
 
-        if (workOrder != null && workOrder.getContainerId() != null && result.getContainer() == null) {
+        if (isTrailer && workOrder != null && workOrder.getContainerId() != null && result.getContainer() == null) {
             return "CONTAINER_NOT_FOUND";
         }
 
