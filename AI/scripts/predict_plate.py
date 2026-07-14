@@ -46,8 +46,36 @@ def imwrite_korean(path, img):
     return success
 
 
+REGION_NAMES = [
+    "서울", "부산", "대구", "인천",
+    "광주", "대전", "울산", "세종",
+    "경기", "강원",
+    "충북", "충남",
+    "전북", "전남",
+    "경북", "경남",
+    "제주",
+]
+
+REGION_PATTERN = "|".join(
+    re.escape(region) for region in REGION_NAMES
+)
+
+PLATE_KOREAN_PATTERN = "".join(
+    re.escape(char) for char in PLATE_KOREAN
+)
+
+PLATE_FORMAT_PATTERN = re.compile(
+    rf"^(?:{REGION_PATTERN})"
+    rf"\d{{2,3}}"
+    rf"[{PLATE_KOREAN_PATTERN}]"
+    rf"\d{{4}}$"
+)
+
+
 def is_plate_format(text):
-    return re.match(r"^\d{2,3}[가-힣]\d{4}$", str(text)) is not None
+    return PLATE_FORMAT_PATTERN.fullmatch(
+        str(text)
+    ) is not None
 
 
 def get_korean_char(text):
