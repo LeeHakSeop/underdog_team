@@ -92,7 +92,7 @@ INSERT INTO exception_log (
     exception_type,
     exception_message,
     plate_number,
-    occured_time,
+    occurred_time,
     process_status,
     manager_action,
     processed_time
