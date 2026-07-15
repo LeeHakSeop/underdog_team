@@ -211,9 +211,13 @@ const getVehicleType = (result) => normalizeVehicleType(result?.vehicle?.vehicle
 const getBooleanText = (value) => (value === true ? '가능' : value === false ? '불가' : '-')
 
 const getPassText = (result, expectedType) => {
+<<<<<<< HEAD
+  if (!result?.matched || getVehicleType(result) !== expectedType) return '불가'
+=======
   if (!result?.matched || !result?.aiResult?.detected) return '불가'
   if (getVehicleType(result) !== normalizeVehicleType(expectedType)) return '불가'
   if (result.needReview) return '불가'
+>>>>>>> origin/hakseop
   return '가능'
 }
 
@@ -303,6 +307,39 @@ const isReadyForGateProcess = computed(() => canProcessGate.value)
 
 const recognitionStatus = (result, expectedType) => {
   if (!result) return '인식 대기'
+<<<<<<< HEAD
+  if (result.needReview && getPassText(result, expectedType) === '가능') return '확인 완료'
+  if (result.needReview) return '확인 필요'
+  return getPassText(result, expectedType) === '가능' ? '정상' : '인식 불가'
+}
+
+const getGateRecognition = (gate, targetType) => gateRecognitionResults[gate.id]?.[targetType] || null
+
+const getGateOcrStatus = (gate) => {
+  const tractor = getGateRecognition(gate, 'tractor')
+  const trailer = getGateRecognition(gate, 'trailer')
+
+  if (!tractor && !trailer) return { text: 'OCR 대기', tone: 'idle' }
+  if (
+    (tractor?.needReview || trailer?.needReview) &&
+    getPassText(tractor, 'TRACTOR') === '가능' &&
+    getPassText(trailer, 'TRAILER') === '가능'
+  ) {
+    return { text: '확인 완료', tone: 'success' }
+  }
+  if (tractor?.needReview || trailer?.needReview) return { text: '확인 필요', tone: 'warning' }
+  if (tractor?.aiResult?.detected && trailer?.aiResult?.detected) return { text: 'OCR 성공', tone: 'success' }
+  return { text: 'OCR 실패', tone: 'danger' }
+}
+
+const getGateDbStatus = (gate) => {
+  const tractor = getGateRecognition(gate, 'tractor')
+  const trailer = getGateRecognition(gate, 'trailer')
+
+  if (!tractor && !trailer) return { text: 'DB 대기', tone: 'idle' }
+  if (tractor?.matched && trailer?.matched) return { text: 'DB 매칭', tone: 'success' }
+  return { text: '미등록/불일치', tone: 'danger' }
+=======
   if (!result.aiResult?.detected) return '인식 실패'
   if (!result.matched) return '등록 차량 아님'
   if (getVehicleType(result) !== normalizeVehicleType(expectedType)) return '차량 유형 불일치'
@@ -313,6 +350,7 @@ const recognitionStatus = (result, expectedType) => {
 const isRecognitionWarning = (result, expectedType) => {
   const status = recognitionStatus(result, expectedType)
   return status !== '인식 대기' && status !== '정상'
+>>>>>>> origin/hakseop
 }
 
 const selectGateImage = async (event, gate, targetType) => {

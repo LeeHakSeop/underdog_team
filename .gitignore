@@ -41,3 +41,4 @@ frontend/node_modules/
 /runs/
 team_ai/yolo11/*.pt
 team_ai/yolo11/weights/*.pt
+AI/.paddlex/
