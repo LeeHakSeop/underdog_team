@@ -15,6 +15,7 @@ const loading = ref(false)
 const saving = ref(false)
 const message = ref('')
 const errorMessage = ref('')
+const editingWorkOrderId = ref(null)
 
 const carriers = ref([])
 const drivers = ref([])
@@ -42,6 +43,27 @@ const myDrivers = computed(() =>
   ),
 )
 
+const activeWorkStatuses = ['DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED']
+const isActiveWorkOrder = (order) => activeWorkStatuses.includes(order?.workStatus)
+
+const assignedDriverIds = computed(() => new Set(
+  workOrderStore.workOrders
+    .filter(isActiveWorkOrder)
+    .map((order) => order.driverId)
+    .filter(Boolean),
+))
+
+const assignedTrailerVehicleIds = computed(() => new Set(
+  workOrderStore.workOrders
+    .filter(isActiveWorkOrder)
+    .map((order) => order.trailerVehicleId)
+    .filter(Boolean),
+))
+
+const availableDrivers = computed(() => myDrivers.value.filter((driver) => (
+  !assignedDriverIds.value.has(driver.driverId) || driver.driverId === form.value.driverId
+)))
+
 const isVehicleType = (vehicleType, expectedType) => {
   const normalizedType = String(vehicleType || '').trim().toUpperCase()
   return normalizedType === expectedType || vehicleType === (expectedType === 'TRACTOR' ? '트랙터' : '트레일러')
@@ -60,6 +82,11 @@ const tractorVehicles = computed(() =>
 const trailerVehicles = computed(() =>
   carrierVehicles.value.filter((vehicle) => isVehicleType(vehicle.vehicleType, 'TRAILER')),
 )
+
+const availableTrailerVehicles = computed(() => trailerVehicles.value.filter((vehicle) => (
+  !assignedTrailerVehicleIds.value.has(vehicle.vehicleId)
+  || vehicle.vehicleId === form.value.trailerVehicleId
+)))
 
 const selectedDriver = computed(() =>
   myDrivers.value.find((driver) => driver.driverId === form.value.driverId),
@@ -125,12 +152,51 @@ const getStatusClass = (status) => {
 }
 
 const resetForm = () => {
+  editingWorkOrderId.value = null
   form.value = {
     driverId: null,
     trailerVehicleId: null,
     containerId: null,
     workType: '반출 상차',
     reservedTime: '',
+  }
+}
+
+const startEdit = (order) => {
+  if (order.workStatus !== 'DISPATCH_WAITING') {
+    errorMessage.value = '승인 대기 중인 작업 지시만 수정할 수 있습니다.'
+    return
+  }
+
+  editingWorkOrderId.value = order.workOrderId
+  form.value = {
+    driverId: order.driverId,
+    trailerVehicleId: order.trailerVehicleId,
+    containerId: order.containerId,
+    workType: order.workType || '반출 상차',
+    reservedTime: order.reservedTime ? String(order.reservedTime).slice(0, 16) : '',
+  }
+  message.value = ''
+  errorMessage.value = ''
+}
+
+const removeWorkOrder = async (order) => {
+  if (order.workStatus !== 'DISPATCH_WAITING') {
+    errorMessage.value = '승인 대기 중인 작업 지시만 삭제할 수 있습니다.'
+    return
+  }
+
+  if (!window.confirm(`WorkOrder #${order.workOrderId}를 삭제하시겠습니까?`)) return
+
+  try {
+    saving.value = true
+    await workOrderStore.remove(order.workOrderId)
+    if (editingWorkOrderId.value === order.workOrderId) resetForm()
+    message.value = `WorkOrder #${order.workOrderId}가 취소되었습니다.`
+  } catch (error) {
+    errorMessage.value = error.message || '작업 지시 삭제에 실패했습니다.'
+  } finally {
+    saving.value = false
   }
 }
 
@@ -185,7 +251,7 @@ const submitWorkOrder = async () => {
     validate()
     saving.value = true
 
-    await workOrderStore.addWorkOrder({
+    const workOrder = {
       workType: form.value.workType,
       vehicleId: selectedTractor.value.vehicleId,
       tractorVehicleId: selectedTractor.value.vehicleId,
@@ -195,9 +261,16 @@ const submitWorkOrder = async () => {
       reservedTime: form.value.reservedTime,
       workStatus: 'DISPATCH_WAITING',
       isApproved: false,
-    })
+    }
 
-    message.value = '기사 작업지시가 등록되었습니다. 관리자 승인 후 입차할 수 있습니다.'
+    if (editingWorkOrderId.value) {
+      await workOrderStore.edit(editingWorkOrderId.value, workOrder)
+      message.value = '작업 지시가 수정되었습니다. 관리자 승인 대기 상태입니다.'
+    } else {
+      await workOrderStore.addWorkOrder(workOrder)
+      message.value = '기사 작업 지시가 등록되었습니다. 관리자 승인 대기 상태입니다.'
+    }
+
     resetForm()
   } catch (error) {
     errorMessage.value = error.message || '작업지시 등록에 실패했습니다.'
@@ -247,7 +320,7 @@ onUnmounted(() => {
             <label for="workDriver">배정 기사</label>
             <select id="workDriver" v-model.number="form.driverId">
               <option disabled :value="null">승인 완료 기사를 선택하세요</option>
-              <option v-for="driver in myDrivers" :key="driver.driverId" :value="driver.driverId">
+              <option v-for="driver in availableDrivers" :key="driver.driverId" :value="driver.driverId">
                 {{ driver.driverName }} / {{ driver.driverContact || '-' }}
               </option>
             </select>
@@ -266,7 +339,7 @@ onUnmounted(() => {
             <label for="trailerVehicle">트레일러</label>
             <select id="trailerVehicle" v-model.number="form.trailerVehicleId">
               <option disabled :value="null">트레일러를 선택하세요</option>
-              <option v-for="vehicle in trailerVehicles" :key="vehicle.vehicleId" :value="vehicle.vehicleId">
+              <option v-for="vehicle in availableTrailerVehicles" :key="vehicle.vehicleId" :value="vehicle.vehicleId">
                 {{ vehicle.plateNumber }} / {{ vehicleTypeLabel(vehicle.vehicleType) }}
               </option>
             </select>
@@ -296,7 +369,10 @@ onUnmounted(() => {
           </div>
 
           <button class="primary-button full" type="submit" :disabled="saving">
-            {{ saving ? '등록 중...' : '기사에게 작업지시 등록' }}
+            {{ saving ? '처리 중...' : (editingWorkOrderId ? '작업 지시 수정' : '기사에게 작업 지시 등록') }}
+          </button>
+          <button v-if="editingWorkOrderId" class="ghost-button full" type="button" @click="resetForm">
+            수정 취소
           </button>
         </form>
       </article>
@@ -344,6 +420,7 @@ onUnmounted(() => {
               <th>작업 유형</th>
               <th>예약 시간</th>
               <th>상태</th>
+              <th>관리</th>
             </tr>
           </thead>
           <tbody>
@@ -359,6 +436,13 @@ onUnmounted(() => {
                 <span class="status-pill" :class="getStatusClass(order.workStatus)">
                   {{ getStatusText(order.workStatus) }}
                 </span>
+              </td>
+              <td class="row-actions">
+                <template v-if="order.workStatus === 'DISPATCH_WAITING'">
+                  <button class="ghost-button" type="button" @click="startEdit(order)">수정</button>
+                  <button class="ghost-button danger-action" type="button" :disabled="saving" @click="removeWorkOrder(order)">삭제</button>
+                </template>
+                <span v-else>-</span>
               </td>
             </tr>
           </tbody>
@@ -463,6 +547,17 @@ onUnmounted(() => {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.5;
+}
+
+.row-actions {
+  display: flex;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.danger-action {
+  color: #a23a35;
+  border-color: #f4bdb9;
 }
 
 @media (max-width: 760px) {

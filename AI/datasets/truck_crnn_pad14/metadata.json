@@ -1,0 +1,10 @@
+{
+  "inputCount": 208,
+  "datasetCount": 208,
+  "failureCount": 0,
+  "trainCount": 188,
+  "valCount": 20,
+  "labelsPath": "datasets\\truck_crnn_pad14\\labels.csv",
+  "cropDir": "datasets\\truck_crnn_pad14\\crops",
+  "failuresPath": "datasets\\truck_crnn_pad14\\failures.csv"
+}

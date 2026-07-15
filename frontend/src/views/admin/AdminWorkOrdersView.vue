@@ -5,6 +5,7 @@ import { useContainerStore } from '@/stores/adminStore/containerStore'
 import { useDriverStore } from '@/stores/driverStore'
 import { useVehicleStore } from '@/stores/vehicleStore'
 import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
+import { fetchYardSectors } from '@/api/adminApi/yardSectorApi'
 
 const workOrderStore = useWorkOrderStore()
 const carrierStore = useCarrierStore()
@@ -13,6 +14,7 @@ const driverStore = useDriverStore()
 const vehicleStore = useVehicleStore()
 const processingId = ref(null)
 const processMessage = ref('')
+<<<<<<< HEAD
 const requestQuery = ref('')
 const requestPage = ref(1)
 const requestPageSize = ref(10)
@@ -20,6 +22,13 @@ const taskQuery = ref('')
 const taskStatus = ref('')
 const taskPage = ref(1)
 const taskPageSize = ref(10)
+=======
+const containerQuery = ref('')
+const containerMessage = ref('')
+const editingContainerId = ref(null)
+const containerForm = ref({})
+const yardSectors = ref([])
+>>>>>>> origin/hakseop
 let refreshTimer = null
 
 const pageSizeOptions = [10, 20, 50]
@@ -57,8 +66,43 @@ const getPlateNumber = (vehicleId) => {
   return getValue(vehicle, 'plateNumber', 'plate_number') || '-'
 }
 
+<<<<<<< HEAD
 const getTrailerPlateNumber = (order) => {
   return getPlateNumber(getId(order, 'trailerVehicleId'))
+=======
+const getVehicleForType = (order, vehicleType) => {
+  const vehicleIds = [
+    getId(order, 'tractorVehicleId'),
+    getId(order, 'trailerVehicleId'),
+    getId(order, 'vehicleId'),
+  ].filter(Boolean)
+
+  return vehicleIds
+    .map((vehicleId) => getVehicle(vehicleId))
+    .find((vehicle) => getValue(vehicle, 'vehicleType', 'vehicle_type') === vehicleType) || null
+}
+
+const getVehicleApprovalText = (vehicle) => {
+  if (!vehicle) return '미연결'
+  const isRegistered = getValue(vehicle, 'isRegistered', 'is_registered')
+  const vehicleStatus = getValue(vehicle, 'vehicleStatus', 'vehicle_status')
+  if (isRegistered === true && vehicleStatus === '정상') return '승인'
+  if (vehicleStatus === '승인거절') return '반려'
+  return '승인대기'
+}
+
+const getVehicleApprovalClass = (vehicle) => {
+  const status = getVehicleApprovalText(vehicle)
+  if (status === '승인') return 'green'
+  if (status === '반려') return 'red'
+  return 'amber'
+}
+
+const getDriverEntryText = (order) => {
+  const driver = driverStore.drivers.find((item) => getId(item, 'driverId') === getId(order, 'driverId'))
+  if (!driver) return '미연결'
+  return getValue(driver, 'canEnter', 'can_enter') === true ? '가능' : '불가'
+>>>>>>> origin/hakseop
 }
 
 const getContainer = (containerId) => {
@@ -147,6 +191,7 @@ const processingTasks = computed(() => {
   return workOrderStore.workOrders.filter((order) => !carrierRequests.value.includes(order))
 })
 
+<<<<<<< HEAD
 const filteredCarrierRequests = computed(() => filterByQuery(carrierRequests.value, requestQuery.value))
 
 const filteredProcessingTasks = computed(() => {
@@ -179,6 +224,92 @@ const resetTaskSearch = () => {
   taskStatus.value = ''
   taskPageSize.value = 10
   taskPage.value = 1
+=======
+const visibleContainers = computed(() => {
+  const query = containerQuery.value.trim().toLowerCase()
+  if (!query) return containerStore.containers
+
+  return containerStore.containers.filter((container) =>
+    String(getValue(container, 'containerNumber', 'container_number')).toLowerCase().includes(query),
+  )
+})
+
+const emptyContainerForm = () => ({
+  containerNumber: '',
+  containerSize: '20FT',
+  shippingLine: '',
+  containerLocation: '',
+  block: '',
+  bay: '',
+  rowNo: '',
+  sectorId: '',
+  sealNumber: '',
+  canExit: true,
+})
+
+const openContainerCreate = () => {
+  editingContainerId.value = null
+  containerMessage.value = ''
+  containerForm.value = emptyContainerForm()
+}
+
+const openContainerEdit = (container) => {
+  editingContainerId.value = getId(container, 'containerId')
+  containerMessage.value = ''
+  containerForm.value = {
+    containerNumber: getValue(container, 'containerNumber', 'container_number'),
+    containerSize: getValue(container, 'containerSize', 'container_size'),
+    shippingLine: getValue(container, 'shippingLine', 'shipping_line'),
+    containerLocation: getValue(container, 'containerLocation', 'container_location'),
+    block: container.block || '',
+    bay: container.bay || '',
+    rowNo: getValue(container, 'rowNo', 'row_no'),
+    sectorId: getId(container, 'sectorId') ?? '',
+    sealNumber: getValue(container, 'sealNumber', 'seal_number'),
+    canExit: container.canExit ?? container.can_exit ?? true,
+  }
+}
+
+const closeContainerForm = () => {
+  editingContainerId.value = null
+  containerForm.value = {}
+}
+
+const saveContainer = async () => {
+  containerMessage.value = ''
+  const payload = {
+    ...containerForm.value,
+    sectorId: containerForm.value.sectorId == null || containerForm.value.sectorId === ''
+      ? null
+      : Number(containerForm.value.sectorId),
+  }
+
+  try {
+    if (editingContainerId.value) {
+      await containerStore.editContainer(editingContainerId.value, payload)
+      containerMessage.value = '컨테이너 정보를 수정했습니다.'
+    } else {
+      await containerStore.addContainer(payload)
+      containerMessage.value = '컨테이너를 등록했습니다.'
+    }
+    closeContainerForm()
+  } catch (error) {
+    containerMessage.value = error.message || '컨테이너 저장에 실패했습니다.'
+  }
+}
+
+const removeContainer = async (container) => {
+  const containerId = getId(container, 'containerId')
+  if (!window.confirm(`${getValue(container, 'containerNumber', 'container_number')} 컨테이너를 삭제할까요?`)) return
+
+  containerMessage.value = ''
+  try {
+    await containerStore.removeContainer(containerId)
+    containerMessage.value = '컨테이너를 삭제했습니다.'
+  } catch (error) {
+    containerMessage.value = error.message || '컨테이너 삭제에 실패했습니다.'
+  }
+>>>>>>> origin/hakseop
 }
 
 const processWorkOrder = async (order, action) => {
@@ -219,6 +350,7 @@ const loadData = () => {
   containerStore.loadContainers().catch(() => {})
   driverStore.loadDrivers().catch(() => {})
   vehicleStore.loadVehicles().catch(() => {})
+  fetchYardSectors().then((data) => { yardSectors.value = data || [] }).catch(() => {})
 }
 
 watch([requestQuery, requestPageSize], () => {
@@ -291,6 +423,9 @@ onUnmounted(() => {
               <th>컨테이너</th>
               <th>작업 유형</th>
               <th>예약</th>
+              <th>트랙터 승인</th>
+              <th>트레일러 승인</th>
+              <th>기사 출입</th>
               <th>상태</th>
               <th>처리</th>
             </tr>
@@ -304,6 +439,21 @@ onUnmounted(() => {
               <td>{{ getContainerNumber(getId(order, 'containerId')) }}</td>
               <td>{{ getValue(order, 'workType', 'work_type') }}</td>
               <td>{{ getValue(order, 'reservedTime', 'reserved_time') }}</td>
+              <td>
+                <span class="status-pill" :class="getVehicleApprovalClass(getVehicleForType(order, 'TRACTOR'))">
+                  {{ getVehicleApprovalText(getVehicleForType(order, 'TRACTOR')) }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="getVehicleApprovalClass(getVehicleForType(order, 'TRAILER'))">
+                  {{ getVehicleApprovalText(getVehicleForType(order, 'TRAILER')) }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="getDriverEntryText(order) === '가능' ? 'green' : 'red'">
+                  {{ getDriverEntryText(order) }}
+                </span>
+              </td>
               <td>
                 <span class="status-pill amber">
                   {{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}
@@ -328,8 +478,13 @@ onUnmounted(() => {
                 </button>
               </td>
             </tr>
+<<<<<<< HEAD
             <tr v-if="filteredCarrierRequests.length === 0">
               <td colspan="9">조회된 배차 대기 작업이 없습니다.</td>
+=======
+            <tr v-if="carrierRequests.length === 0">
+              <td colspan="12">배차 대기 작업이 없습니다.</td>
+>>>>>>> origin/hakseop
             </tr>
           </tbody>
         </table>
@@ -395,7 +550,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="table-wrap">
+      <div class="table-wrap work-table-scroll">
         <table class="data-table">
           <thead>
             <tr>
@@ -404,6 +559,9 @@ onUnmounted(() => {
               <th>트레일러 번호</th>
               <th>기사</th>
               <th>야드 위치</th>
+              <th>트랙터 승인</th>
+              <th>트레일러 승인</th>
+              <th>기사 출입</th>
               <th>상태</th>
               <th>처리</th>
             </tr>
@@ -415,6 +573,21 @@ onUnmounted(() => {
               <td>{{ getTrailerPlateNumber(order) }}</td>
               <td>{{ getDriverName(getId(order, 'driverId')) }}</td>
               <td>{{ getYardLocation(getId(order, 'containerId')) }}</td>
+              <td>
+                <span class="status-pill" :class="getVehicleApprovalClass(getVehicleForType(order, 'TRACTOR'))">
+                  {{ getVehicleApprovalText(getVehicleForType(order, 'TRACTOR')) }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="getVehicleApprovalClass(getVehicleForType(order, 'TRAILER'))">
+                  {{ getVehicleApprovalText(getVehicleForType(order, 'TRAILER')) }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="getDriverEntryText(order) === '가능' ? 'green' : 'red'">
+                  {{ getDriverEntryText(order) }}
+                </span>
+              </td>
               <td>
                 <span class="status-pill" :class="getStatusClass(getValue(order, 'workStatus', 'work_status'))">
                   {{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}
@@ -442,8 +615,88 @@ onUnmounted(() => {
                 <span v-else>{{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}</span>
               </td>
             </tr>
+<<<<<<< HEAD
             <tr v-if="filteredProcessingTasks.length === 0">
               <td colspan="7">조회된 처리 작업이 없습니다.</td>
+=======
+            <tr v-if="processingTasks.length === 0">
+              <td colspan="10">처리 중인 작업이 없습니다.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>컨테이너 조회</h2>
+        <div class="table-tools">
+          <input v-model="containerQuery" type="search" placeholder="컨테이너 번호 검색" />
+          <span class="status-pill">{{ visibleContainers.length }}건</span>
+          <button class="primary-button" type="button" @click="openContainerCreate">컨테이너 추가</button>
+        </div>
+      </div>
+
+      <form v-if="Object.keys(containerForm).length" class="container-form" @submit.prevent="saveContainer">
+        <strong>{{ editingContainerId ? '컨테이너 수정' : '컨테이너 등록' }}</strong>
+        <input v-model.trim="containerForm.containerNumber" required placeholder="컨테이너 번호 *" />
+        <select v-model="containerForm.containerSize"><option>20FT</option><option>40FT</option><option>45FT</option></select>
+        <input v-model.trim="containerForm.shippingLine" placeholder="선사" />
+        <input v-model.trim="containerForm.containerLocation" placeholder="현재 위치" />
+        <input v-model.trim="containerForm.block" placeholder="블록" />
+        <input v-model.trim="containerForm.bay" placeholder="베이" />
+        <input v-model.trim="containerForm.rowNo" placeholder="로우" />
+        <select v-model="containerForm.sectorId">
+          <option value="">야드 섹터 미지정</option>
+          <option v-for="sector in yardSectors" :key="sector.sectorId" :value="sector.sectorId">
+            {{ sector.sectorName }} (ID {{ sector.sectorId }})
+          </option>
+        </select>
+        <input v-model.trim="containerForm.sealNumber" placeholder="봉인 번호" />
+        <label class="exit-check"><input v-model="containerForm.canExit" type="checkbox" /> 반출 가능</label>
+        <div class="container-form-actions">
+          <button class="primary-button" type="submit" :disabled="containerStore.loading">{{ containerStore.loading ? '저장 중' : '저장' }}</button>
+          <button class="ghost-button" type="button" @click="closeContainerForm">취소</button>
+        </div>
+      </form>
+
+      <p v-if="containerMessage" class="container-message">{{ containerMessage }}</p>
+
+      <div class="table-wrap work-table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>컨테이너 ID</th>
+              <th>컨테이너 번호</th>
+              <th>규격</th>
+              <th>선사</th>
+              <th>현재 위치</th>
+              <th>야드 위치</th>
+              <th>반출 가능</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="container in visibleContainers" :key="getId(container, 'containerId')">
+              <td>{{ getId(container, 'containerId') }}</td>
+              <td>{{ getValue(container, 'containerNumber', 'container_number') || '-' }}</td>
+              <td>{{ getValue(container, 'containerSize', 'container_size') || '-' }}</td>
+              <td>{{ getValue(container, 'shippingLine', 'shipping_line') || '-' }}</td>
+              <td>{{ getValue(container, 'containerLocation', 'container_location') || '-' }}</td>
+              <td>{{ getYardLocation(getId(container, 'containerId')) }}</td>
+              <td>
+                <span class="status-pill" :class="{ red: !(container.canExit ?? container.can_exit) }">
+                  {{ container.canExit ?? container.can_exit ? '가능' : '보류' }}
+                </span>
+              </td>
+              <td class="container-actions">
+                <button class="ghost-button" type="button" @click="openContainerEdit(container)">수정</button>
+                <button class="ghost-button reject-button" type="button" @click="removeContainer(container)">삭제</button>
+              </td>
+            </tr>
+            <tr v-if="visibleContainers.length === 0">
+              <td colspan="8">컨테이너 데이터가 없습니다.</td>
+>>>>>>> origin/hakseop
             </tr>
           </tbody>
         </table>
@@ -557,6 +810,7 @@ onUnmounted(() => {
   border-color: #e4a6a6;
 }
 
+<<<<<<< HEAD
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -577,5 +831,66 @@ button:disabled {
   .pagination-controls {
     justify-content: flex-start;
   }
+=======
+.work-table-scroll {
+  max-height: 470px;
+  overflow: auto;
+}
+
+.work-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-tools input {
+  width: 200px;
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--ink-900);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.container-form {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 10px;
+  padding: 10px;
+  background: #f8fbfe;
+  border: 1px solid var(--line);
+}
+
+.container-form strong { color: var(--ink-900); }
+
+.container-form input,
+.container-form select {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 9px;
+  color: var(--ink-900);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.exit-check { color: var(--ink-700); font-size: 13px; font-weight: 800; }
+.container-form-actions, .container-actions { display: flex; gap: 6px; }
+.container-message { margin: 0 0 10px; color: var(--ink-700); font-weight: 800; }
+
+@media (max-width: 980px) {
+  .container-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+>>>>>>> origin/hakseop
 }
 </style>

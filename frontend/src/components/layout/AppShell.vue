@@ -140,7 +140,6 @@ const menus = {
     { label: '가입 회원 관리', path: '/admin/members', icon: 'users' },
 
     { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
-    { label: '컨테이너 조회', path: '/admin/containers', icon: 'container' },
     { label: '알림/이벤트', path: '/admin/events', icon: 'bell' },
   ],
 }
@@ -204,11 +203,6 @@ const logout = () => {
       </nav>
 
       <div class="side-footer">
-        <div class="side-note">
-          <b>실시간 운영 현황</b>
-          <span>관제 상황판은 5초마다</span>
-          <span>DB 연동 데이터를 갱신합니다.</span>
-        </div>
         <button class="logout-button" type="button" title="로그아웃" @click="logout">
           <MenuIcon name="logout" />
           <span class="logout-label">로그아웃</span>

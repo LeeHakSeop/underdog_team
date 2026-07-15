@@ -27,6 +27,7 @@ public class TrailerWorkInfoDTO {
     private String blockName;
     private String sectorStatus;
     private String guideMessage;
+    private Boolean canExit;
     private String altWaitingArea;
     private String workGuideMessage;
 }

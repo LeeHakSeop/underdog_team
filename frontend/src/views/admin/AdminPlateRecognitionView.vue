@@ -591,7 +591,7 @@ const submitGateProcess = async () => {
             <strong>{{ trailerSummaryText }}</strong>
             <p>
               작업 승인: {{ getBooleanText(trailerWorkOrder?.isApproved) }}
-              / 안내: {{ trailerResult?.yardSector?.guideMessage || '-' }}
+              / 안내: {{ trailerResult?.trailerWorkInfo?.guideMessage || trailerResult?.yardSector?.guideMessage || '-' }}
             </p>
           </div>
 
@@ -663,7 +663,7 @@ const submitGateProcess = async () => {
               </tr>
               <tr>
                 <th>안내 메시지</th>
-                <td>{{ trailerResult?.yardSector?.guideMessage || '-' }}</td>
+                <td>{{ trailerResult?.trailerWorkInfo?.guideMessage || trailerResult?.yardSector?.guideMessage || '-' }}</td>
               </tr>
             </tbody>
           </table>

@@ -17,16 +17,30 @@ const currentWorkOrder = computed(() => {
 })
 
 const passStatus = computed(() => {
-  if (!currentWorkOrder.value) return '대기'
-  if (currentWorkOrder.value.isApproved && currentWorkOrder.value.canEnter) return '출입 가능'
+  const order = currentWorkOrder.value
+  if (!order) return '대기'
+  if (order.workStatus === 'GATE_OUT') return '출차 완료'
+  if (order.workStatus === 'COMPLETED') return order.canExit ? '출차 가능' : '출차 대기'
+  if (order.workStatus === 'IN_PROGRESS') return '작업 진행 중'
+  if (order.workStatus === 'GATE_IN') return '입차 완료'
+  if (order.isApproved && order.canEnter) return '입차 가능'
   return '승인 대기'
 })
 
 const nextGuide = computed(() => {
-  if (!currentWorkOrder.value) return '배정된 작업이 없습니다.'
-  if (!currentWorkOrder.value.isApproved) return '관리자 승인 후 게이트 출입이 가능합니다.'
-  if (!currentWorkOrder.value.canEnter) return '기사 출입 가능 상태를 운송사 또는 관리자에게 확인하세요.'
-  return `${currentWorkOrder.value.sectorName || '지정 섹터'}로 이동 후 안내 메시지를 확인하세요.`
+  const order = currentWorkOrder.value
+  if (!order) return '배정된 작업이 없습니다.'
+  if (order.workStatus === 'GATE_OUT') return '출차 처리가 완료되었습니다.'
+  if (order.workStatus === 'COMPLETED') {
+    return order.canExit
+      ? '작업이 완료되었습니다. 출차 게이트로 이동하세요.'
+      : '작업이 완료되었습니다. 관리자 확인 후 출차할 수 있습니다.'
+  }
+  if (order.workStatus === 'IN_PROGRESS') return order.guideMessage || '작업을 진행하세요.'
+  if (order.workStatus === 'GATE_IN') return '입차가 완료되었습니다. 지정된 야드 섹터로 이동하세요.'
+  if (!order.isApproved) return '관리자 승인 후 게이트 입차가 가능합니다.'
+  if (!order.canEnter) return '기사 출입 가능 상태를 운송사 또는 관리자에게 확인하세요.'
+  return `${order.sectorName || '지정 섹터'}로 이동 후 안내 메시지를 확인하세요.`
 })
 
 const getBooleanText = (value) => {
@@ -80,6 +94,10 @@ onUnmounted(() => {
         <div>
           <span>차량 번호</span>
           <strong>{{ currentWorkOrder.plateNumber || '-' }}</strong>
+        </div>
+        <div>
+          <span>트레일러 번호</span>
+          <strong>{{ currentWorkOrder.trailerPlateNumber || '-' }}</strong>
         </div>
         <div>
           <span>작업 유형</span>
@@ -154,6 +172,7 @@ onUnmounted(() => {
             <tr><th>기사 출입 가능</th><td>{{ currentWorkOrder.canEnter ? '가능' : '불가' }}</td></tr>
             <tr><th>운송사 연락처</th><td>{{ currentWorkOrder.carrierContact || '-' }}</td></tr>
             <tr><th>차량 유형</th><td>{{ vehicleTypeLabel(currentWorkOrder.vehicleType) }}</td></tr>
+            <tr><th>트레일러 번호</th><td>{{ currentWorkOrder.trailerPlateNumber || '-' }}</td></tr>
             <tr><th>차량 상태</th><td>{{ currentWorkOrder.vehicleStatus || '-' }}</td></tr>
             <tr><th>예약 시간</th><td>{{ currentWorkOrder.reservedTime || '-' }}</td></tr>
           </tbody>
@@ -173,6 +192,7 @@ onUnmounted(() => {
             <tr>
               <th>작업 ID</th>
               <th>작업 유형</th>
+              <th>트레일러</th>
               <th>컨테이너</th>
               <th>야드 섹터</th>
               <th>예약 시간</th>
@@ -184,6 +204,7 @@ onUnmounted(() => {
             <tr v-for="order in myWorkOrders" :key="order.workOrderId">
               <td>{{ order.workOrderId }}</td>
               <td>{{ order.workType || '-' }}</td>
+              <td>{{ order.trailerPlateNumber || '-' }}</td>
               <td>{{ order.containerNumber || '-' }}</td>
               <td>{{ order.sectorName || '-' }}</td>
               <td>{{ order.reservedTime || '-' }}</td>
@@ -191,7 +212,7 @@ onUnmounted(() => {
               <td>{{ getBooleanText(order.isApproved) }}</td>
             </tr>
             <tr v-if="myWorkOrders.length === 0">
-              <td colspan="7">조회된 작업 정보가 없습니다.</td>
+              <td colspan="8">조회된 작업 정보가 없습니다.</td>
             </tr>
           </tbody>
         </table>

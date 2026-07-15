@@ -67,6 +67,55 @@ public interface WorkOrderMapper {
     int insert(WorkOrderDTO dto);
 
     @Select("""
+            SELECT COUNT(*)
+            FROM work_order
+            WHERE driver_id = #{driverId}
+              AND work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+              AND (#{workOrderId,jdbcType=BIGINT} IS NULL OR work_order_id <> #{workOrderId,jdbcType=BIGINT})
+            """)
+    int countActiveByDriverId(
+            @Param("driverId") Long driverId,
+            @Param("workOrderId") Long workOrderId
+    );
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM work_order
+            WHERE trailer_vehicle_id = #{trailerVehicleId}
+              AND work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+              AND (#{workOrderId,jdbcType=BIGINT} IS NULL OR work_order_id <> #{workOrderId,jdbcType=BIGINT})
+            """)
+    int countActiveByTrailerVehicleId(
+            @Param("trailerVehicleId") Long trailerVehicleId,
+            @Param("workOrderId") Long workOrderId
+    );
+
+    @Update("""
+            UPDATE work_order
+            SET work_type = #{workType},
+                vehicle_id = #{vehicleId},
+                tractor_vehicle_id = #{tractorVehicleId},
+                trailer_vehicle_id = #{trailerVehicleId},
+                driver_id = #{driverId},
+                container_id = #{containerId},
+                reserved_time = #{reservedTime},
+                work_status = 'DISPATCH_WAITING',
+                is_approved = false
+            WHERE work_order_id = #{workOrderId}
+              AND work_status = 'DISPATCH_WAITING'
+            """)
+    int updateDispatchWaiting(WorkOrderDTO dto);
+
+    @Update("""
+            UPDATE work_order
+            SET work_status = 'CANCELED',
+                is_approved = false
+            WHERE work_order_id = #{workOrderId}
+              AND work_status = 'DISPATCH_WAITING'
+            """)
+    int cancelDispatchWaiting(@Param("workOrderId") Long workOrderId);
+
+    @Select("""
             SELECT
                 wo.work_order_id AS workOrderId,
                 wo.work_type AS workType,
@@ -87,18 +136,54 @@ public interface WorkOrderMapper {
                 ys.sector_name AS sectorName,
                 ys.block_name AS blockName,
                 ys.sector_status AS sectorStatus,
-                ys.guide_message AS guideMessage,
+                CASE
+                    WHEN wo.work_status = 'DISPATCH_WAITING'
+                        THEN '운송사 배차 승인 대기 중입니다.'
+                    WHEN wo.work_status = 'APPROVED'
+                        THEN '입차 승인 완료. 게이트에서 입차 처리 후 야드 섹터로 이동하세요.'
+                    WHEN wo.work_status = 'GATE_IN'
+                        THEN CONCAT('입차 처리 완료. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터로 이동하여 작업을 진행하세요.')
+                    WHEN wo.work_status = 'IN_PROGRESS'
+                        THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
+                    WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE
+                        THEN '작업 완료 및 출차 가능 상태입니다. 게이트에서 출차 처리하세요.'
+                    WHEN wo.work_status = 'COMPLETED'
+                        THEN '작업 완료. 출차 보류 및 관리자 확인 대기 중입니다.'
+                    WHEN wo.work_status = 'GATE_OUT'
+                        THEN '출차 처리가 완료되었습니다.'
+                    WHEN wo.work_status = 'CANCELED'
+                        THEN '취소된 작업지시입니다.'
+                    ELSE COALESCE(ys.guide_message, '작업 상태를 확인하세요.')
+                END AS guideMessage,
+                c.can_exit AS canExit,
                 ys.alt_waiting_area AS altWaitingArea,
                 CONCAT(
                     '컨테이너 번호는 ', c.container_number,
                     '이고, 작업 유형은 ', wo.work_type,
                     '입니다. 이동 위치는 ', COALESCE(ys.sector_name, c.container_location),
                     ' / ', COALESCE(c.block, '-'), '-', COALESCE(c.bay, '-'), '-', COALESCE(c.row_no, '-'),
-                    CASE
-                        WHEN ys.guide_message IS NOT NULL AND ys.guide_message <> ''
-                        THEN CONCAT('. 안내: ', ys.guide_message)
-                        ELSE ''
-                    END,
+                    CONCAT(
+                        '. 안내: ',
+                        CASE
+                            WHEN wo.work_status = 'DISPATCH_WAITING'
+                                THEN '운송사 배차 승인 대기 중입니다.'
+                            WHEN wo.work_status = 'APPROVED'
+                                THEN '입차 승인 완료. 게이트에서 입차 처리 후 야드 섹터로 이동하세요.'
+                            WHEN wo.work_status = 'GATE_IN'
+                                THEN CONCAT('입차 처리 완료. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터로 이동하여 작업을 진행하세요.')
+                            WHEN wo.work_status = 'IN_PROGRESS'
+                                THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
+                            WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE
+                                THEN '작업 완료 및 출차 가능 상태입니다. 게이트에서 출차 처리하세요.'
+                            WHEN wo.work_status = 'COMPLETED'
+                                THEN '작업 완료. 출차 보류 및 관리자 확인 대기 중입니다.'
+                            WHEN wo.work_status = 'GATE_OUT'
+                                THEN '출차 처리가 완료되었습니다.'
+                            WHEN wo.work_status = 'CANCELED'
+                                THEN '취소된 작업지시입니다.'
+                            ELSE COALESCE(ys.guide_message, '작업 상태를 확인하세요.')
+                        END
+                    ),
                     CASE
                         WHEN ys.alt_waiting_area IS NOT NULL AND ys.alt_waiting_area <> ''
                         THEN CONCAT('. 대체 대기 위치: ', ys.alt_waiting_area)
