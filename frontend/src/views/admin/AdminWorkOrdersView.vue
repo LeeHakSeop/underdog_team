@@ -45,6 +45,13 @@ const getPlateNumber = (vehicleId) => {
   return getValue(vehicle, 'plateNumber', 'plate_number') || '-'
 }
 
+const isVehicleType = (vehicle, expectedType) => {
+  const vehicleType = String(getValue(vehicle, 'vehicleType', 'vehicle_type')).trim().toUpperCase()
+  return vehicleType === expectedType ||
+    (expectedType === 'TRACTOR' && vehicleType === '트랙터') ||
+    (expectedType === 'TRAILER' && vehicleType === '트레일러')
+}
+
 const getVehicleForType = (order, vehicleType) => {
   const vehicleIds = [
     getId(order, 'tractorVehicleId'),
@@ -54,8 +61,14 @@ const getVehicleForType = (order, vehicleType) => {
 
   return vehicleIds
     .map((vehicleId) => getVehicle(vehicleId))
-    .find((vehicle) => getValue(vehicle, 'vehicleType', 'vehicle_type') === vehicleType) || null
+    .find((vehicle) => isVehicleType(vehicle, vehicleType)) || null
 }
+
+const getTractorPlate = (order) =>
+  getPlateNumber(getId(order, 'tractorVehicleId') || getId(order, 'vehicleId'))
+
+const getTrailerPlate = (order) =>
+  getPlateNumber(getId(order, 'trailerVehicleId'))
 
 const getVehicleApprovalText = (vehicle) => {
   if (!vehicle) return '미연결'
@@ -279,7 +292,8 @@ onUnmounted(() => {
             <tr>
               <th>작업번호</th>
               <th>운송사</th>
-              <th>차량번호</th>
+              <th>트랙터</th>
+              <th>트레일러</th>
               <th>기사</th>
               <th>컨테이너</th>
               <th>작업 유형</th>
@@ -295,7 +309,8 @@ onUnmounted(() => {
             <tr v-for="order in carrierRequests" :key="getId(order, 'workOrderId')">
               <td>{{ getId(order, 'workOrderId') }}</td>
               <td>{{ getCarrierName(order) }}</td>
-              <td>{{ getPlateNumber(getId(order, 'vehicleId') || getId(order, 'trailerVehicleId')) }}</td>
+              <td>{{ getTractorPlate(order) }}</td>
+              <td>{{ getTrailerPlate(order) }}</td>
               <td>{{ getDriverName(getId(order, 'driverId')) }}</td>
               <td>{{ getContainerNumber(getId(order, 'containerId')) }}</td>
               <td>{{ getValue(order, 'workType', 'work_type') }}</td>
@@ -340,7 +355,7 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="carrierRequests.length === 0">
-              <td colspan="12">배차 대기 작업이 없습니다.</td>
+              <td colspan="13">배차 대기 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -361,7 +376,8 @@ onUnmounted(() => {
             <tr>
               <th>작업번호</th>
               <th>컨테이너</th>
-              <th>차량번호</th>
+              <th>트랙터</th>
+              <th>트레일러</th>
               <th>기사</th>
               <th>야드 위치</th>
               <th>트랙터 승인</th>
@@ -375,7 +391,8 @@ onUnmounted(() => {
             <tr v-for="order in processingTasks" :key="getId(order, 'workOrderId')">
               <td>{{ getId(order, 'workOrderId') }}</td>
               <td>{{ getContainerNumber(getId(order, 'containerId')) }}</td>
-              <td>{{ getPlateNumber(getId(order, 'vehicleId') || getId(order, 'trailerVehicleId')) }}</td>
+              <td>{{ getTractorPlate(order) }}</td>
+              <td>{{ getTrailerPlate(order) }}</td>
               <td>{{ getDriverName(getId(order, 'driverId')) }}</td>
               <td>{{ getYardLocation(getId(order, 'containerId')) }}</td>
               <td>
@@ -421,7 +438,7 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="processingTasks.length === 0">
-              <td colspan="10">처리 중인 작업이 없습니다.</td>
+              <td colspan="11">처리 중인 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { readCurrentUser } from '@/stores/authStore'
 import { fetchCarriers } from '@/api/carrierApi'
 import { fetchDrivers } from '@/api/driverApi'
@@ -7,6 +7,21 @@ import { fetchVehiclesByCarrier } from '@/api/vehicleApi'
 import { fetchContainers } from '@/api/adminApi/containerApi'
 import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
 import { vehicleTypeLabel } from '@/config/vehicleType'
+
+const props = defineProps({
+  embedded: {
+    type: Boolean,
+    default: false,
+  },
+  showInput: {
+    type: Boolean,
+    default: true,
+  },
+  showList: {
+    type: Boolean,
+    default: true,
+  },
+})
 
 const workOrderStore = useWorkOrderStore()
 const currentUser = readCurrentUser()
@@ -21,6 +36,8 @@ const carriers = ref([])
 const drivers = ref([])
 const vehicles = ref([])
 const containers = ref([])
+const workOrderPage = ref(1)
+const workOrderPageSize = 10
 let refreshTimer = null
 
 const form = ref({
@@ -119,6 +136,25 @@ const myWorkOrders = computed(() => {
       vehicleIds.has(vehicleId)
     )
   })
+})
+
+const workOrderTotalPages = computed(() =>
+  Math.max(1, Math.ceil(myWorkOrders.value.length / workOrderPageSize)),
+)
+
+const paginatedWorkOrders = computed(() => {
+  const start = (workOrderPage.value - 1) * workOrderPageSize
+  return myWorkOrders.value.slice(start, start + workOrderPageSize)
+})
+
+const workOrderPageNumbers = computed(() =>
+  Array.from({ length: workOrderTotalPages.value }, (_, index) => index + 1),
+)
+
+watch(myWorkOrders, () => {
+  if (workOrderPage.value > workOrderTotalPages.value) {
+    workOrderPage.value = workOrderTotalPages.value
+  }
 })
 
 const getDriverName = (driverId) =>
@@ -295,18 +331,28 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="page-stack">
-    <section class="panel">
+  <div id="work-order-management" class="page-stack">
+    <section v-if="!props.embedded" class="panel">
       <div class="section-title">
-        <h2>기사 작업지시</h2>
-        <span class="status-pill">{{ myCarrier?.carrierName || '운송사 조회 중' }}</span>
+        <h2>기사 작업지시 관리</h2>
+        <div class="section-title-actions">
+          <span class="status-pill">{{ myCarrier?.carrierName || '운송사 조회 중' }}</span>
+          <a class="ghost-button" href="#assignment-summary">
+            배정 정보로 이동
+          </a>
+        </div>
       </div>
 
       <div v-if="message" class="form-message success">{{ message }}</div>
       <div v-if="errorMessage" class="form-message error">{{ errorMessage }}</div>
     </section>
 
-    <section class="grid-2">
+    <section v-else-if="message || errorMessage" class="panel">
+      <div v-if="message" class="form-message success">{{ message }}</div>
+      <div v-if="errorMessage" class="form-message error">{{ errorMessage }}</div>
+    </section>
+
+    <section v-if="props.showInput" class="grid-2">
       <article class="panel">
         <div class="section-title">
           <h2>작업지시 입력</h2>
@@ -398,10 +444,10 @@ onUnmounted(() => {
       </article>
     </section>
 
-    <section class="panel">
+    <section v-if="props.showList" class="panel">
       <div class="section-title">
-        <h2>내 운송사 작업지시 목록</h2>
-        <span class="status-pill">실시간 조회</span>
+        <h2>작업지시 목록</h2>
+        <span class="status-pill">배정 기록 · 실시간 조회</span>
       </div>
 
       <div v-if="myWorkOrders.length === 0" class="empty-box">
@@ -424,7 +470,7 @@ onUnmounted(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in myWorkOrders" :key="order.workOrderId">
+            <tr v-for="order in paginatedWorkOrders" :key="order.workOrderId">
               <td>#{{ order.workOrderId }}</td>
               <td>{{ getDriverName(order.driverId) }}</td>
               <td>{{ getVehiclePlate(order.tractorVehicleId || order.vehicleId) }}</td>
@@ -448,6 +494,26 @@ onUnmounted(() => {
           </tbody>
         </table>
       </div>
+
+      <div v-if="myWorkOrders.length > 0" class="pagination" aria-label="작업지시 목록 페이지">
+        <button class="ghost-button" type="button" :disabled="workOrderPage === 1" @click="workOrderPage -= 1">
+          이전
+        </button>
+        <button
+          v-for="page in workOrderPageNumbers"
+          :key="page"
+          class="page-button"
+          :class="{ active: workOrderPage === page }"
+          type="button"
+          @click="workOrderPage = page"
+        >
+          {{ page }}
+        </button>
+        <button class="ghost-button" type="button" :disabled="workOrderPage === workOrderTotalPages" @click="workOrderPage += 1">
+          다음
+        </button>
+        <span>{{ workOrderPage }} / {{ workOrderTotalPages }} 페이지</span>
+      </div>
     </section>
   </div>
 </template>
@@ -470,6 +536,43 @@ onUnmounted(() => {
   color: #991b1b;
   background: #fff1f1;
   border-color: #fecaca;
+}
+
+.section-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.pagination > span {
+  margin-left: 5px;
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.page-button {
+  min-width: 30px;
+  min-height: 30px;
+  color: var(--ink-700);
+  background: #f1f5f9;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  font-weight: 700;
+}
+
+.page-button.active {
+  color: #ffffff;
+  background: var(--blue-700);
+  border-color: var(--blue-700);
 }
 
 .full {
@@ -561,6 +664,11 @@ onUnmounted(() => {
 }
 
 @media (max-width: 760px) {
+  .section-title-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .selection-summary {
     grid-template-columns: 1fr;
   }

@@ -8,6 +8,8 @@ import {
   fetchDrivers,
   updateDriver,
 } from '@/api/driverApi'
+import { fetchVehicles } from '@/api/vehicleApi'
+import { vehicleTypeLabel } from '@/config/vehicleType'
 
 const loading = ref(false)
 const approvingId = ref(null)
@@ -22,6 +24,7 @@ const editForm = ref({
 
 const carriers = ref([])
 const drivers = ref([])
+const vehicles = ref([])
 
 const currentUser = readCurrentUser()
 
@@ -49,6 +52,14 @@ const approvedDrivers = computed(() => {
   )
 })
 
+const myVehicles = computed(() => {
+  if (!myCarrier.value) return []
+
+  return vehicles.value.filter(
+    (vehicle) => vehicle.carrierId === myCarrier.value.carrierId,
+  )
+})
+
 const clearMessage = () => {
   message.value = ''
   errorMessage.value = ''
@@ -58,13 +69,15 @@ const loadData = async () => {
   loading.value = true
 
   try {
-    const [carrierData, driverData] = await Promise.all([
+    const [carrierData, driverData, vehicleData] = await Promise.all([
       fetchCarriers(),
       fetchDrivers(),
+      fetchVehicles(),
     ])
 
     carriers.value = carrierData || []
     drivers.value = driverData || []
+    vehicles.value = vehicleData || []
   } catch (error) {
     errorMessage.value = error.message || '기사 목록을 불러오지 못했습니다.'
   } finally {
@@ -312,6 +325,72 @@ onMounted(loadData)
         </div>
       </div>
     </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>승인·회원 현황 요약</h2>
+        <span class="status-pill green">회원·차량 통합 조회</span>
+      </div>
+
+      <div class="approval-summary">
+        <div>
+          <span>운송사 상태</span>
+          <strong>{{ myCarrier?.carrierStatus || '-' }}</strong>
+        </div>
+        <div>
+          <span>기사 승인 완료</span>
+          <strong>{{ approvedDrivers.length }}명</strong>
+        </div>
+        <div>
+          <span>기사 승인 대기</span>
+          <strong>{{ pendingDrivers.length }}명</strong>
+        </div>
+        <div>
+          <span>소속 차량</span>
+          <strong>{{ myVehicles.length }}대</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>소속 차량 승인 현황</h2>
+        <span class="status-pill">차량 {{ myVehicles.length }}대</span>
+      </div>
+
+      <div v-if="myVehicles.length === 0" class="empty-box">
+        등록된 차량이 없습니다.
+      </div>
+
+      <div v-else class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>차량 ID</th>
+              <th>차량번호</th>
+              <th>차량종류</th>
+              <th>톤수</th>
+              <th>등록 승인</th>
+              <th>상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="vehicle in myVehicles" :key="vehicle.vehicleId">
+              <td>{{ vehicle.vehicleId }}</td>
+              <td>{{ vehicle.plateNumber || '-' }}</td>
+              <td>{{ vehicleTypeLabel(vehicle.vehicleType) }}</td>
+              <td>{{ vehicle.tonnage || '-' }}</td>
+              <td>
+                <span class="status-pill" :class="vehicle.isRegistered ? 'green' : 'amber'">
+                  {{ vehicle.isRegistered ? '승인' : '승인 대기' }}
+                </span>
+              </td>
+              <td>{{ vehicle.vehicleStatus || '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -424,5 +503,36 @@ onMounted(loadData)
   text-align: center;
   background: #f8fbfe;
   border: 1px solid var(--line);
+}
+
+.approval-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.approval-summary div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  background: #f8fbfe;
+  border: 1px solid var(--line);
+}
+
+.approval-summary span {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.approval-summary strong {
+  color: var(--ink-900);
+  font-size: 16px;
+}
+
+@media (max-width: 760px) {
+  .approval-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>

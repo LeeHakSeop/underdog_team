@@ -1,8 +1,7 @@
 import CarrierDashboardView from '@/views/carrier/CarrierDashboardView.vue'
 import CarrierApprovalDriverView from '@/views/carrier/CarrierApprovalDriverView.vue'
-import CarrierVehicleRegisterView from '@/views/carrier/CarrierVehicleRegisterView.vue'
-import CarrierApprovalsView from '@/views/carrier/CarrierApprovalsView.vue'
-import CarrierWorkOrdersView from '@/views/carrier/CarrierWorkOrdersView.vue'
+import CarrierInquiryView from '@/views/carrier/CarrierInquiryView.vue'
+import CarrierInputView from '@/views/carrier/CarrierInputView.vue'
 
 export default [
   {
@@ -29,37 +28,57 @@ export default [
         component: CarrierApprovalDriverView,
         meta: {
           role: 'CARRIER',
-          title: '기사 가입 승인',
+          title: '승인·회원 관리',
         },
       },
 
       {
         path: 'vehicle-register',
         name: 'carrier-vehicle-register',
-        component: CarrierVehicleRegisterView,
+        component: CarrierInputView,
         meta: {
           role: 'CARRIER',
-          title: '트레일러 배정',
+          title: '배정·작업 입력 및 수정',
         },
       },
 
       {
         path: 'work-orders',
         name: 'carrier-work-orders',
-        component: CarrierWorkOrdersView,
+        component: CarrierInquiryView,
         meta: {
           role: 'CARRIER',
-          title: '기사 작업지시',
+          title: '배정·작업 조회',
+        },
+      },
+
+      {
+        path: 'input',
+        name: 'carrier-input',
+        component: CarrierInputView,
+        meta: {
+          role: 'CARRIER',
+          title: '배정·작업 입력 및 수정',
+        },
+      },
+
+      {
+        path: 'inquiry',
+        name: 'carrier-inquiry',
+        component: CarrierInquiryView,
+        meta: {
+          role: 'CARRIER',
+          title: '배정·작업 조회',
         },
       },
 
       {
         path: 'approvals',
         name: 'carrier-approvals',
-        component: CarrierApprovalsView,
+        redirect: '/carrier/driver-approval',
         meta: {
           role: 'CARRIER',
-          title: '승인 현황',
+          title: '승인·회원 관리',
         },
       },
     ],
