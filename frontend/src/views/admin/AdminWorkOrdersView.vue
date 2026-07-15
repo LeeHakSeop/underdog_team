@@ -12,9 +12,9 @@ const carrierStore = useCarrierStore()
 const containerStore = useContainerStore()
 const driverStore = useDriverStore()
 const vehicleStore = useVehicleStore()
+
 const processingId = ref(null)
 const processMessage = ref('')
-<<<<<<< HEAD
 const requestQuery = ref('')
 const requestPage = ref(1)
 const requestPageSize = ref(10)
@@ -22,13 +22,12 @@ const taskQuery = ref('')
 const taskStatus = ref('')
 const taskPage = ref(1)
 const taskPageSize = ref(10)
-=======
 const containerQuery = ref('')
 const containerMessage = ref('')
 const editingContainerId = ref(null)
 const containerForm = ref({})
 const yardSectors = ref([])
->>>>>>> origin/hakseop
+
 let refreshTimer = null
 
 const pageSizeOptions = [10, 20, 50]
@@ -66,10 +65,10 @@ const getPlateNumber = (vehicleId) => {
   return getValue(vehicle, 'plateNumber', 'plate_number') || '-'
 }
 
-<<<<<<< HEAD
 const getTrailerPlateNumber = (order) => {
   return getPlateNumber(getId(order, 'trailerVehicleId'))
-=======
+}
+
 const getVehicleForType = (order, vehicleType) => {
   const vehicleIds = [
     getId(order, 'tractorVehicleId'),
@@ -77,9 +76,11 @@ const getVehicleForType = (order, vehicleType) => {
     getId(order, 'vehicleId'),
   ].filter(Boolean)
 
-  return vehicleIds
-    .map((vehicleId) => getVehicle(vehicleId))
-    .find((vehicle) => getValue(vehicle, 'vehicleType', 'vehicle_type') === vehicleType) || null
+  return (
+    vehicleIds
+      .map((vehicleId) => getVehicle(vehicleId))
+      .find((vehicle) => getValue(vehicle, 'vehicleType', 'vehicle_type') === vehicleType) || null
+  )
 }
 
 const getVehicleApprovalText = (vehicle) => {
@@ -102,7 +103,6 @@ const getDriverEntryText = (order) => {
   const driver = driverStore.drivers.find((item) => getId(item, 'driverId') === getId(order, 'driverId'))
   if (!driver) return '미연결'
   return getValue(driver, 'canEnter', 'can_enter') === true ? '가능' : '불가'
->>>>>>> origin/hakseop
 }
 
 const getContainer = (containerId) => {
@@ -191,7 +191,6 @@ const processingTasks = computed(() => {
   return workOrderStore.workOrders.filter((order) => !carrierRequests.value.includes(order))
 })
 
-<<<<<<< HEAD
 const filteredCarrierRequests = computed(() => filterByQuery(carrierRequests.value, requestQuery.value))
 
 const filteredProcessingTasks = computed(() => {
@@ -213,6 +212,15 @@ const pagedProcessingTasks = computed(() =>
   paginate(filteredProcessingTasks.value, taskPage.value, taskPageSize.value),
 )
 
+const visibleContainers = computed(() => {
+  const query = containerQuery.value.trim().toLowerCase()
+  if (!query) return containerStore.containers
+
+  return containerStore.containers.filter((container) =>
+    String(getValue(container, 'containerNumber', 'container_number')).toLowerCase().includes(query),
+  )
+})
+
 const resetRequestSearch = () => {
   requestQuery.value = ''
   requestPageSize.value = 10
@@ -224,15 +232,7 @@ const resetTaskSearch = () => {
   taskStatus.value = ''
   taskPageSize.value = 10
   taskPage.value = 1
-=======
-const visibleContainers = computed(() => {
-  const query = containerQuery.value.trim().toLowerCase()
-  if (!query) return containerStore.containers
-
-  return containerStore.containers.filter((container) =>
-    String(getValue(container, 'containerNumber', 'container_number')).toLowerCase().includes(query),
-  )
-})
+}
 
 const emptyContainerForm = () => ({
   containerNumber: '',
@@ -279,9 +279,10 @@ const saveContainer = async () => {
   containerMessage.value = ''
   const payload = {
     ...containerForm.value,
-    sectorId: containerForm.value.sectorId == null || containerForm.value.sectorId === ''
-      ? null
-      : Number(containerForm.value.sectorId),
+    sectorId:
+      containerForm.value.sectorId == null || containerForm.value.sectorId === ''
+        ? null
+        : Number(containerForm.value.sectorId),
   }
 
   try {
@@ -309,7 +310,6 @@ const removeContainer = async (container) => {
   } catch (error) {
     containerMessage.value = error.message || '컨테이너 삭제에 실패했습니다.'
   }
->>>>>>> origin/hakseop
 }
 
 const processWorkOrder = async (order, action) => {
@@ -350,7 +350,11 @@ const loadData = () => {
   containerStore.loadContainers().catch(() => {})
   driverStore.loadDrivers().catch(() => {})
   vehicleStore.loadVehicles().catch(() => {})
-  fetchYardSectors().then((data) => { yardSectors.value = data || [] }).catch(() => {})
+  fetchYardSectors()
+    .then((data) => {
+      yardSectors.value = data || []
+    })
+    .catch(() => {})
 }
 
 watch([requestQuery, requestPageSize], () => {
@@ -412,7 +416,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="table-wrap">
+      <div class="table-wrap work-table-scroll">
         <table class="data-table">
           <thead>
             <tr>
@@ -478,13 +482,8 @@ onUnmounted(() => {
                 </button>
               </td>
             </tr>
-<<<<<<< HEAD
             <tr v-if="filteredCarrierRequests.length === 0">
-              <td colspan="9">조회된 배차 대기 작업이 없습니다.</td>
-=======
-            <tr v-if="carrierRequests.length === 0">
-              <td colspan="12">배차 대기 작업이 없습니다.</td>
->>>>>>> origin/hakseop
+              <td colspan="12">조회된 배차 대기 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -615,15 +614,33 @@ onUnmounted(() => {
                 <span v-else>{{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}</span>
               </td>
             </tr>
-<<<<<<< HEAD
             <tr v-if="filteredProcessingTasks.length === 0">
-              <td colspan="7">조회된 처리 작업이 없습니다.</td>
-=======
-            <tr v-if="processingTasks.length === 0">
-              <td colspan="10">처리 중인 작업이 없습니다.</td>
+              <td colspan="10">조회된 처리 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="pagination-bar">
+        <span>
+          {{ getPageStart(filteredProcessingTasks.length, taskPage, taskPageSize) }} -
+          {{ getPageEnd(filteredProcessingTasks.length, taskPage, taskPageSize) }} /
+          {{ filteredProcessingTasks.length }}건
+        </span>
+        <div class="pagination-controls">
+          <button class="ghost-button" type="button" :disabled="taskPage === 1" @click="taskPage -= 1">
+            이전
+          </button>
+          <strong>{{ taskPage }} / {{ taskPageCount }}</strong>
+          <button
+            class="ghost-button"
+            type="button"
+            :disabled="taskPage === taskPageCount"
+            @click="taskPage += 1"
+          >
+            다음
+          </button>
+        </div>
       </div>
     </section>
 
@@ -640,7 +657,11 @@ onUnmounted(() => {
       <form v-if="Object.keys(containerForm).length" class="container-form" @submit.prevent="saveContainer">
         <strong>{{ editingContainerId ? '컨테이너 수정' : '컨테이너 등록' }}</strong>
         <input v-model.trim="containerForm.containerNumber" required placeholder="컨테이너 번호 *" />
-        <select v-model="containerForm.containerSize"><option>20FT</option><option>40FT</option><option>45FT</option></select>
+        <select v-model="containerForm.containerSize">
+          <option>20FT</option>
+          <option>40FT</option>
+          <option>45FT</option>
+        </select>
         <input v-model.trim="containerForm.shippingLine" placeholder="선사" />
         <input v-model.trim="containerForm.containerLocation" placeholder="현재 위치" />
         <input v-model.trim="containerForm.block" placeholder="블록" />
@@ -653,9 +674,14 @@ onUnmounted(() => {
           </option>
         </select>
         <input v-model.trim="containerForm.sealNumber" placeholder="봉인 번호" />
-        <label class="exit-check"><input v-model="containerForm.canExit" type="checkbox" /> 반출 가능</label>
+        <label class="exit-check">
+          <input v-model="containerForm.canExit" type="checkbox" />
+          반출 가능
+        </label>
         <div class="container-form-actions">
-          <button class="primary-button" type="submit" :disabled="containerStore.loading">{{ containerStore.loading ? '저장 중' : '저장' }}</button>
+          <button class="primary-button" type="submit" :disabled="containerStore.loading">
+            {{ containerStore.loading ? '저장 중' : '저장' }}
+          </button>
           <button class="ghost-button" type="button" @click="closeContainerForm">취소</button>
         </div>
       </form>
@@ -696,32 +722,9 @@ onUnmounted(() => {
             </tr>
             <tr v-if="visibleContainers.length === 0">
               <td colspan="8">컨테이너 데이터가 없습니다.</td>
->>>>>>> origin/hakseop
             </tr>
           </tbody>
         </table>
-      </div>
-
-      <div class="pagination-bar">
-        <span>
-          {{ getPageStart(filteredProcessingTasks.length, taskPage, taskPageSize) }} -
-          {{ getPageEnd(filteredProcessingTasks.length, taskPage, taskPageSize) }} /
-          {{ filteredProcessingTasks.length }}건
-        </span>
-        <div class="pagination-controls">
-          <button class="ghost-button" type="button" :disabled="taskPage === 1" @click="taskPage -= 1">
-            이전
-          </button>
-          <strong>{{ taskPage }} / {{ taskPageCount }}</strong>
-          <button
-            class="ghost-button"
-            type="button"
-            :disabled="taskPage === taskPageCount"
-            @click="taskPage += 1"
-          >
-            다음
-          </button>
-        </div>
       </div>
     </section>
   </div>
@@ -795,7 +798,8 @@ onUnmounted(() => {
   text-align: center;
 }
 
-.process-message {
+.process-message,
+.container-message {
   margin: 0;
   padding: 10px 12px;
   color: var(--ink-700);
@@ -804,34 +808,21 @@ onUnmounted(() => {
   font-weight: 800;
 }
 
+.container-message {
+  margin-bottom: 10px;
+}
+
 .reject-button {
   margin-left: 6px;
   color: #9f1d1d;
   border-color: #e4a6a6;
 }
 
-<<<<<<< HEAD
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-@media (max-width: 760px) {
-  .work-order-toolbar,
-  .pagination-bar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .search-field {
-    max-width: none;
-  }
-
-  .toolbar-actions,
-  .pagination-controls {
-    justify-content: flex-start;
-  }
-=======
 .work-table-scroll {
   max-height: 470px;
   overflow: auto;
@@ -845,7 +836,9 @@ button:disabled {
 
 .table-tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -871,7 +864,9 @@ button:disabled {
   border: 1px solid var(--line);
 }
 
-.container-form strong { color: var(--ink-900); }
+.container-form strong {
+  color: var(--ink-900);
+}
 
 .container-form input,
 .container-form select {
@@ -879,18 +874,49 @@ button:disabled {
   min-height: 34px;
   padding: 0 9px;
   color: var(--ink-900);
-  background: #fff;
+  background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 4px;
   font-weight: 700;
 }
 
-.exit-check { color: var(--ink-700); font-size: 13px; font-weight: 800; }
-.container-form-actions, .container-actions { display: flex; gap: 6px; }
-.container-message { margin: 0 0 10px; color: var(--ink-700); font-weight: 800; }
+.exit-check {
+  color: var(--ink-700);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.container-form-actions,
+.container-actions {
+  display: flex;
+  gap: 6px;
+}
 
 @media (max-width: 980px) {
-  .container-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
->>>>>>> origin/hakseop
+  .container-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .work-order-toolbar,
+  .pagination-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .search-field {
+    max-width: none;
+  }
+
+  .toolbar-actions,
+  .pagination-controls,
+  .table-tools {
+    justify-content: flex-start;
+  }
+
+  .container-form {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
