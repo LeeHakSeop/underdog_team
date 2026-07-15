@@ -132,15 +132,14 @@ const menus = {
     { label: '내 차량', path: '/driver/vehicles', icon: 'truck' },
   ],
   ADMIN: [
-    { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
-    { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
+    { label: '상황 관제판', path: '/admin/main', icon: 'cctv' },
+    { label: '통계 요약', path: '/admin/dashboard', icon: 'dashboard' },
 
     { label: '운영 맵', path: '/admin/yard-map', icon: 'map' },
     { label: 'AI 번호판 인식', path: '/admin/plate-recognition', icon: 'scan' },
     { label: '가입 회원 관리', path: '/admin/members', icon: 'users' },
 
     { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
-    { label: '컨테이너 조회', path: '/admin/containers', icon: 'container' },
     { label: '알림/이벤트', path: '/admin/events', icon: 'bell' },
   ],
 }
@@ -204,11 +203,6 @@ const logout = () => {
       </nav>
 
       <div class="side-footer">
-        <div class="side-note">
-          <b>실시간 운영 현황</b>
-          <span>관제 상황판은 5초마다</span>
-          <span>DB 연동 데이터를 갱신합니다.</span>
-        </div>
         <button class="logout-button" type="button" title="로그아웃" @click="logout">
           <MenuIcon name="logout" />
           <span class="logout-label">로그아웃</span>

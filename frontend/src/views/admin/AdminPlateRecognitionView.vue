@@ -55,10 +55,6 @@ const getPassText = (result, expectedType) => {
     return '불가'
   }
 
-  if (result.needReview) {
-    return '불가'
-  }
-
   return '가능'
 }
 
@@ -80,7 +76,7 @@ const getAlertMessage = (result, expectedType, label) => {
   }
 
   if (result.needReview) {
-    return `${label} 번호판 인식 결과 확인이 필요합니다.`
+    return `${label} 번호판 확인 완료.`
   }
 
   return `${label} 번호판 확인이 완료되었습니다.`

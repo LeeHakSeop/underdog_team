@@ -3,9 +3,7 @@ package aaa.container_p.controller;
 import aaa.container_p.model.ContainerDTO;
 import aaa.container_p.service.ContainerService;
 import jakarta.annotation.Resource;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -19,5 +17,20 @@ public class ContainerController {
     @GetMapping
     public List<ContainerDTO> list() {
         return service.list();
+    }
+
+    @PostMapping
+    public ContainerDTO create(@RequestBody ContainerDTO dto) {
+        return service.insert(dto);
+    }
+
+    @PutMapping("/{containerId}")
+    public ContainerDTO update(@PathVariable Long containerId, @RequestBody ContainerDTO dto) {
+        return service.update(containerId, dto);
+    }
+
+    @DeleteMapping("/{containerId}")
+    public void delete(@PathVariable Long containerId) {
+        service.delete(containerId);
     }
 }

@@ -685,6 +685,12 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
+.gate-head em {
+  color: #a6e6c3;
+  background: #123b2a;
+  border: 1px solid #2f7d57;
+}
+
 .gate-body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
