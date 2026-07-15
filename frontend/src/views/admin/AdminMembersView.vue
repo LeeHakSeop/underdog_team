@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { getUsers, updateUserStatus } from '@/api/authApi'
 import { useCarrierStore } from '@/stores/carrierStore'
@@ -10,6 +10,8 @@ import { vehicleTypeLabel } from '@/config/vehicleType'
 const activeTab = ref('user')
 const loading = ref(false)
 const errorMessage = ref('')
+const message = ref('')
+const deletingCarrierId = ref(null)
 
 const users = ref([])
 
@@ -102,6 +104,23 @@ const loadData = async () => {
   }
 }
 
+const removeCarrier = async (carrier) => {
+  if (!window.confirm(`${carrier.carrierName} 운송사와 소속 기사를 삭제하시겠습니까?`)) return
+
+  deletingCarrierId.value = carrier.carrierId
+  errorMessage.value = ''
+
+  try {
+    await carrierStore.removeCarrier(carrier.carrierId)
+    message.value = `${carrier.carrierName} 운송사와 소속 기사 정보가 삭제되었습니다.`
+    await loadData()
+  } catch (error) {
+    errorMessage.value = error.message || '운송사 삭제에 실패했습니다.'
+  } finally {
+    deletingCarrierId.value = null
+  }
+}
+
 const approveCarrier = async (userId) => {
   errorMessage.value = ''
 
@@ -157,7 +176,20 @@ const rejectVehicle = async (vehicleId) => {
   }
 }
 
-onMounted(loadData)
+let refreshTimer = null
+
+onMounted(() => {
+  loadData()
+  refreshTimer = setInterval(() => {
+    if (!loading.value && !deletingCarrierId.value) {
+      loadData().catch(() => {})
+    }
+  }, 5000)
+})
+
+onUnmounted(() => {
+  clearInterval(refreshTimer)
+})
 </script>
 
 <template>
@@ -175,6 +207,10 @@ onMounted(loadData)
 
       <div v-if="errorMessage" class="form-message error">
         {{ errorMessage }}
+      </div>
+
+      <div v-if="message" class="form-message success">
+        {{ message }}
       </div>
 
       <div class="member-tabs">
@@ -342,6 +378,7 @@ onMounted(loadData)
               <th>연락처</th>
               <th>담당자명</th>
               <th>가입 상태</th>
+              <th>관리</th>
             </tr>
           </thead>
 
@@ -365,10 +402,20 @@ onMounted(loadData)
                   {{ carrier.carrierStatus }}
                 </span>
               </td>
+              <td>
+                <button
+                  class="ghost-button reject"
+                  type="button"
+                  :disabled="deletingCarrierId === carrier.carrierId"
+                  @click="removeCarrier(carrier)"
+                >
+                  {{ deletingCarrierId === carrier.carrierId ? '삭제 중...' : '삭제' }}
+                </button>
+              </td>
             </tr>
 
             <tr v-if="carriers.length === 0">
-              <td colspan="5">등록된 운송사가 없습니다.</td>
+              <td colspan="6">등록된 운송사가 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -557,6 +604,14 @@ onMounted(loadData)
   color: #7f1d1d;
   background: #fff1f1;
   border: 1px solid #fecaca;
+}
+
+.form-message.success {
+  margin-top: 10px;
+  padding: 10px 12px;
+  color: #155e3b;
+  background: #ecfdf3;
+  border: 1px solid #b7ebc9;
 }
 
 .refresh-button {

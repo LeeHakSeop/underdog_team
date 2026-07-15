@@ -5,6 +5,8 @@ import aaa.driver_p.model.DriverMapper;
 import aaa.driver_p.model.DriverWorkOrderDTO;
 import aaa.user_p.model.UserDTO;
 import aaa.user_p.model.UserMapper;
+import aaa.vehicle_p.model.VehicleMapper;
+import aaa.work_order_p.model.WorkOrderMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,12 @@ public class DriverService {
 
     @Resource
     UserMapper userMapper;
+
+    @Resource
+    VehicleMapper vehicleMapper;
+
+    @Resource
+    WorkOrderMapper workOrderMapper;
 
     public List<DriverDTO> list() {
         return driverMapper.list();
@@ -48,8 +56,26 @@ public class DriverService {
         return result;
     }
 
+    @Transactional
     public int delete(Long driverId) {
-        return driverMapper.delete(driverId);
+        DriverDTO driver = driverMapper.detail(driverId);
+        if (driver == null) {
+            return 0;
+        }
+
+        // 작업 이력은 유지하고 삭제되는 기사와의 참조만 해제합니다.
+        workOrderMapper.clearDriverReference(driverId);
+        vehicleMapper.clearDriverReference(driverId);
+        if (driver.getUserId() != null) {
+            vehicleMapper.clearUserReference(driver.getUserId());
+        }
+
+        int deleted = driverMapper.delete(driverId);
+        if (deleted > 0 && driver.getUserId() != null) {
+            userMapper.delete(driver.getUserId());
+        }
+
+        return deleted;
     }
 
     @Transactional

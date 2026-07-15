@@ -69,10 +69,44 @@ public interface CarrierMapper {
     int update(CarrierDTO dto);
 
     @Delete("""
-            DELETE FROM carrier
-            WHERE carrier_id = #{carrierId}
-            """)
+        DELETE FROM carrier
+        WHERE carrier_id = #{carrierId}
+        """)
     int delete(Long carrierId);
+
+    @Select("""
+        SELECT user_id
+        FROM driver
+        WHERE carrier_id = #{carrierId}
+          AND user_id IS NOT NULL
+        """)
+    List<Long> findDriverUserIds(@Param("carrierId") Long carrierId);
+
+    @Update("""
+        UPDATE work_order
+        SET driver_id = NULL
+        WHERE driver_id IN (
+            SELECT driver_id
+            FROM driver
+            WHERE carrier_id = #{carrierId}
+        )
+        """)
+    int clearWorkOrderDriverReferences(@Param("carrierId") Long carrierId);
+
+    @Update("""
+        UPDATE vehicle
+        SET carrier_id = NULL,
+            driver_id = NULL,
+            user_id = NULL
+        WHERE carrier_id = #{carrierId}
+        """)
+    int detachVehicles(@Param("carrierId") Long carrierId);
+
+    @Delete("""
+        DELETE FROM driver
+        WHERE carrier_id = #{carrierId}
+        """)
+    int deleteDrivers(@Param("carrierId") Long carrierId);
 
     @Insert("""
             INSERT INTO carrier (

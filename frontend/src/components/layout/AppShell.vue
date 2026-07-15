@@ -473,6 +473,10 @@ const logout = () => {
   .app-shell.collapsed .sidebar {
     align-items: stretch;
     position: static;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .side-nav {
@@ -482,6 +486,10 @@ const logout = () => {
   .app-shell.collapsed .side-nav,
   .app-shell.collapsed .side-footer {
     display: none;
+  }
+
+  .side-footer {
+    margin-top: 8px;
   }
 
   .topbar {
