@@ -12,10 +12,11 @@ const loginUser = computed(() => {
 })
 
 const statusText = (order) => {
-  if (!order.isApproved) return '작업 승인 대기'
-  if (order.workStatus === 'COMPLETED') return '작업 완료'
-  if (order.workStatus === 'GATE_IN' || order.workStatus === 'IN_PROGRESS') return '작업 진행 중'
   if (order.workStatus === 'GATE_OUT') return '출차 완료'
+  if (order.workStatus === 'COMPLETED') return order.canExit ? '출차 가능' : '출차 대기'
+  if (order.workStatus === 'IN_PROGRESS') return '작업 진행 중'
+  if (order.workStatus === 'GATE_IN') return '입차 완료'
+  if (!order.isApproved) return '작업 승인 대기'
   return order.workStatus || '작업 대기'
 }
 
@@ -85,6 +86,10 @@ onUnmounted(() => {
               <b>{{ order.plateNumber || '-' }}</b>
             </div>
             <div>
+              <span>트레일러 번호</span>
+              <b>{{ order.trailerPlateNumber || '-' }}</b>
+            </div>
+            <div>
               <span>컨테이너</span>
               <b>{{ order.containerNumber || '-' }}</b>
             </div>
@@ -146,7 +151,7 @@ onUnmounted(() => {
 
 .work-info-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 

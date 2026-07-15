@@ -19,7 +19,7 @@ const plateRecognitionStore = usePlateRecognitionStore()
 
 const selectedGateId = ref('G-01')
 const processType = ref('IN')
-const selectedOcrType = ref('paddle')
+const selectedOcrType = ref('crnn')
 const gatePreviewUrls = reactive({})
 const gateRecognitionResults = reactive({})
 let refreshTimer = null
@@ -336,6 +336,19 @@ const selectGateImage = async (event, gate, targetType) => {
   }
 }
 
+const clearGateRecognition = (gateId) => {
+  for (const targetType of ['tractor', 'trailer']) {
+    const key = `${gateId}-${targetType}`
+    if (gatePreviewUrls[key]) {
+      URL.revokeObjectURL(gatePreviewUrls[key])
+      delete gatePreviewUrls[key]
+    }
+  }
+
+  delete gateRecognitionResults[gateId]
+  plateRecognitionStore.reset()
+}
+
 const submitGateProcess = async (type) => {
   processType.value = type
 
@@ -343,19 +356,24 @@ const submitGateProcess = async (type) => {
 
   try {
     await gateLogStore.processGate(buildGateProcessPayload(type))
-    if (gateLogStore.processResult?.success) loadData()
+    if (gateLogStore.processResult?.success) {
+      clearGateRecognition(selectedGateId.value)
+      await loadData()
+    }
   } catch {
     // gateLogStore.error를 화면에 표시해 최종 처리 실패 원인을 안내합니다.
   }
 }
 
-const loadData = () => {
-  gateLogStore.loadGateLogs().catch(() => {})
-  workOrderStore.loadWorkOrders().catch(() => {})
-  containerStore.loadContainers().catch(() => {})
-  vehicleStore.loadVehicles().catch(() => {})
-  driverStore.loadDrivers().catch(() => {})
-  carrierStore.loadCarriers().catch(() => {})
+const loadData = async () => {
+  await Promise.all([
+    gateLogStore.loadGateLogs(),
+    workOrderStore.loadWorkOrders(),
+    containerStore.loadContainers(),
+    vehicleStore.loadVehicles(),
+    driverStore.loadDrivers(),
+    carrierStore.loadCarriers(),
+  ].map((request) => request.catch(() => {})))
 }
 
 watch(selectedGate, (gate) => {

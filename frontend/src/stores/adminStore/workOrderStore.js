@@ -3,9 +3,11 @@ import {
   approveWorkOrder,
   completeWorkOrder,
   createWorkOrder,
+  deleteWorkOrder,
   fetchWorkOrders,
   rejectWorkOrder,
   startWorkOrder,
+  updateWorkOrder,
 } from '@/api/adminApi/workOrderApi'
 
 export const useWorkOrderStore = defineStore('workOrder', {
@@ -39,6 +41,36 @@ export const useWorkOrderStore = defineStore('workOrder', {
         await this.loadWorkOrders()
       } catch (error) {
         this.error = error.message || '작업 등록에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async edit(workOrderId, workOrder) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await updateWorkOrder(workOrderId, workOrder)
+        await this.loadWorkOrders()
+      } catch (error) {
+        this.error = error.message || '작업 지시 수정에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async remove(workOrderId) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await deleteWorkOrder(workOrderId)
+        await this.loadWorkOrders()
+      } catch (error) {
+        this.error = error.message || '작업 지시 삭제에 실패했습니다.'
         throw error
       } finally {
         this.loading = false

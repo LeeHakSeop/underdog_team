@@ -32,6 +32,20 @@ public class WorkOrderController {
         return dto;
     }
 
+    @PutMapping("/{workOrderId}")
+    public WorkOrderDTO update(
+            @PathVariable Long workOrderId,
+            @RequestBody WorkOrderDTO dto
+    ) {
+        dto.setWorkOrderId(workOrderId);
+        return service.update(dto);
+    }
+
+    @DeleteMapping("/{workOrderId}")
+    public WorkOrderDTO delete(@PathVariable Long workOrderId) {
+        return service.cancel(workOrderId);
+    }
+
     @GetMapping("/trailer-info/{vehicleId}")
     public TrailerWorkInfoDTO trailerInfo(@PathVariable Long vehicleId) {
         return service.findTrailerWorkInfo(vehicleId);

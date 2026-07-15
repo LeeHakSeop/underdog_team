@@ -67,6 +67,55 @@ public interface WorkOrderMapper {
     int insert(WorkOrderDTO dto);
 
     @Select("""
+            SELECT COUNT(*)
+            FROM work_order
+            WHERE driver_id = #{driverId}
+              AND work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+              AND (#{workOrderId,jdbcType=BIGINT} IS NULL OR work_order_id <> #{workOrderId,jdbcType=BIGINT})
+            """)
+    int countActiveByDriverId(
+            @Param("driverId") Long driverId,
+            @Param("workOrderId") Long workOrderId
+    );
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM work_order
+            WHERE trailer_vehicle_id = #{trailerVehicleId}
+              AND work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+              AND (#{workOrderId,jdbcType=BIGINT} IS NULL OR work_order_id <> #{workOrderId,jdbcType=BIGINT})
+            """)
+    int countActiveByTrailerVehicleId(
+            @Param("trailerVehicleId") Long trailerVehicleId,
+            @Param("workOrderId") Long workOrderId
+    );
+
+    @Update("""
+            UPDATE work_order
+            SET work_type = #{workType},
+                vehicle_id = #{vehicleId},
+                tractor_vehicle_id = #{tractorVehicleId},
+                trailer_vehicle_id = #{trailerVehicleId},
+                driver_id = #{driverId},
+                container_id = #{containerId},
+                reserved_time = #{reservedTime},
+                work_status = 'DISPATCH_WAITING',
+                is_approved = false
+            WHERE work_order_id = #{workOrderId}
+              AND work_status = 'DISPATCH_WAITING'
+            """)
+    int updateDispatchWaiting(WorkOrderDTO dto);
+
+    @Update("""
+            UPDATE work_order
+            SET work_status = 'CANCELED',
+                is_approved = false
+            WHERE work_order_id = #{workOrderId}
+              AND work_status = 'DISPATCH_WAITING'
+            """)
+    int cancelDispatchWaiting(@Param("workOrderId") Long workOrderId);
+
+    @Select("""
             SELECT
                 wo.work_order_id AS workOrderId,
                 wo.work_type AS workType,

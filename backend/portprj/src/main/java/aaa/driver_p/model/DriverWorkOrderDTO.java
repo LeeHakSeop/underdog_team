@@ -19,7 +19,10 @@ public class DriverWorkOrderDTO {
     private String carrierName;
     private String carrierContact;
     private Long vehicleId;
+    private Long tractorVehicleId;
+    private Long trailerVehicleId;
     private String plateNumber;
+    private String trailerPlateNumber;
     private String vehicleType;
     private String vehicleStatus;
     private Long containerId;

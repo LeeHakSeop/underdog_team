@@ -150,6 +150,8 @@ public interface DriverMapper {
                 wo.reserved_time,
                 wo.work_status,
                 wo.is_approved,
+                wo.tractor_vehicle_id AS tractorVehicleId,
+                wo.trailer_vehicle_id AS trailerVehicleId,
                 d.driver_id,
                 d.driver_name,
                 d.driver_contact,
@@ -161,6 +163,7 @@ public interface DriverMapper {
                 v.plate_number,
                 v.vehicle_type,
                 v.vehicle_status,
+                trailer.plate_number AS trailerPlateNumber,
                 c.container_id,
                 c.container_number,
                 c.container_size,
@@ -198,7 +201,9 @@ public interface DriverMapper {
             LEFT JOIN carrier ca
                 ON d.carrier_id = ca.carrier_id
             LEFT JOIN vehicle v
-                ON wo.vehicle_id = v.vehicle_id
+                ON COALESCE(wo.tractor_vehicle_id, wo.vehicle_id) = v.vehicle_id
+            LEFT JOIN vehicle trailer
+                ON wo.trailer_vehicle_id = trailer.vehicle_id
             LEFT JOIN container c
                 ON wo.container_id = c.container_id
             LEFT JOIN yard_sector ys
@@ -217,6 +222,8 @@ public interface DriverMapper {
                 wo.reserved_time,
                 wo.work_status,
                 wo.is_approved,
+                wo.tractor_vehicle_id AS tractorVehicleId,
+                wo.trailer_vehicle_id AS trailerVehicleId,
                 d.driver_id,
                 d.driver_name,
                 d.driver_contact,
@@ -228,6 +235,7 @@ public interface DriverMapper {
                 v.plate_number,
                 v.vehicle_type,
                 v.vehicle_status,
+                trailer.plate_number AS trailerPlateNumber,
                 c.container_id,
                 c.container_number,
                 c.container_size,
@@ -265,7 +273,9 @@ public interface DriverMapper {
             LEFT JOIN carrier ca
                 ON d.carrier_id = ca.carrier_id
             LEFT JOIN vehicle v
-                ON wo.vehicle_id = v.vehicle_id
+                ON COALESCE(wo.tractor_vehicle_id, wo.vehicle_id) = v.vehicle_id
+            LEFT JOIN vehicle trailer
+                ON wo.trailer_vehicle_id = trailer.vehicle_id
             LEFT JOIN container c
                 ON wo.container_id = c.container_id
             LEFT JOIN yard_sector ys

@@ -55,7 +55,68 @@ public class WorkOrderService {
             dto.setIsApproved(false);
         }
 
+        validateDispatchAssignment(dto, null);
+
         return mapper.insert(dto);
+    }
+
+    @Transactional
+    public WorkOrderDTO update(WorkOrderDTO dto) {
+        WorkOrderDTO current = getWorkOrder(dto.getWorkOrderId());
+
+        if (!isRequestWaiting(current.getWorkStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "승인 대기 중인 작업 지시만 수정할 수 있습니다."
+            );
+        }
+
+        validateDispatchAssignment(dto, dto.getWorkOrderId());
+        int updated = mapper.updateDispatchWaiting(dto);
+        if (updated == 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "작업 지시가 이미 변경되어 수정할 수 없습니다."
+            );
+        }
+
+        return mapper.detail(dto.getWorkOrderId());
+    }
+
+    @Transactional
+    public WorkOrderDTO cancel(Long workOrderId) {
+        WorkOrderDTO current = getWorkOrder(workOrderId);
+
+        if (!isRequestWaiting(current.getWorkStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "승인 대기 중인 작업 지시만 삭제할 수 있습니다."
+            );
+        }
+
+        int updated = mapper.cancelDispatchWaiting(workOrderId);
+        if (updated > 0) {
+            saveHistory(current, STATUS_CANCELED, SYSTEM_ACTOR, "운송사 작업 지시 삭제", null);
+        }
+
+        return mapper.detail(workOrderId);
+    }
+
+    private void validateDispatchAssignment(WorkOrderDTO dto, Long workOrderId) {
+        if (dto.getDriverId() != null && mapper.countActiveByDriverId(dto.getDriverId(), workOrderId) > 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "이미 다른 작업에 배정된 기사입니다."
+            );
+        }
+
+        if (dto.getTrailerVehicleId() != null
+                && mapper.countActiveByTrailerVehicleId(dto.getTrailerVehicleId(), workOrderId) > 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "이미 다른 작업에 배정된 트레일러입니다."
+            );
+        }
     }
 
     public TrailerWorkInfoDTO findTrailerWorkInfo(Long vehicleId) {
