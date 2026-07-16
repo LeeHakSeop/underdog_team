@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { readCurrentUser } from '@/stores/authStore'
 import { fetchCarriers } from '@/api/carrierApi'
 import { fetchDrivers } from '@/api/driverApi'
-import { createVehicle, fetchVehiclesByCarrier } from '@/api/vehicleApi'
+import { createVehicle, fetchVehiclesByCarrier, updateVehicle } from '@/api/vehicleApi'
 import { fetchTrailerWorkInfo, fetchWorkOrders } from '@/api/adminApi/workOrderApi'
 import { vehicleTypeLabel } from '@/config/vehicleType'
 
@@ -36,6 +36,8 @@ const workOrderLoading = ref(false)
 const workOrderError = ref('')
 const driverSearch = ref('')
 const currentPage = ref(1)
+const editingVehicleId = ref(null)
+const editPlateNumber = ref('')
 const pageSize = 10
 let refreshTimer = null
 
@@ -67,6 +69,7 @@ const myDrivers = computed(() => {
 const assignableDrivers = computed(() =>
   myDrivers.value.filter(
     (driver) =>
+      driver.userStatus !== 'WITHDRAWN' &&
       driver.isRegistered === true &&
       // 트랙터가 이미 최종 승인된 기사도 트레일러를 추가 배정할 수 있어야 한다.
       // canEnter는 출입 승인 상태이므로 트레일러 배정 가능 여부로 제한하지 않는다.
@@ -304,11 +307,54 @@ const submitVehicle = async () => {
   }
 }
 
+const startTrailerEdit = (vehicle) => {
+  editingVehicleId.value = vehicle.vehicleId
+  editPlateNumber.value = vehicle.plateNumber || ''
+  message.value = ''
+  errorMessage.value = ''
+}
+
+const cancelTrailerEdit = () => {
+  editingVehicleId.value = null
+  editPlateNumber.value = ''
+}
+
+const saveTrailerEdit = async (vehicle) => {
+  const plateNumber = editPlateNumber.value.trim()
+
+  if (!plateNumber) {
+    errorMessage.value = '트레일러 차량번호를 입력하세요.'
+    return
+  }
+
+  saving.value = true
+  message.value = ''
+  errorMessage.value = ''
+
+  try {
+    await updateVehicle(vehicle.vehicleId, {
+      ...vehicle,
+      plateNumber,
+      vehicleType: vehicle.vehicleType || '트레일러',
+      tonnage: vehicle.tonnage || '25톤',
+      chassisNo: vehicle.chassisNo || null,
+      tractorNo: null,
+    })
+    message.value = '트레일러 차량번호가 수정되었습니다. 연결된 작업정보에도 같은 차량이 반영됩니다.'
+    cancelTrailerEdit()
+    await loadData()
+  } catch (error) {
+    errorMessage.value = error.message || '트레일러 차량번호 수정에 실패했습니다.'
+  } finally {
+    saving.value = false
+  }
+}
+
 onMounted(() => {
   loadData()
   if (props.showSummary) {
     refreshTimer = setInterval(() => {
-      if (!loading.value && !saving.value && !workOrderLoading.value) {
+      if (!loading.value && !saving.value && !workOrderLoading.value && !editingVehicleId.value) {
         loadData().catch(() => {})
       }
     }, 5000)
@@ -399,8 +445,45 @@ onUnmounted(() => {
             <tr v-for="summary in paginatedAssignedTrailerSummaries" :key="summary.vehicle.vehicleId">
               <td>{{ summary.driver?.driverName || '기사 정보 없음' }}</td>
               <td>
-                <strong>{{ summary.vehicle.plateNumber || '-' }}</strong>
-                <small>{{ vehicleTypeLabel(summary.vehicle.vehicleType) }}</small>
+                <div v-if="editingVehicleId === summary.vehicle.vehicleId" class="trailer-edit-cell">
+                  <input
+                    v-model.trim="editPlateNumber"
+                    class="trailer-edit-input"
+                    type="text"
+                    aria-label="트레일러 차량번호"
+                    @keyup.enter="saveTrailerEdit(summary.vehicle)"
+                  />
+                  <div class="trailer-edit-actions">
+                    <button
+                      class="table-action-button primary"
+                      type="button"
+                      :disabled="saving"
+                      @click="saveTrailerEdit(summary.vehicle)"
+                    >
+                      저장
+                    </button>
+                    <button
+                      class="table-action-button"
+                      type="button"
+                      :disabled="saving"
+                      @click="cancelTrailerEdit"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+                <template v-else>
+                  <strong>{{ summary.vehicle.plateNumber || '-' }}</strong>
+                  <small>{{ vehicleTypeLabel(summary.vehicle.vehicleType) }}</small>
+                  <button
+                    class="table-action-button"
+                    type="button"
+                    :disabled="saving"
+                    @click="startTrailerEdit(summary.vehicle)"
+                  >
+                    수정
+                  </button>
+                </template>
               </td>
               <td>{{ summary.vehicle.vehicleStatus || (summary.vehicle.isRegistered ? '승인' : '승인 대기') }}</td>
               <td>{{ summary.workOrder?.workOrderId ? `#${summary.workOrder.workOrderId}` : '-' }}</td>
@@ -696,6 +779,49 @@ onUnmounted(() => {
   margin-top: 2px;
   color: var(--ink-500);
   font-size: 11px;
+}
+
+.trailer-edit-cell {
+  display: grid;
+  gap: 5px;
+}
+
+.trailer-edit-input {
+  width: min(150px, 100%);
+  min-height: 30px;
+  padding: 0 7px;
+  color: var(--ink-900);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+
+.trailer-edit-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.table-action-button {
+  min-height: 26px;
+  padding: 0 7px;
+  color: var(--ink-700);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.table-action-button.primary {
+  color: #ffffff;
+  background: var(--blue-700);
+  border-color: var(--blue-700);
+}
+
+.table-action-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
 .pagination {

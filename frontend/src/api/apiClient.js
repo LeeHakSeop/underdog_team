@@ -1,7 +1,7 @@
 // .env.development에 작성한 서버 기본 주소를 가져옵니다.
-// 예: http://localhost
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost'
+// 개발 서버에서는 Vite가 /api 요청을 백엔드로 전달합니다.
+// 외부 API 서버를 직접 호출해야 하는 환경에서는 VITE_API_BASE_URL을 지정합니다.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 export const request = async (path, options = {}) => {
   const token = localStorage.getItem('token')

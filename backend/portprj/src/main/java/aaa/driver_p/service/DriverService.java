@@ -5,8 +5,6 @@ import aaa.driver_p.model.DriverMapper;
 import aaa.driver_p.model.DriverWorkOrderDTO;
 import aaa.user_p.model.UserDTO;
 import aaa.user_p.model.UserMapper;
-import aaa.vehicle_p.model.VehicleMapper;
-import aaa.work_order_p.model.WorkOrderMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +19,6 @@ public class DriverService {
 
     @Resource
     UserMapper userMapper;
-
-    @Resource
-    VehicleMapper vehicleMapper;
-
-    @Resource
-    WorkOrderMapper workOrderMapper;
 
     public List<DriverDTO> list() {
         return driverMapper.list();
@@ -45,7 +37,12 @@ public class DriverService {
         setDefaultValues(dto);
         int result = driverMapper.update(dto);
 
-        if (dto.getUserId() != null) {
+        UserDTO currentUser = dto.getUserId() == null
+                ? null
+                : userMapper.findById(dto.getUserId());
+
+        if (dto.getUserId() != null
+                && (currentUser == null || !"WITHDRAWN".equals(currentUser.getStatus()))) {
             if (Boolean.TRUE.equals(dto.getCanEnter())) {
                 userMapper.updateStatus(dto.getUserId(), "ACTIVE");
             } else if (Boolean.TRUE.equals(dto.getIsRegistered())) {
@@ -57,25 +54,71 @@ public class DriverService {
     }
 
     @Transactional
-    public int delete(Long driverId) {
+    public int withdraw(Long driverId) {
         DriverDTO driver = driverMapper.detail(driverId);
         if (driver == null) {
             return 0;
         }
 
-        // 작업 이력은 유지하고 삭제되는 기사와의 참조만 해제합니다.
-        workOrderMapper.clearDriverReference(driverId);
-        vehicleMapper.clearDriverReference(driverId);
-        if (driver.getUserId() != null) {
-            vehicleMapper.clearUserReference(driver.getUserId());
+        // 기존 작업·출입 기록은 유지하고 회원 상태만 변경합니다.
+        if (driver.getUserId() == null) {
+            throw new RuntimeException("회원 계정이 연결되지 않은 기사입니다.");
         }
 
-        int deleted = driverMapper.delete(driverId);
-        if (deleted > 0 && driver.getUserId() != null) {
-            userMapper.delete(driver.getUserId());
+        if ("WITHDRAWN".equals(driver.getUserStatus())) {
+            return 1;
         }
 
-        return deleted;
+        int driverUpdated = driverMapper.updateApprovalByDriverId(
+                driverId,
+                false,
+                false
+        );
+        int userUpdated = userMapper.updateStatus(
+                driver.getUserId(),
+                "WITHDRAWN"
+        );
+
+        if (driverUpdated != 1 || userUpdated != 1) {
+            throw new RuntimeException("기사 탈퇴 처리에 실패했습니다.");
+        }
+
+        return 1;
+    }
+
+    @Transactional
+    public int reactivate(Long driverId) {
+        DriverDTO driver = driverMapper.detail(driverId);
+        if (driver == null) {
+            return 0;
+        }
+
+        if (driver.getUserId() == null) {
+            throw new RuntimeException("회원 계정이 연결되지 않은 기사입니다.");
+        }
+
+        if (!"WITHDRAWN".equals(driver.getUserStatus())) {
+            throw new RuntimeException("탈퇴 처리된 기사만 재활성화할 수 있습니다.");
+        }
+
+        int driverUpdated = driverMapper.updateApprovalByDriverId(
+                driverId,
+                Boolean.TRUE.equals(driver.getIsRegistered()),
+                false
+        );
+        String restoredStatus = Boolean.TRUE.equals(driver.getIsRegistered())
+                ? "CARRIER_APPROVED"
+                : "PENDING";
+        int userUpdated = userMapper.updateStatus(
+                driver.getUserId(),
+                restoredStatus
+        );
+
+        if (driverUpdated != 1 || userUpdated != 1) {
+            throw new RuntimeException("기사 재활성화에 실패했습니다.");
+        }
+
+        return 1;
     }
 
     @Transactional

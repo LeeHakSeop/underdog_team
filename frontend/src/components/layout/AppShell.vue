@@ -120,10 +120,10 @@ const MenuIcon = (props) =>
 
 const menus = {
   CARRIER: [
-    { label: '업무 홈', path: '/carrier/dashboard', icon: 'home' },
-    { label: '승인·회원 관리', path: '/carrier/driver-approval', icon: 'approval', group: '승인·조회' },
-    { label: '배정·작업 조회', path: '/carrier/inquiry', icon: 'list', group: '조회·기록' },
-    { label: '배정·작업 입력·수정', path: '/carrier/input', icon: 'clipboard', group: '입력·수정' },
+    { label: '홈', path: '/carrier/dashboard', icon: 'home' },
+    { label: '승인·회원 관리', path: '/carrier/driver-approval', icon: 'approval' },
+    { label: '트레일러 배정 및 작업지시', path: '/carrier/input', icon: 'clipboard' },
+    { label: '작업정보 조회', path: '/carrier/inquiry', icon: 'list' },
   ],
   DRIVER: [
     { label: '작업 홈', path: '/driver/dashboard', icon: 'driver' },
@@ -189,13 +189,7 @@ const logout = () => {
       </div>
 
       <nav class="side-nav">
-        <template v-for="(item, index) in activeMenus" :key="item.path">
-          <div
-            v-if="item.group && (index === 0 || activeMenus[index - 1].group !== item.group)"
-            class="side-nav-group"
-          >
-            {{ item.group }}
-          </div>
+        <template v-for="item in activeMenus" :key="item.path">
           <RouterLink
             :to="item.path"
             class="side-link"
@@ -336,15 +330,6 @@ const logout = () => {
   gap: 3px;
 }
 
-.side-nav-group {
-  margin-top: 7px;
-  padding: 4px 8px 2px;
-  color: #9fb5ca;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-}
-
 .side-link {
   display: flex;
   min-height: 34px;
@@ -430,7 +415,6 @@ const logout = () => {
 .app-shell.collapsed .brand-text,
 .app-shell.collapsed .role-badge,
 .app-shell.collapsed .side-note,
-.app-shell.collapsed .side-nav-group,
 .app-shell.collapsed .side-label,
 .app-shell.collapsed .logout-label {
   display: none;
@@ -496,10 +480,6 @@ const logout = () => {
 
   .side-nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .side-nav-group {
-    grid-column: 1 / -1;
   }
 
   .app-shell.collapsed .side-nav,
