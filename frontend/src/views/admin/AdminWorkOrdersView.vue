@@ -12,6 +12,7 @@ const carrierStore = useCarrierStore()
 const containerStore = useContainerStore()
 const driverStore = useDriverStore()
 const vehicleStore = useVehicleStore()
+
 const processingId = ref(null)
 const processMessage = ref('')
 const requestQuery = ref('')
@@ -26,6 +27,7 @@ const containerMessage = ref('')
 const editingContainerId = ref(null)
 const containerForm = ref({})
 const yardSectors = ref([])
+
 let refreshTimer = null
 
 const pageSizeOptions = [10, 20, 50]
@@ -65,9 +67,11 @@ const getPlateNumber = (vehicleId) => {
 
 const isVehicleType = (vehicle, expectedType) => {
   const vehicleType = String(getValue(vehicle, 'vehicleType', 'vehicle_type')).trim().toUpperCase()
-  return vehicleType === expectedType ||
+  return (
+    vehicleType === expectedType ||
     (expectedType === 'TRACTOR' && vehicleType === '트랙터') ||
     (expectedType === 'TRAILER' && vehicleType === '트레일러')
+  )
 }
 
 const getVehicleForType = (order, vehicleType) => {
@@ -77,16 +81,11 @@ const getVehicleForType = (order, vehicleType) => {
     getId(order, 'vehicleId'),
   ].filter(Boolean)
 
-  return vehicleIds
-    .map((vehicleId) => getVehicle(vehicleId))
-    .find((vehicle) => isVehicleType(vehicle, vehicleType)) || null
+  return vehicleIds.map((vehicleId) => getVehicle(vehicleId)).find((vehicle) => isVehicleType(vehicle, vehicleType)) || null
 }
 
-const getTractorPlate = (order) =>
-  getPlateNumber(getId(order, 'tractorVehicleId') || getId(order, 'vehicleId'))
-
-const getTrailerPlate = (order) =>
-  getPlateNumber(getId(order, 'trailerVehicleId'))
+const getTractorPlate = (order) => getPlateNumber(getId(order, 'tractorVehicleId') || getId(order, 'vehicleId'))
+const getTrailerPlate = (order) => getPlateNumber(getId(order, 'trailerVehicleId'))
 
 const getTrailerPlateNumber = (order) => getTrailerPlate(order)
 
@@ -127,6 +126,66 @@ const getYardLocation = (containerId) => {
   return `${container.block || '-'}-${container.bay || '-'}-${container.rowNo || container.row_no || '-'}`
 }
 
+const getStatusText = (workStatus) => {
+  if (workStatus === 'DISPATCH_WAITING') return '승인 대기'
+  if (workStatus === 'APPROVED') return '입차 대기'
+  if (workStatus === 'GATE_IN') return '입차 완료'
+  if (workStatus === 'IN_PROGRESS') return '작업 진행 중'
+  if (workStatus === 'COMPLETED') return '출차 대기'
+  if (workStatus === 'GATE_OUT') return '출차 완료'
+  if (workStatus === 'CANCELED') return '반려'
+  return workStatus || '-'
+}
+
+const getStatusClass = (workStatus) => {
+  if (workStatus === 'DISPATCH_WAITING') return 'amber'
+  if (workStatus === 'COMPLETED' || workStatus === 'GATE_OUT') return 'green'
+  if (workStatus === 'IN_PROGRESS') return 'blue'
+  if (workStatus === 'CANCELED') return 'red'
+  return ''
+}
+
+const getSearchText = (order) => {
+  const containerId = getId(order, 'containerId')
+  const workStatus = getValue(order, 'workStatus', 'work_status')
+
+  return [
+    getId(order, 'workOrderId'),
+    getCarrierName(order),
+    getTractorPlate(order),
+    getTrailerPlate(order),
+    getDriverName(getId(order, 'driverId')),
+    getContainerNumber(containerId),
+    getYardLocation(containerId),
+    getValue(order, 'workType', 'work_type'),
+    getValue(order, 'reservedTime', 'reserved_time'),
+    workStatus,
+    getStatusText(workStatus),
+  ]
+    .join(' ')
+    .toLowerCase()
+}
+
+const filterByQuery = (orders, query) => {
+  const keyword = query.trim().toLowerCase()
+  if (!keyword) return orders
+  return orders.filter((order) => getSearchText(order).includes(keyword))
+}
+
+const getPageCount = (total, pageSize) => Math.max(1, Math.ceil(total / pageSize))
+
+const paginate = (items, page, pageSize) => {
+  const start = (page - 1) * pageSize
+  return items.slice(start, start + pageSize)
+}
+
+const getPageStart = (total, page, pageSize) => {
+  if (total === 0) return 0
+  return (page - 1) * pageSize + 1
+}
+
+const getPageEnd = (total, page, pageSize) => Math.min(total, page * pageSize)
+
 const carrierRequests = computed(() => {
   return workOrderStore.workOrders.filter((order) => {
     const status = getValue(order, 'workStatus', 'work_status')
@@ -139,6 +198,7 @@ const processingTasks = computed(() => {
   return workOrderStore.workOrders.filter((order) => !carrierRequests.value.includes(order))
 })
 
+<<<<<<< HEAD
 const getSearchText = (order) => {
   const containerId = getId(order, 'containerId')
   const workStatus = getValue(order, 'workStatus', 'work_status')
@@ -176,11 +236,20 @@ const filteredCarrierRequests = computed(() =>
 const filteredProcessingTasks = computed(() => {
   const statusFiltered = taskStatus.value
     ? processingTasks.value.filter((order) => getValue(order, 'workStatus', 'work_status') === taskStatus.value)
+=======
+const filteredCarrierRequests = computed(() => filterByQuery(carrierRequests.value, requestQuery.value))
+
+const filteredProcessingTasks = computed(() => {
+  const status = taskStatus.value
+  const statusFiltered = status
+    ? processingTasks.value.filter((order) => getValue(order, 'workStatus', 'work_status') === status)
+>>>>>>> origin/pjh
     : processingTasks.value
 
   return filterByQuery(statusFiltered, taskQuery.value)
 })
 
+<<<<<<< HEAD
 const requestPageCount = computed(() =>
   getPageCount(filteredCarrierRequests.value.length, requestPageSize.value),
 )
@@ -188,11 +257,18 @@ const requestPageCount = computed(() =>
 const taskPageCount = computed(() =>
   getPageCount(filteredProcessingTasks.value.length, taskPageSize.value),
 )
+=======
+const requestPageCount = computed(() => getPageCount(filteredCarrierRequests.value.length, requestPageSize.value))
+const taskPageCount = computed(() => getPageCount(filteredProcessingTasks.value.length, taskPageSize.value))
+>>>>>>> origin/pjh
 
 const pagedCarrierRequests = computed(() =>
   paginate(filteredCarrierRequests.value, requestPage.value, requestPageSize.value),
 )
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/pjh
 const pagedProcessingTasks = computed(() =>
   paginate(filteredProcessingTasks.value, taskPage.value, taskPageSize.value),
 )
@@ -205,6 +281,19 @@ const visibleContainers = computed(() => {
     String(getValue(container, 'containerNumber', 'container_number')).toLowerCase().includes(query),
   )
 })
+
+const resetRequestSearch = () => {
+  requestQuery.value = ''
+  requestPageSize.value = 10
+  requestPage.value = 1
+}
+
+const resetTaskSearch = () => {
+  taskQuery.value = ''
+  taskStatus.value = ''
+  taskPageSize.value = 10
+  taskPage.value = 1
+}
 
 const emptyContainerForm = () => ({
   containerNumber: '',
@@ -251,9 +340,10 @@ const saveContainer = async () => {
   containerMessage.value = ''
   const payload = {
     ...containerForm.value,
-    sectorId: containerForm.value.sectorId == null || containerForm.value.sectorId === ''
-      ? null
-      : Number(containerForm.value.sectorId),
+    sectorId:
+      containerForm.value.sectorId == null || containerForm.value.sectorId === ''
+        ? null
+        : Number(containerForm.value.sectorId),
   }
 
   try {
@@ -315,33 +405,20 @@ const processWorkOrder = async (order, action) => {
   }
 }
 
-const getStatusText = (workStatus) => {
-  if (workStatus === 'DISPATCH_WAITING') return '승인 대기'
-  if (workStatus === 'APPROVED') return '입차 대기'
-  if (workStatus === 'GATE_IN') return '입차 완료'
-  if (workStatus === 'IN_PROGRESS') return '작업 진행 중'
-  if (workStatus === 'COMPLETED') return '출차 대기'
-  if (workStatus === 'GATE_OUT') return '출차 완료'
-  if (workStatus === 'CANCELED') return '반려'
-  return workStatus || '-'
-}
-
-const getStatusClass = (workStatus) => {
-  if (workStatus === 'DISPATCH_WAITING') return 'amber'
-  if (workStatus === 'COMPLETED' || workStatus === 'GATE_OUT') return 'green'
-  if (workStatus === 'IN_PROGRESS') return 'blue'
-  return ''
-}
-
 const loadData = () => {
   workOrderStore.loadWorkOrders().catch(() => {})
   carrierStore.loadCarriers().catch(() => {})
   containerStore.loadContainers().catch(() => {})
   driverStore.loadDrivers().catch(() => {})
   vehicleStore.loadVehicles().catch(() => {})
-  fetchYardSectors().then((data) => { yardSectors.value = data || [] }).catch(() => {})
+  fetchYardSectors()
+    .then((data) => {
+      yardSectors.value = data || []
+    })
+    .catch(() => {})
 }
 
+<<<<<<< HEAD
 const resetRequestSearch = () => {
   requestQuery.value = ''
   requestPageSize.value = 10
@@ -355,6 +432,8 @@ const resetTaskSearch = () => {
   taskPage.value = 1
 }
 
+=======
+>>>>>>> origin/pjh
 watch([requestQuery, requestPageSize], () => {
   requestPage.value = 1
 })
@@ -391,6 +470,7 @@ onUnmounted(() => {
       <div class="section-title">
         <h2>운송사 작업 요청 승인관리</h2>
         <span class="status-pill amber">배차 대기 {{ filteredCarrierRequests.length }}건</span>
+<<<<<<< HEAD
       </div>
 
       <div class="work-order-toolbar">
@@ -412,9 +492,32 @@ onUnmounted(() => {
           </label>
           <button class="ghost-button" type="button" @click="resetRequestSearch">초기화</button>
         </div>
+=======
+>>>>>>> origin/pjh
       </div>
 
-      <div class="table-wrap">
+      <div class="work-order-toolbar">
+        <div class="search-field">
+          <label for="requestSearch">조회</label>
+          <input
+            id="requestSearch"
+            v-model="requestQuery"
+            type="search"
+            placeholder="작업번호, 운송사, 트랙터, 트레일러, 기사, 컨테이너"
+          />
+        </div>
+        <div class="toolbar-actions">
+          <label>
+            표시
+            <select v-model.number="requestPageSize">
+              <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}건</option>
+            </select>
+          </label>
+          <button class="ghost-button" type="button" @click="resetRequestSearch">초기화</button>
+        </div>
+      </div>
+
+      <div class="table-wrap work-table-scroll">
         <table class="data-table">
           <thead>
             <tr>
@@ -483,7 +586,11 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="filteredCarrierRequests.length === 0">
+<<<<<<< HEAD
               <td colspan="13">배차 대기 작업이 없습니다.</td>
+=======
+              <td colspan="13">조회된 배차 대기 작업이 없습니다.</td>
+>>>>>>> origin/pjh
             </tr>
           </tbody>
         </table>
@@ -500,7 +607,16 @@ onUnmounted(() => {
             이전
           </button>
           <strong>{{ requestPage }} / {{ requestPageCount }}</strong>
+<<<<<<< HEAD
           <button class="ghost-button" type="button" :disabled="requestPage === requestPageCount" @click="requestPage += 1">
+=======
+          <button
+            class="ghost-button"
+            type="button"
+            :disabled="requestPage === requestPageCount"
+            @click="requestPage += 1"
+          >
+>>>>>>> origin/pjh
             다음
           </button>
         </div>
@@ -522,7 +638,11 @@ onUnmounted(() => {
             id="taskSearch"
             v-model="taskQuery"
             type="search"
+<<<<<<< HEAD
             placeholder="작업번호, 컨테이너, 차량번호, 기사, 야드 위치"
+=======
+            placeholder="작업번호, 컨테이너, 트랙터, 트레일러, 기사, 야드 위치"
+>>>>>>> origin/pjh
           />
         </div>
         <div class="toolbar-actions">
@@ -612,7 +732,11 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="filteredProcessingTasks.length === 0">
+<<<<<<< HEAD
               <td colspan="11">처리 중인 작업이 없습니다.</td>
+=======
+              <td colspan="11">조회된 처리 작업이 없습니다.</td>
+>>>>>>> origin/pjh
             </tr>
           </tbody>
         </table>
@@ -629,7 +753,16 @@ onUnmounted(() => {
             이전
           </button>
           <strong>{{ taskPage }} / {{ taskPageCount }}</strong>
+<<<<<<< HEAD
           <button class="ghost-button" type="button" :disabled="taskPage === taskPageCount" @click="taskPage += 1">
+=======
+          <button
+            class="ghost-button"
+            type="button"
+            :disabled="taskPage === taskPageCount"
+            @click="taskPage += 1"
+          >
+>>>>>>> origin/pjh
             다음
           </button>
         </div>
@@ -649,7 +782,11 @@ onUnmounted(() => {
       <form v-if="Object.keys(containerForm).length" class="container-form" @submit.prevent="saveContainer">
         <strong>{{ editingContainerId ? '컨테이너 수정' : '컨테이너 등록' }}</strong>
         <input v-model.trim="containerForm.containerNumber" required placeholder="컨테이너 번호 *" />
-        <select v-model="containerForm.containerSize"><option>20FT</option><option>40FT</option><option>45FT</option></select>
+        <select v-model="containerForm.containerSize">
+          <option>20FT</option>
+          <option>40FT</option>
+          <option>45FT</option>
+        </select>
         <input v-model.trim="containerForm.shippingLine" placeholder="선사" />
         <input v-model.trim="containerForm.containerLocation" placeholder="현재 위치" />
         <input v-model.trim="containerForm.block" placeholder="블록" />
@@ -662,9 +799,14 @@ onUnmounted(() => {
           </option>
         </select>
         <input v-model.trim="containerForm.sealNumber" placeholder="봉인 번호" />
-        <label class="exit-check"><input v-model="containerForm.canExit" type="checkbox" /> 반출 가능</label>
+        <label class="exit-check">
+          <input v-model="containerForm.canExit" type="checkbox" />
+          반출 가능
+        </label>
         <div class="container-form-actions">
-          <button class="primary-button" type="submit" :disabled="containerStore.loading">{{ containerStore.loading ? '저장 중' : '저장' }}</button>
+          <button class="primary-button" type="submit" :disabled="containerStore.loading">
+            {{ containerStore.loading ? '저장 중' : '저장' }}
+          </button>
           <button class="ghost-button" type="button" @click="closeContainerForm">취소</button>
         </div>
       </form>
@@ -739,11 +881,19 @@ onUnmounted(() => {
 .search-field input,
 .toolbar-actions select {
   min-height: 30px;
+<<<<<<< HEAD
   padding: 0 8px;
   color: var(--ink-900);
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 2px;
+=======
+  color: var(--ink-900);
+  background: #ffffff;
+  border: 1px solid #aeb9c5;
+  border-radius: 2px;
+  padding: 0 8px;
+>>>>>>> origin/pjh
 }
 
 .toolbar-actions {
@@ -781,7 +931,12 @@ onUnmounted(() => {
   text-align: center;
 }
 
+<<<<<<< HEAD
 .process-message {
+=======
+.process-message,
+.container-message {
+>>>>>>> origin/pjh
   margin: 0;
   padding: 10px 12px;
   color: var(--ink-700);
@@ -790,10 +945,19 @@ onUnmounted(() => {
   font-weight: 800;
 }
 
+.container-message {
+  margin-bottom: 10px;
+}
+
 .reject-button {
   margin-left: 6px;
   color: #9f1d1d;
   border-color: #e4a6a6;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .work-table-scroll {
@@ -809,7 +973,9 @@ onUnmounted(() => {
 
 .table-tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -835,7 +1001,9 @@ onUnmounted(() => {
   border: 1px solid var(--line);
 }
 
-.container-form strong { color: var(--ink-900); }
+.container-form strong {
+  color: var(--ink-900);
+}
 
 .container-form input,
 .container-form select {
@@ -843,15 +1011,23 @@ onUnmounted(() => {
   min-height: 34px;
   padding: 0 9px;
   color: var(--ink-900);
-  background: #fff;
+  background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 4px;
   font-weight: 700;
 }
 
-.exit-check { color: var(--ink-700); font-size: 13px; font-weight: 800; }
-.container-form-actions, .container-actions { display: flex; gap: 6px; }
-.container-message { margin: 0 0 10px; color: var(--ink-700); font-weight: 800; }
+.exit-check {
+  color: var(--ink-700);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.container-form-actions,
+.container-actions {
+  display: flex;
+  gap: 6px;
+}
 
 button:disabled {
   cursor: not-allowed;
@@ -859,7 +1035,31 @@ button:disabled {
 }
 
 @media (max-width: 980px) {
-  .container-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .container-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .work-order-toolbar,
+  .pagination-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .search-field {
+    max-width: none;
+  }
+
+  .toolbar-actions,
+  .pagination-controls,
+  .table-tools {
+    justify-content: flex-start;
+  }
+
+  .container-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 760px) {
