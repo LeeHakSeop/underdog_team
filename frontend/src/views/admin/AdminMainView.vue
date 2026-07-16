@@ -211,13 +211,9 @@ const getVehicleType = (result) => normalizeVehicleType(result?.vehicle?.vehicle
 const getBooleanText = (value) => (value === true ? '가능' : value === false ? '불가' : '-')
 
 const getPassText = (result, expectedType) => {
-<<<<<<< HEAD
-  if (!result?.matched || getVehicleType(result) !== expectedType) return '불가'
-=======
   if (!result?.matched || !result?.aiResult?.detected) return '불가'
   if (getVehicleType(result) !== normalizeVehicleType(expectedType)) return '불가'
   if (result.needReview) return '불가'
->>>>>>> origin/hakseop
   return '가능'
 }
 
@@ -303,43 +299,12 @@ const gateProcessMissingItems = computed(() => getGateProcessMissingItems(proces
 const canProcessGateFor = (type) => getGateProcessMissingItems(type).length === 0
 const canProcessGate = computed(() => canProcessGateFor(processType.value))
 
+const processTypeLabel = computed(() => (processType.value === 'OUT' ? '출차' : '입차'))
+
 const isReadyForGateProcess = computed(() => canProcessGate.value)
 
 const recognitionStatus = (result, expectedType) => {
   if (!result) return '인식 대기'
-<<<<<<< HEAD
-  if (result.needReview && getPassText(result, expectedType) === '가능') return '확인 완료'
-  if (result.needReview) return '확인 필요'
-  return getPassText(result, expectedType) === '가능' ? '정상' : '인식 불가'
-}
-
-const getGateRecognition = (gate, targetType) => gateRecognitionResults[gate.id]?.[targetType] || null
-
-const getGateOcrStatus = (gate) => {
-  const tractor = getGateRecognition(gate, 'tractor')
-  const trailer = getGateRecognition(gate, 'trailer')
-
-  if (!tractor && !trailer) return { text: 'OCR 대기', tone: 'idle' }
-  if (
-    (tractor?.needReview || trailer?.needReview) &&
-    getPassText(tractor, 'TRACTOR') === '가능' &&
-    getPassText(trailer, 'TRAILER') === '가능'
-  ) {
-    return { text: '확인 완료', tone: 'success' }
-  }
-  if (tractor?.needReview || trailer?.needReview) return { text: '확인 필요', tone: 'warning' }
-  if (tractor?.aiResult?.detected && trailer?.aiResult?.detected) return { text: 'OCR 성공', tone: 'success' }
-  return { text: 'OCR 실패', tone: 'danger' }
-}
-
-const getGateDbStatus = (gate) => {
-  const tractor = getGateRecognition(gate, 'tractor')
-  const trailer = getGateRecognition(gate, 'trailer')
-
-  if (!tractor && !trailer) return { text: 'DB 대기', tone: 'idle' }
-  if (tractor?.matched && trailer?.matched) return { text: 'DB 매칭', tone: 'success' }
-  return { text: '미등록/불일치', tone: 'danger' }
-=======
   if (!result.aiResult?.detected) return '인식 실패'
   if (!result.matched) return '등록 차량 아님'
   if (getVehicleType(result) !== normalizeVehicleType(expectedType)) return '차량 유형 불일치'
@@ -350,7 +315,32 @@ const getGateDbStatus = (gate) => {
 const isRecognitionWarning = (result, expectedType) => {
   const status = recognitionStatus(result, expectedType)
   return status !== '인식 대기' && status !== '정상'
->>>>>>> origin/hakseop
+}
+
+const getGateRecognition = (gate, targetType) => gateRecognitionResults[gate.id]?.[targetType] || null
+
+const getGateOcrStatus = (gate) => {
+  const tractor = getGateRecognition(gate, 'tractor')
+  const trailer = getGateRecognition(gate, 'trailer')
+
+  if (!tractor && !trailer) return { text: 'OCR 대기', tone: 'idle' }
+  if (tractor?.needReview || trailer?.needReview) return { text: '확인 필요', tone: 'warning' }
+  if (
+    getPassText(tractor, 'TRACTOR') === '가능' &&
+    getPassText(trailer, 'TRAILER') === '가능'
+  ) {
+    return { text: 'OCR 성공', tone: 'success' }
+  }
+  return { text: 'OCR 실패', tone: 'danger' }
+}
+
+const getGateDbStatus = (gate) => {
+  const tractor = getGateRecognition(gate, 'tractor')
+  const trailer = getGateRecognition(gate, 'trailer')
+
+  if (!tractor && !trailer) return { text: 'DB 대기', tone: 'idle' }
+  if (tractor?.matched && trailer?.matched) return { text: 'DB 매칭', tone: 'success' }
+  return { text: '미등록/불일치', tone: 'danger' }
 }
 
 const selectGateImage = async (event, gate, targetType) => {
@@ -416,7 +406,7 @@ const loadData = async () => {
 
 watch(selectedGate, (gate) => {
   processType.value = gate?.inOutType || 'IN'
-})
+}, { immediate: true })
 
 onMounted(() => {
   plateRecognitionStore.reset()
@@ -507,9 +497,22 @@ onUnmounted(() => {
             </dl>
           </section>
         </div>
-        <div class="process-actions side-process-actions">
-          <button class="primary-button process-button" type="button" :disabled="!canProcessGateFor('IN') || gateLogStore.loading" @click="submitGateProcess('IN')">{{ gateLogStore.loading && processType === 'IN' ? '처리 중' : '입차 처리' }}</button>
-          <button class="primary-button process-button out" type="button" :disabled="!canProcessGateFor('OUT') || gateLogStore.loading" @click="submitGateProcess('OUT')">{{ gateLogStore.loading && processType === 'OUT' ? '처리 중' : '출차 처리' }}</button>
+        <div class="process-actions side-process-actions single-process-action">
+          <p class="process-mode-indicator">선택 게이트 기준 자동 판단: {{ processTypeLabel }}</p>
+          <button
+            v-if="processType === 'IN'"
+            class="primary-button process-button"
+            type="button"
+            :disabled="!canProcessGateFor('IN') || gateLogStore.loading"
+            @click="submitGateProcess('IN')"
+          >{{ gateLogStore.loading ? '처리 중' : '입차 처리' }}</button>
+          <button
+            v-else
+            class="primary-button process-button out"
+            type="button"
+            :disabled="!canProcessGateFor('OUT') || gateLogStore.loading"
+            @click="submitGateProcess('OUT')"
+          >{{ gateLogStore.loading ? '처리 중' : '출차 처리' }}</button>
         </div>
       </aside>
     </section>
@@ -887,6 +890,17 @@ onUnmounted(() => {
 .process-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .process-button { min-height: 32px; padding-block: 5px; }
 .side-process-actions { margin-top: auto; }
+.single-process-action { grid-template-columns: 1fr; }
+.process-mode-indicator {
+  margin: 0;
+  padding: 6px 8px;
+  color: #a9badb;
+  background: #151d31;
+  border: 1px solid #263353;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
 .process-result { grid-column: 1 / -1; margin: 0; padding: 8px 10px; font-size: 13px; font-weight: 700; }
 .process-result.success { color: #a6e6c3; background: #123b2a; border: 1px solid #2f7d57; }
 .process-result.warning { color: #ffd0ce; background: #491e22; border: 1px solid #b8403a; }

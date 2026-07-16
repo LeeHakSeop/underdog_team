@@ -51,9 +51,14 @@ public class DriverController {
         return driverService.detail(driverId);
     }
 
-    @DeleteMapping("/delete/{driverId}")
-    public int delete(@PathVariable Long driverId) {
-        return driverService.delete(driverId);
+    @PatchMapping("/{driverId}/withdraw")
+    public int withdraw(@PathVariable Long driverId) {
+        return driverService.withdraw(driverId);
+    }
+
+    @PatchMapping("/{driverId}/reactivate")
+    public int reactivate(@PathVariable Long driverId) {
+        return driverService.reactivate(driverId);
     }
 
     @GetMapping("/my-work-orders")
