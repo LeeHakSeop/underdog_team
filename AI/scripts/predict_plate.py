@@ -10,9 +10,8 @@ from ultralytics import YOLO
 from ocr_postprocess import (
     PLATE_KOREAN,
 )
-
-_paddle_ocr_predictor = None
-_crnn_ocr_predictor = None
+from paddle_ocr_predict import predict_paddle_ocr
+from crnn_ocr_predict import predict_crnn_ocr
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 MODEL_PATH = BASE_DIR / "models" / "team_yolo_best.pt"
@@ -22,7 +21,6 @@ SAVE_DIR.mkdir(parents=True, exist_ok=True)
 MIN_DETECTION_CONFIDENCE = 0.50
 MIN_OCR_CONFIDENCE = 0.70
 MIN_FINAL_CONFIDENCE = 0.60
-CROP_PADDING_RATIO = 0.08
 
 # 중앙 차량 우선 선택용 설정
 # 번호판은 보통 화면의 정중앙보다 약간 아래에 있으므로 target_y를 0.55로 둔다.
@@ -49,28 +47,12 @@ def imwrite_korean(path, img):
 
 
 def is_plate_format(text):
-    return re.match(r"^(?:[가-힣]{2})?\d{2,3}[가-힣]\d{4}$", str(text)) is not None
+    return re.match(r"^\d{2,3}[가-힣]\d{4}$", str(text)) is not None
 
 
 def get_korean_char(text):
-    m = re.search(r"\d{2,3}([가-힣])\d{4}$", str(text))
-    if m:
-        return m.group(1)
     m = re.search(r"[가-힣]", str(text))
     return m.group() if m else None
-
-
-def expand_box(x1, y1, x2, y2, image_width, image_height, pad_ratio=CROP_PADDING_RATIO):
-    width = x2 - x1
-    height = y2 - y1
-    pad_x = int(width * pad_ratio)
-    pad_y = int(height * pad_ratio)
-    return (
-        max(0, x1 - pad_x),
-        max(0, y1 - pad_y),
-        min(image_width, x2 + pad_x),
-        min(image_height, y2 + pad_y),
-    )
 
 
 def need_review_check(text):
@@ -106,20 +88,10 @@ def add_confidence_review_reasons(reasons, detection_confidence, ocr_confidence,
 
 
 def run_ocr(crop_path, ocr_type):
-    global _paddle_ocr_predictor, _crnn_ocr_predictor
-
     if ocr_type == "crnn":
-        if _crnn_ocr_predictor is None:
-            from crnn_ocr_predict import predict_crnn_ocr
+        return predict_crnn_ocr(crop_path)
 
-            _crnn_ocr_predictor = predict_crnn_ocr
-        return _crnn_ocr_predictor(crop_path)
-
-    if _paddle_ocr_predictor is None:
-        from paddle_ocr_predict import predict_paddle_ocr
-
-        _paddle_ocr_predictor = predict_paddle_ocr
-    return _paddle_ocr_predictor(crop_path)
+    return predict_paddle_ocr(crop_path)
 
 
 def calc_center_score(x1, y1, x2, y2, image_width, image_height):
@@ -222,8 +194,7 @@ def predict_plate(image_path, ocr_type="paddle"):
             y1 = max(0, min(y1, image_height - 1))
             y2 = max(0, min(y2, image_height))
 
-            crop_x1, crop_y1, crop_x2, crop_y2 = expand_box(x1, y1, x2, y2, image_width, image_height)
-            crop = img[crop_y1:crop_y2, crop_x1:crop_x2]
+            crop = img[y1:y2, x1:x2]
 
             if crop.size == 0:
                 continue
@@ -252,7 +223,6 @@ def predict_plate(image_path, ocr_type="paddle"):
                 "ocrConfidence": ocr_confidence,
                 "centerScore": center_score,
                 "box": [int(x1), int(y1), int(x2), int(y2)],
-                "cropBox": [int(crop_x1), int(crop_y1), int(crop_x2), int(crop_y2)],
                 "needReview": need_review,
                 "reviewReasons": reasons,
                 "cropPath": crop_path.as_posix(),

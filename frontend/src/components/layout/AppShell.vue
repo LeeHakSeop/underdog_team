@@ -121,10 +121,9 @@ const MenuIcon = (props) =>
 const menus = {
   CARRIER: [
     { label: '업무 홈', path: '/carrier/dashboard', icon: 'home' },
-    { label: '기사 가입 승인', path: '/carrier/driver-approval', icon: 'driver' },
-    { label: '트레일러 배정', path: '/carrier/vehicle-register', icon: 'truck' },
-    { label: '기사 작업지시', path: '/carrier/work-orders', icon: 'clipboard' },
-    { label: '승인 현황', path: '/carrier/approvals', icon: 'approval' },
+    { label: '승인·회원 관리', path: '/carrier/driver-approval', icon: 'approval', group: '승인·조회' },
+    { label: '배정·작업 조회', path: '/carrier/inquiry', icon: 'list', group: '조회·기록' },
+    { label: '배정·작업 입력·수정', path: '/carrier/input', icon: 'clipboard', group: '입력·수정' },
   ],
   DRIVER: [
     { label: '작업 홈', path: '/driver/dashboard', icon: 'driver' },
@@ -190,16 +189,22 @@ const logout = () => {
       </div>
 
       <nav class="side-nav">
-        <RouterLink
-          v-for="item in activeMenus"
-          :key="item.path"
-          :to="item.path"
-          class="side-link"
-          :title="item.label"
-        >
-          <span class="side-icon"><MenuIcon :name="item.icon" /></span>
-          <span class="side-label">{{ item.label }}</span>
-        </RouterLink>
+        <template v-for="(item, index) in activeMenus" :key="item.path">
+          <div
+            v-if="item.group && (index === 0 || activeMenus[index - 1].group !== item.group)"
+            class="side-nav-group"
+          >
+            {{ item.group }}
+          </div>
+          <RouterLink
+            :to="item.path"
+            class="side-link"
+            :title="item.label"
+          >
+            <span class="side-icon"><MenuIcon :name="item.icon" /></span>
+            <span class="side-label">{{ item.label }}</span>
+          </RouterLink>
+        </template>
       </nav>
 
       <div class="side-footer">
@@ -331,6 +336,15 @@ const logout = () => {
   gap: 3px;
 }
 
+.side-nav-group {
+  margin-top: 7px;
+  padding: 4px 8px 2px;
+  color: #9fb5ca;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
 .side-link {
   display: flex;
   min-height: 34px;
@@ -416,6 +430,7 @@ const logout = () => {
 .app-shell.collapsed .brand-text,
 .app-shell.collapsed .role-badge,
 .app-shell.collapsed .side-note,
+.app-shell.collapsed .side-nav-group,
 .app-shell.collapsed .side-label,
 .app-shell.collapsed .logout-label {
   display: none;
@@ -473,15 +488,27 @@ const logout = () => {
   .app-shell.collapsed .sidebar {
     align-items: stretch;
     position: static;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .side-nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .side-nav-group {
+    grid-column: 1 / -1;
+  }
+
   .app-shell.collapsed .side-nav,
   .app-shell.collapsed .side-footer {
     display: none;
+  }
+
+  .side-footer {
+    margin-top: 8px;
   }
 
   .topbar {

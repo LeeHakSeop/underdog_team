@@ -115,6 +115,13 @@ public interface WorkOrderMapper {
             """)
     int cancelDispatchWaiting(@Param("workOrderId") Long workOrderId);
 
+    @Update("""
+            UPDATE work_order
+            SET driver_id = NULL
+            WHERE driver_id = #{driverId}
+            """)
+    int clearDriverReference(@Param("driverId") Long driverId);
+
     @Select("""
             SELECT
                 wo.work_order_id AS workOrderId,
