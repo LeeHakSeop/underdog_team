@@ -12,12 +12,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -122,6 +126,41 @@ class WorkOrderServiceTest {
         assertEquals("WORK_ORDER_NOT_IN_PROGRESS", result.getExceptionType());
         verifyNoInteractions(historyMapper);
         verifyNoInteractions(containerService);
+    }
+
+    @Test
+    void insertRejectsDriverAlreadyAssignedToActiveWorkOrder() {
+        WorkOrderDTO request = order("DISPATCH_WAITING", false, null);
+        request.setDriverId(10L);
+        when(mapper.countActiveByDriverId(10L, null)).thenReturn(1);
+
+        assertThrows(ResponseStatusException.class, () -> service.insert(request));
+        verify(mapper, never()).insert(any(WorkOrderDTO.class));
+    }
+
+    @Test
+    void insertRejectsTrailerAlreadyAssignedToActiveWorkOrder() {
+        WorkOrderDTO request = order("DISPATCH_WAITING", false, null);
+        request.setTrailerVehicleId(20L);
+        when(mapper.countActiveByTrailerVehicleId(20L, null)).thenReturn(1);
+
+        assertThrows(ResponseStatusException.class, () -> service.insert(request));
+        verify(mapper, never()).insert(any(WorkOrderDTO.class));
+    }
+
+    @Test
+    void cancelOnlyAllowsDispatchWaitingAndStoresHistory() {
+        WorkOrderDTO waiting = order("DISPATCH_WAITING", false, null);
+        WorkOrderDTO canceled = order("CANCELED", false, null);
+        when(mapper.detail(7L)).thenReturn(waiting, canceled);
+        when(mapper.cancelDispatchWaiting(7L)).thenReturn(1);
+
+        WorkOrderDTO result = service.cancel(7L);
+
+        assertEquals("CANCELED", result.getWorkStatus());
+        WorkStatusHistoryDTO history = captureHistory();
+        assertEquals("DISPATCH_WAITING", history.getPrevStatus());
+        assertEquals("CANCELED", history.getNewStatus());
     }
 
     private WorkStatusHistoryDTO captureHistory() {

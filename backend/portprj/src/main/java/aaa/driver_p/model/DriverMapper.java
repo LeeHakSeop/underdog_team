@@ -150,6 +150,8 @@ public interface DriverMapper {
                 wo.reserved_time,
                 wo.work_status,
                 wo.is_approved,
+                wo.tractor_vehicle_id AS tractorVehicleId,
+                wo.trailer_vehicle_id AS trailerVehicleId,
                 d.driver_id,
                 d.driver_name,
                 d.driver_contact,
@@ -161,6 +163,7 @@ public interface DriverMapper {
                 v.plate_number,
                 v.vehicle_type,
                 v.vehicle_status,
+                trailer.plate_number AS trailerPlateNumber,
                 c.container_id,
                 c.container_number,
                 c.container_size,
@@ -171,7 +174,26 @@ public interface DriverMapper {
                 ys.sector_id,
                 ys.sector_name,
                 ys.sector_status,
-                ys.guide_message,
+                CASE
+                    WHEN wo.work_status = 'DISPATCH_WAITING'
+                        THEN '운송사 배차 승인 대기 중입니다.'
+                    WHEN wo.work_status = 'APPROVED'
+                        THEN '입차 승인 완료. 게이트에서 입차 처리 후 야드 섹터로 이동하세요.'
+                    WHEN wo.work_status = 'GATE_IN'
+                        THEN CONCAT('입차 처리 완료. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터로 이동하여 작업을 진행하세요.')
+                    WHEN wo.work_status = 'IN_PROGRESS'
+                        THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
+                    WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE
+                        THEN '작업 완료 및 출차 가능 상태입니다. 게이트에서 출차 처리하세요.'
+                    WHEN wo.work_status = 'COMPLETED'
+                        THEN '작업 완료. 출차 보류 및 관리자 확인 대기 중입니다.'
+                    WHEN wo.work_status = 'GATE_OUT'
+                        THEN '출차 처리가 완료되었습니다.'
+                    WHEN wo.work_status = 'CANCELED'
+                        THEN '취소된 작업지시입니다.'
+                    ELSE COALESCE(ys.guide_message, '작업 상태를 확인하세요.')
+                END AS guide_message,
+                c.can_exit AS can_exit,
                 ys.alt_waiting_area
             FROM work_order wo
             LEFT JOIN driver d
@@ -179,7 +201,9 @@ public interface DriverMapper {
             LEFT JOIN carrier ca
                 ON d.carrier_id = ca.carrier_id
             LEFT JOIN vehicle v
-                ON wo.vehicle_id = v.vehicle_id
+                ON COALESCE(wo.tractor_vehicle_id, wo.vehicle_id) = v.vehicle_id
+            LEFT JOIN vehicle trailer
+                ON wo.trailer_vehicle_id = trailer.vehicle_id
             LEFT JOIN container c
                 ON wo.container_id = c.container_id
             LEFT JOIN yard_sector ys
@@ -198,6 +222,8 @@ public interface DriverMapper {
                 wo.reserved_time,
                 wo.work_status,
                 wo.is_approved,
+                wo.tractor_vehicle_id AS tractorVehicleId,
+                wo.trailer_vehicle_id AS trailerVehicleId,
                 d.driver_id,
                 d.driver_name,
                 d.driver_contact,
@@ -209,6 +235,7 @@ public interface DriverMapper {
                 v.plate_number,
                 v.vehicle_type,
                 v.vehicle_status,
+                trailer.plate_number AS trailerPlateNumber,
                 c.container_id,
                 c.container_number,
                 c.container_size,
@@ -219,7 +246,26 @@ public interface DriverMapper {
                 ys.sector_id,
                 ys.sector_name,
                 ys.sector_status,
-                ys.guide_message,
+                CASE
+                    WHEN wo.work_status = 'DISPATCH_WAITING'
+                        THEN '운송사 배차 승인 대기 중입니다.'
+                    WHEN wo.work_status = 'APPROVED'
+                        THEN '입차 승인 완료. 게이트에서 입차 처리 후 야드 섹터로 이동하세요.'
+                    WHEN wo.work_status = 'GATE_IN'
+                        THEN CONCAT('입차 처리 완료. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터로 이동하여 작업을 진행하세요.')
+                    WHEN wo.work_status = 'IN_PROGRESS'
+                        THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
+                    WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE
+                        THEN '작업 완료 및 출차 가능 상태입니다. 게이트에서 출차 처리하세요.'
+                    WHEN wo.work_status = 'COMPLETED'
+                        THEN '작업 완료. 출차 보류 및 관리자 확인 대기 중입니다.'
+                    WHEN wo.work_status = 'GATE_OUT'
+                        THEN '출차 처리가 완료되었습니다.'
+                    WHEN wo.work_status = 'CANCELED'
+                        THEN '취소된 작업지시입니다.'
+                    ELSE COALESCE(ys.guide_message, '작업 상태를 확인하세요.')
+                END AS guide_message,
+                c.can_exit AS can_exit,
                 ys.alt_waiting_area
             FROM work_order wo
             LEFT JOIN driver d
@@ -227,7 +273,9 @@ public interface DriverMapper {
             LEFT JOIN carrier ca
                 ON d.carrier_id = ca.carrier_id
             LEFT JOIN vehicle v
-                ON wo.vehicle_id = v.vehicle_id
+                ON COALESCE(wo.tractor_vehicle_id, wo.vehicle_id) = v.vehicle_id
+            LEFT JOIN vehicle trailer
+                ON wo.trailer_vehicle_id = trailer.vehicle_id
             LEFT JOIN container c
                 ON wo.container_id = c.container_id
             LEFT JOIN yard_sector ys

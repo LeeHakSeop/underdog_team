@@ -136,7 +136,7 @@ const menus = {
     { label: '통계 요약', path: '/admin/dashboard', icon: 'dashboard' },
 
     { label: '운영 맵', path: '/admin/yard-map', icon: 'map' },
-    { label: 'AI 번호판 인식', path: '/admin/plate-recognition', icon: 'scan' },
+    { label: 'AI 인식 검증', path: '/admin/plate-recognition', icon: 'scan' },
     { label: '가입 회원 관리', path: '/admin/members', icon: 'users' },
 
     { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
