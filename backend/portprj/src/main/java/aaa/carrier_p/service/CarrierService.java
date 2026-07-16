@@ -43,16 +43,14 @@ public class CarrierService {
             return 0;
         }
 
-        List<Long> driverUserIds = carrierMapper.findDriverUserIds(carrierId);
 
         // 기사·차량을 참조하는 운영 이력은 보존하고, 삭제 대상과의 연결만 해제합니다.
         carrierMapper.clearWorkOrderDriverReferences(carrierId);
         carrierMapper.detachVehicles(carrierId);
-        carrierMapper.deleteDrivers(carrierId);
+        carrierMapper.detachDrivers(carrierId);
 
         int deleted = carrierMapper.delete(carrierId);
 
-        driverUserIds.forEach(userMapper::delete);
         if (carrier.getUserId() != null) {
             userMapper.delete(carrier.getUserId());
         }

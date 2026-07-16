@@ -14,6 +14,8 @@ const message = ref('')
 const deletingCarrierId = ref(null)
 
 const users = ref([])
+const CARRIER_DELETE_LOG_KEY = 'adminCarrierDeleteTimeline'
+const carrierDeleteLogs = ref([])
 
 const carrierStore = useCarrierStore()
 const driverStore = useDriverStore()
@@ -81,6 +83,47 @@ const getCarrier = (carrierId) => {
   return carriers.value.find((carrier) => carrier.carrierId === carrierId)
 }
 
+const recentCarrierDeleteLogs = computed(() => carrierDeleteLogs.value.slice(0, 20))
+
+const formatDateTime = (value) => {
+  if (!value) return '-'
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+const loadCarrierDeleteLogs = () => {
+  try {
+    carrierDeleteLogs.value = JSON.parse(localStorage.getItem(CARRIER_DELETE_LOG_KEY) || '[]')
+  } catch {
+    carrierDeleteLogs.value = []
+  }
+}
+
+const saveCarrierDeleteLog = (carrier) => {
+  const relatedDrivers = drivers.value.filter((driver) => driver.carrierId === carrier.carrierId)
+  const nextLogs = [
+    {
+      id: `${carrier.carrierId}-${Date.now()}`,
+      carrierId: carrier.carrierId,
+      carrierName: carrier.carrierName,
+      carrierContact: carrier.carrierContact || '-',
+      managerName: carrier.managerName || '-',
+      carrierStatus: carrier.carrierStatus || '-',
+      deletedAt: new Date().toISOString(),
+      driverCount: relatedDrivers.length,
+    },
+    ...carrierDeleteLogs.value,
+  ].slice(0, 50)
+
+  carrierDeleteLogs.value = nextLogs
+  localStorage.setItem(CARRIER_DELETE_LOG_KEY, JSON.stringify(nextLogs))
+}
+
 const loadUsers = async () => {
   users.value = (await getUsers()) || []
 }
@@ -112,6 +155,7 @@ const removeCarrier = async (carrier) => {
 
   try {
     await carrierStore.removeCarrier(carrier.carrierId)
+    saveCarrierDeleteLog(carrier)
     message.value = `${carrier.carrierName} 운송사와 소속 기사 정보가 삭제되었습니다.`
     await loadData()
   } catch (error) {
@@ -179,6 +223,7 @@ const rejectVehicle = async (vehicleId) => {
 let refreshTimer = null
 
 onMounted(() => {
+  loadCarrierDeleteLogs()
   loadData()
   refreshTimer = setInterval(() => {
     if (!loading.value && !deletingCarrierId.value) {
@@ -359,6 +404,7 @@ onUnmounted(() => {
           </tbody>
         </table>
       </div>
+
     </section>
 
     <section v-else-if="activeTab === 'carrier'" class="panel">
@@ -419,6 +465,32 @@ onUnmounted(() => {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="delete-timeline-panel">
+        <div class="section-title timeline-title">
+          <h2>운송사 삭제 이력</h2>
+          <span class="status-pill">{{ carrierDeleteLogs.length }}건</span>
+        </div>
+
+        <div v-if="recentCarrierDeleteLogs.length === 0" class="empty-box compact">
+          아직 삭제된 운송사 이력이 없습니다.
+        </div>
+
+        <ol v-else class="delete-timeline">
+          <li v-for="log in recentCarrierDeleteLogs" :key="log.id">
+            <time>{{ formatDateTime(log.deletedAt) }}</time>
+            <div>
+              <b>{{ log.carrierName }}</b>
+              <span>
+                ID {{ log.carrierId }} / 담당자 {{ log.managerName }} / 연락처 {{ log.carrierContact }}
+              </span>
+              <small>
+                삭제 당시 상태 {{ log.carrierStatus }} · 소속 기사 {{ log.driverCount }}명
+              </small>
+            </div>
+          </li>
+        </ol>
       </div>
     </section>
 
@@ -638,6 +710,58 @@ onUnmounted(() => {
   border: 1px solid var(--line);
 }
 
+.empty-box.compact {
+  padding: 14px;
+  text-align: left;
+}
+
+.delete-timeline-panel {
+  margin-top: 12px;
+}
+
+.timeline-title {
+  margin: 0 0 8px;
+}
+
+.delete-timeline {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.delete-timeline li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f8fbfe;
+  border: 1px solid var(--line);
+}
+
+.delete-timeline time {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.delete-timeline div {
+  display: grid;
+  gap: 3px;
+}
+
+.delete-timeline b {
+  color: var(--ink-900);
+}
+
+.delete-timeline span,
+.delete-timeline small {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .approval-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -700,6 +824,12 @@ onUnmounted(() => {
   color: #991b1b;
   background: #fff1f2;
   border-color: #fecaca;
+}
+
+@media (max-width: 760px) {
+  .delete-timeline li {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
 
