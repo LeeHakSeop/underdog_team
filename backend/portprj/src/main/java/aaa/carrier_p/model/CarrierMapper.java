@@ -74,14 +74,6 @@ public interface CarrierMapper {
         """)
     int delete(Long carrierId);
 
-    @Select("""
-        SELECT user_id
-        FROM driver
-        WHERE carrier_id = #{carrierId}
-          AND user_id IS NOT NULL
-        """)
-    List<Long> findDriverUserIds(@Param("carrierId") Long carrierId);
-
     @Update("""
         UPDATE work_order
         SET driver_id = NULL
@@ -102,11 +94,14 @@ public interface CarrierMapper {
         """)
     int detachVehicles(@Param("carrierId") Long carrierId);
 
-    @Delete("""
-        DELETE FROM driver
+    @Update("""
+        UPDATE driver
+        SET carrier_id = NULL,
+            is_registered = FALSE,
+            can_enter = FALSE
         WHERE carrier_id = #{carrierId}
         """)
-    int deleteDrivers(@Param("carrierId") Long carrierId);
+    int detachDrivers(@Param("carrierId") Long carrierId);
 
     @Insert("""
             INSERT INTO carrier (

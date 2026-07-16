@@ -310,37 +310,6 @@ const recognitionStatus = (result, expectedType) => {
   if (getVehicleType(result) !== normalizeVehicleType(expectedType)) return '차량 유형 불일치'
   if (result.needReview) return '관리자 확인 필요'
   return getPassText(result, expectedType) === '가능' ? '정상' : '인식 불가'
-<<<<<<< HEAD
-}
-
-const getGateRecognition = (gate, targetType) => gateRecognitionResults[gate.id]?.[targetType] || null
-
-const getGateOcrStatus = (gate) => {
-  const tractor = getGateRecognition(gate, 'tractor')
-  const trailer = getGateRecognition(gate, 'trailer')
-
-  if (!tractor && !trailer) return { text: 'OCR 대기', tone: 'idle' }
-  if (tractor?.needReview || trailer?.needReview) return { text: '확인 필요', tone: 'warning' }
-  if (tractor?.aiResult?.detected && trailer?.aiResult?.detected) return { text: 'OCR 성공', tone: 'success' }
-  return { text: 'OCR 실패', tone: 'danger' }
-}
-
-const getGateDbStatus = (gate) => {
-  const tractor = getGateRecognition(gate, 'tractor')
-  const trailer = getGateRecognition(gate, 'trailer')
-
-  if (!tractor && !trailer) return { text: 'DB 대기', tone: 'idle' }
-  if (tractor?.matched && trailer?.matched) return { text: 'DB 매칭', tone: 'success' }
-  return { text: '미등록/불일치', tone: 'danger' }
-=======
->>>>>>> origin/hakseop
-}
-
-const isRecognitionWarning = (result, expectedType) => {
-  const status = recognitionStatus(result, expectedType)
-  return status !== '인식 대기' && status !== '정상'
-<<<<<<< HEAD
-=======
 }
 
 const getGateRecognition = (gate, targetType) => gateRecognitionResults[gate.id]?.[targetType] || null
@@ -367,7 +336,11 @@ const getGateDbStatus = (gate) => {
   if (!tractor && !trailer) return { text: 'DB 대기', tone: 'idle' }
   if (tractor?.matched && trailer?.matched) return { text: 'DB 매칭', tone: 'success' }
   return { text: '미등록/불일치', tone: 'danger' }
->>>>>>> origin/hakseop
+}
+
+const isRecognitionWarning = (result, expectedType) => {
+  const status = recognitionStatus(result, expectedType)
+  return status !== '인식 대기' && status !== '정상'
 }
 
 const selectGateImage = async (event, gate, targetType) => {

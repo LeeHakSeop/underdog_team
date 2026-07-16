@@ -66,9 +66,11 @@ const getPlateNumber = (vehicleId) => {
 
 const isVehicleType = (vehicle, expectedType) => {
   const vehicleType = String(getValue(vehicle, 'vehicleType', 'vehicle_type')).trim().toUpperCase()
-  return vehicleType === expectedType ||
+  return (
+    vehicleType === expectedType ||
     (expectedType === 'TRACTOR' && vehicleType === '트랙터') ||
     (expectedType === 'TRAILER' && vehicleType === '트레일러')
+  )
 }
 
 const getVehicleForType = (order, vehicleType) => {
@@ -83,11 +85,8 @@ const getVehicleForType = (order, vehicleType) => {
     .find((vehicle) => isVehicleType(vehicle, vehicleType)) || null
 }
 
-const getTractorPlate = (order) =>
-  getPlateNumber(getId(order, 'tractorVehicleId') || getId(order, 'vehicleId'))
-
-const getTrailerPlate = (order) =>
-  getPlateNumber(getId(order, 'trailerVehicleId'))
+const getTractorPlate = (order) => getPlateNumber(getId(order, 'tractorVehicleId') || getId(order, 'vehicleId'))
+const getTrailerPlate = (order) => getPlateNumber(getId(order, 'trailerVehicleId'))
 
 const getTrailerPlateNumber = (order) => getTrailerPlate(order)
 
@@ -128,6 +127,66 @@ const getYardLocation = (containerId) => {
   return `${container.block || '-'}-${container.bay || '-'}-${container.rowNo || container.row_no || '-'}`
 }
 
+const getStatusText = (workStatus) => {
+  if (workStatus === 'DISPATCH_WAITING') return '승인 대기'
+  if (workStatus === 'APPROVED') return '입차 대기'
+  if (workStatus === 'GATE_IN') return '입차 완료'
+  if (workStatus === 'IN_PROGRESS') return '작업 진행 중'
+  if (workStatus === 'COMPLETED') return '출차 대기'
+  if (workStatus === 'GATE_OUT') return '출차 완료'
+  if (workStatus === 'CANCELED') return '반려'
+  return workStatus || '-'
+}
+
+const getStatusClass = (workStatus) => {
+  if (workStatus === 'DISPATCH_WAITING') return 'amber'
+  if (workStatus === 'COMPLETED' || workStatus === 'GATE_OUT') return 'green'
+  if (workStatus === 'IN_PROGRESS') return 'blue'
+  if (workStatus === 'CANCELED') return 'red'
+  return ''
+}
+
+const getSearchText = (order) => {
+  const containerId = getId(order, 'containerId')
+  const workStatus = getValue(order, 'workStatus', 'work_status')
+
+  return [
+    getId(order, 'workOrderId'),
+    getCarrierName(order),
+    getTractorPlate(order),
+    getTrailerPlate(order),
+    getDriverName(getId(order, 'driverId')),
+    getContainerNumber(containerId),
+    getYardLocation(containerId),
+    getValue(order, 'workType', 'work_type'),
+    getValue(order, 'reservedTime', 'reserved_time'),
+    workStatus,
+    getStatusText(workStatus),
+  ]
+    .join(' ')
+    .toLowerCase()
+}
+
+const filterByQuery = (orders, query) => {
+  const keyword = query.trim().toLowerCase()
+  if (!keyword) return orders
+  return orders.filter((order) => getSearchText(order).includes(keyword))
+}
+
+const getPageCount = (total, pageSize) => Math.max(1, Math.ceil(total / pageSize))
+
+const paginate = (items, page, pageSize) => {
+  const start = (page - 1) * pageSize
+  return items.slice(start, start + pageSize)
+}
+
+const getPageStart = (total, page, pageSize) => {
+  if (total === 0) return 0
+  return (page - 1) * pageSize + 1
+}
+
+const getPageEnd = (total, page, pageSize) => Math.min(total, page * pageSize)
+
 const carrierRequests = computed(() => {
   return workOrderStore.workOrders.filter((order) => {
     const status = getValue(order, 'workStatus', 'work_status')
@@ -140,39 +199,7 @@ const processingTasks = computed(() => {
   return workOrderStore.workOrders.filter((order) => !carrierRequests.value.includes(order))
 })
 
-const getSearchText = (order) => {
-  const containerId = getId(order, 'containerId')
-  const workStatus = getValue(order, 'workStatus', 'work_status')
-
-  return [
-    getId(order, 'workOrderId'),
-    getCarrierName(order),
-    getTractorPlate(order),
-    getTrailerPlateNumber(order),
-    getDriverName(getId(order, 'driverId')),
-    getContainerNumber(containerId),
-    getYardLocation(containerId),
-    getValue(order, 'workType', 'work_type'),
-    getValue(order, 'reservedTime', 'reserved_time'),
-    workStatus,
-    getStatusText(workStatus),
-  ].join(' ').toLowerCase()
-}
-
-const filterByQuery = (orders, query) => {
-  const keyword = query.trim().toLowerCase()
-  if (!keyword) return orders
-  return orders.filter((order) => getSearchText(order).includes(keyword))
-}
-
-const getPageCount = (total, pageSize) => Math.max(1, Math.ceil(total / pageSize))
-const paginate = (items, page, pageSize) => items.slice((page - 1) * pageSize, page * pageSize)
-const getPageStart = (total, page, pageSize) => (total === 0 ? 0 : (page - 1) * pageSize + 1)
-const getPageEnd = (total, page, pageSize) => Math.min(total, page * pageSize)
-
-const filteredCarrierRequests = computed(() =>
-  filterByQuery(carrierRequests.value, requestQuery.value),
-)
+const filteredCarrierRequests = computed(() => filterByQuery(carrierRequests.value, requestQuery.value))
 
 const filteredProcessingTasks = computed(() => {
   const statusFiltered = taskStatus.value
@@ -206,7 +233,6 @@ const visibleContainers = computed(() => {
     String(getValue(container, 'containerNumber', 'container_number')).toLowerCase().includes(query),
   )
 })
-
 const emptyContainerForm = () => ({
   containerNumber: '',
   containerSize: '20FT',
@@ -317,24 +343,6 @@ const processWorkOrder = async (order, action) => {
   }
 }
 
-const getStatusText = (workStatus) => {
-  if (workStatus === 'DISPATCH_WAITING') return '승인 대기'
-  if (workStatus === 'APPROVED') return '입차 대기'
-  if (workStatus === 'GATE_IN') return '입차 완료'
-  if (workStatus === 'IN_PROGRESS') return '작업 진행 중'
-  if (workStatus === 'COMPLETED') return '출차 대기'
-  if (workStatus === 'GATE_OUT') return '출차 완료'
-  if (workStatus === 'CANCELED') return '반려'
-  return workStatus || '-'
-}
-
-const getStatusClass = (workStatus) => {
-  if (workStatus === 'DISPATCH_WAITING') return 'amber'
-  if (workStatus === 'COMPLETED' || workStatus === 'GATE_OUT') return 'green'
-  if (workStatus === 'IN_PROGRESS') return 'blue'
-  return ''
-}
-
 const loadData = () => {
   workOrderStore.loadWorkOrders().catch(() => {})
   carrierStore.loadCarriers().catch(() => {})
@@ -360,7 +368,6 @@ const resetTaskSearch = () => {
   taskPageSize.value = 10
   taskPage.value = 1
 }
-
 watch([requestQuery, requestPageSize], () => {
   requestPage.value = 1
 })
@@ -406,7 +413,7 @@ onUnmounted(() => {
             id="requestSearch"
             v-model="requestQuery"
             type="search"
-            placeholder="작업번호, 운송사, 차량번호, 기사, 컨테이너"
+            placeholder="작업번호, 운송사, 트랙터, 트레일러, 기사, 컨테이너"
           />
         </div>
         <div class="toolbar-actions">
@@ -489,7 +496,7 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="filteredCarrierRequests.length === 0">
-              <td colspan="13">배차 대기 작업이 없습니다.</td>
+              <td colspan="13">조회된 배차 대기 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -506,7 +513,12 @@ onUnmounted(() => {
             이전
           </button>
           <strong>{{ requestPage }} / {{ requestPageCount }}</strong>
-          <button class="ghost-button" type="button" :disabled="requestPage === requestPageCount" @click="requestPage += 1">
+          <button
+            class="ghost-button"
+            type="button"
+            :disabled="requestPage === requestPageCount"
+            @click="requestPage += 1"
+          >
             다음
           </button>
         </div>
@@ -528,7 +540,7 @@ onUnmounted(() => {
             id="taskSearch"
             v-model="taskQuery"
             type="search"
-            placeholder="작업번호, 컨테이너, 차량번호, 기사, 야드 위치"
+            placeholder="작업번호, 컨테이너, 트랙터, 트레일러, 기사, 야드 위치"
           />
         </div>
         <div class="toolbar-actions">
@@ -618,14 +630,12 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="filteredProcessingTasks.length === 0">
-              <td colspan="11">처리 중인 작업이 없습니다.</td>
+              <td colspan="11">조회된 처리 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-<<<<<<< HEAD
-=======
       <div class="pagination-bar">
         <span>
           {{ getPageStart(filteredProcessingTasks.length, taskPage, taskPageSize) }} -
@@ -642,7 +652,6 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
->>>>>>> origin/hakseop
     </section>
 
     <section class="panel">
@@ -799,7 +808,8 @@ onUnmounted(() => {
   text-align: center;
 }
 
-.process-message {
+.process-message,
+.container-message {
   margin: 0;
   padding: 10px 12px;
   color: var(--ink-700);
@@ -893,7 +903,9 @@ button:disabled {
 }
 
 @media (max-width: 980px) {
-  .container-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .container-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
@@ -910,6 +922,10 @@ button:disabled {
   .toolbar-actions,
   .pagination-controls {
     justify-content: flex-start;
+  }
+
+  .container-form {
+    grid-template-columns: 1fr;
   }
 }
 </style>
