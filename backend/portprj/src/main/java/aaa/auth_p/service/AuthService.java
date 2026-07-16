@@ -108,6 +108,10 @@ public class AuthService {
             throw new RuntimeException("가입 또는 승인 요청이 반려되었습니다.");
         }
 
+        if ("WITHDRAWN".equals(user.getStatus())) {
+            throw new RuntimeException("탈퇴 처리된 계정은 로그인할 수 없습니다.");
+        }
+
         if (!"ACTIVE".equals(user.getStatus())) {
             throw new RuntimeException("로그인할 수 없는 계정 상태입니다.");
         }

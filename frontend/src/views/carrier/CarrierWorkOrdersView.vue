@@ -56,6 +56,7 @@ const myDrivers = computed(() =>
   drivers.value.filter(
     (driver) =>
       driver.carrierId === myCarrier.value?.carrierId &&
+      driver.userStatus !== 'WITHDRAWN' &&
       driver.isRegistered === true,
   ),
 )

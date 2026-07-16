@@ -16,7 +16,8 @@ public interface DriverMapper {
                 is_registered AS isRegistered,
                 carrier_id AS carrierId,
                 can_enter AS canEnter,
-                user_id AS userId
+                user_id AS userId,
+                (SELECT status FROM users u WHERE u.user_id = driver.user_id) AS userStatus
             FROM driver
             ORDER BY driver_id DESC
             """)
@@ -30,7 +31,8 @@ public interface DriverMapper {
                 is_registered AS isRegistered,
                 carrier_id AS carrierId,
                 can_enter AS canEnter,
-                user_id AS userId
+                user_id AS userId,
+                (SELECT status FROM users u WHERE u.user_id = driver.user_id) AS userStatus
             FROM driver
             WHERE driver_id = #{driverId}
             """)
@@ -44,7 +46,8 @@ public interface DriverMapper {
                 is_registered AS isRegistered,
                 carrier_id AS carrierId,
                 can_enter AS canEnter,
-                user_id AS userId
+                user_id AS userId,
+                (SELECT status FROM users u WHERE u.user_id = driver.user_id) AS userStatus
             FROM driver
             WHERE user_id = #{userId}
             """)

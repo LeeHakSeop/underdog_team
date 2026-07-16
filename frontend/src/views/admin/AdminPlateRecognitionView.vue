@@ -8,7 +8,6 @@ const plateRecognitionStore = usePlateRecognitionStore()
 const gateLogStore = useGateLogStore()
 
 const selectedOcrType = ref('paddle')
-const selectedInOutType = ref('IN')
 const tractorFile = ref(null)
 const trailerFile = ref(null)
 const tractorPreviewUrl = ref('')
@@ -144,6 +143,18 @@ const workOrderMatchMessage = computed(() => {
 })
 
 const gateDecisionMessage = computed(() => {
+  if (!automaticInOutType.value) {
+    return matchedWorkOrder.value
+      ? `WorkOrder 상태(${matchedWorkStatus.value || '-'})로 출입 구분을 자동 판단할 수 없습니다.`
+      : workOrderMatchMessage.value
+  }
+
+  if (!automaticGateStatusAllowed.value) {
+    return automaticInOutType.value === 'OUT'
+      ? '작업 완료 및 컨테이너 출차 가능 상태를 확인하세요.'
+      : '승인 완료된 WorkOrder만 입차할 수 있습니다.'
+  }
+
   if (workOrderMatch.value && !isReadyForGateProcess.value) {
     const blockedItems = []
 
@@ -167,6 +178,50 @@ const matchedWorkOrder = computed(() => {
   return trailerWorkOrder.value
 })
 
+const matchedWorkStatus = computed(() => {
+  return String(matchedWorkOrder.value?.workStatus || matchedWorkOrder.value?.work_status || '').trim().toUpperCase()
+})
+
+const automaticInOutType = computed(() => {
+  if (matchedWorkStatus.value === 'COMPLETED') return 'OUT'
+  if (matchedWorkStatus.value === 'APPROVED') return 'IN'
+  return ''
+})
+
+const automaticInOutLabel = computed(() => {
+  if (automaticInOutType.value === 'OUT') return '출차'
+  if (automaticInOutType.value === 'IN') return '입차'
+  return '판단 대기'
+})
+
+const containerExitAllowed = computed(() => {
+  const container = trailerResult.value?.container
+  const trailerWorkInfo = trailerResult.value?.trailerWorkInfo
+
+  return Boolean(
+    container?.canExit ??
+    container?.can_exit ??
+    trailerWorkInfo?.canExit ??
+    trailerWorkInfo?.can_exit,
+  )
+})
+
+const automaticGateStatusAllowed = computed(() => {
+  if (automaticInOutType.value === 'IN') {
+    return matchedWorkStatus.value === 'APPROVED'
+  }
+
+  if (automaticInOutType.value === 'OUT') {
+    return matchedWorkStatus.value === 'COMPLETED' && containerExitAllowed.value
+  }
+
+  return false
+})
+
+const gateProcessButtonLabel = computed(() => {
+  return automaticInOutType.value ? `${automaticInOutLabel.value} 처리` : '최종 출입 처리'
+})
+
 const isReadyForGateProcess = computed(() => {
   return (
     tractorPassText.value === '가능' &&
@@ -184,7 +239,7 @@ const gateProcessPayload = computed(() => {
     sectorId: trailerResult.value?.container?.sectorId || trailerResult.value?.trailerWorkInfo?.sectorId || null,
     gateNumber: 'G01',
     gateName: 'AI_GATE',
-    inOutType: selectedInOutType.value,
+    inOutType: automaticInOutType.value || null,
   }
 })
 
@@ -222,6 +277,12 @@ const gateProcessMissingItems = computed(() => {
 
   if (trailerPassText.value !== '가능') {
     missingItems.push('트레일러 번호판 검증')
+  }
+
+  if (!automaticInOutType.value) {
+    missingItems.push('WorkOrder 상태 기반 출입 구분')
+  } else if (!automaticGateStatusAllowed.value) {
+    missingItems.push(automaticInOutType.value === 'OUT' ? '출차 가능한 작업 상태' : '입차 가능한 작업 상태')
   }
 
   return missingItems
@@ -315,7 +376,7 @@ const submitGateProcess = async () => {
       <div class="section-title">
         <h2>AI 번호판 인식</h2>
         <span class="status-pill">
-          {{ isReadyForGateProcess ? '출입 처리 준비 완료' : '트랙터/트레일러 인식 대기' }}
+          {{ canProcessGate ? '출입 처리 준비 완료' : '트랙터/트레일러 인식 대기' }}
         </span>
       </div>
 
@@ -329,20 +390,21 @@ const submitGateProcess = async () => {
         </label>
 
         <label class="model-select">
-          <span>출입 구분</span>
-          <select v-model="selectedInOutType">
+          <span>출입 구분 (자동)</span>
+          <select :value="automaticInOutType" disabled>
+            <option value="">판단 대기</option>
             <option value="IN">입차</option>
             <option value="OUT">출차</option>
           </select>
         </label>
 
-        <div :class="['gate-pass-box', isReadyForGateProcess ? 'success' : 'warning']">
+        <div :class="['gate-pass-box', canProcessGate ? 'success' : 'warning']">
           <span>최종 출입 판단</span>
-          <strong>{{ isReadyForGateProcess ? '통과' : '불가' }}</strong>
+          <strong>{{ canProcessGate ? '통과' : '불가' }}</strong>
           <p>
             {{
-              isReadyForGateProcess
-                ? '트랙터와 트레일러 번호판이 같은 WorkOrder에 연결되었습니다.'
+              canProcessGate
+                ? `${automaticInOutLabel} 가능한 정보가 확인되었습니다.`
                 : gateDecisionMessage
             }}
           </p>
@@ -375,7 +437,7 @@ const submitGateProcess = async () => {
           <span>작업 ID: {{ gateProcessPayload.workOrderId || '-' }}</span>
           <span>컨테이너 ID: {{ gateProcessPayload.containerId || '-' }}</span>
           <span>섹터 ID: {{ gateProcessPayload.sectorId || '-' }}</span>
-          <span>출입 구분: {{ selectedInOutType === 'OUT' ? '출차' : '입차' }}</span>
+          <span>출입 구분: {{ automaticInOutLabel }}</span>
         </div>
 
         <div
@@ -415,7 +477,7 @@ const submitGateProcess = async () => {
           :disabled="!canProcessGate || gateLogStore.loading"
           @click="submitGateProcess"
         >
-          {{ gateLogStore.loading ? '처리 중' : '최종 출입 처리' }}
+          {{ gateLogStore.loading ? '처리 중' : gateProcessButtonLabel }}
         </button>
 
         <p

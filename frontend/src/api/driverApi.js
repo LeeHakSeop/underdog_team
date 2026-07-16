@@ -31,9 +31,15 @@ export const updateDriver = (driverId, driver) => {
   })
 }
 
-export const deleteDriver = (driverId) => {
-  return request(`/api/driver/delete/${driverId}`, {
-    method: 'DELETE',
+export const withdrawDriver = (driverId) => {
+  return request(`/api/driver/${driverId}/withdraw`, {
+    method: 'PATCH',
+  })
+}
+
+export const reactivateDriver = (driverId) => {
+  return request(`/api/driver/${driverId}/reactivate`, {
+    method: 'PATCH',
   })
 }
 

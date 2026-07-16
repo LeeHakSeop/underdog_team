@@ -30,4 +30,9 @@ public class DriverDTO {
      * users.user_id
      */
     private Long userId;
+
+    /**
+     * users.status
+     */
+    private String userStatus;
 }

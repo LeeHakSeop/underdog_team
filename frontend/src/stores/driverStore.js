@@ -3,10 +3,11 @@ import { defineStore } from 'pinia'
 import {
   approveDriverByCarrier,
   createDriver,
-  deleteDriver,
+  reactivateDriver as reactivateDriverApi,
   fetchDrivers,
   fetchMyWorkOrders,
   fetchMyWorkOrdersByUserId,
+  withdrawDriver as withdrawDriverApi,
   updateDriver,
 } from '@/api/driverApi'
 
@@ -113,15 +114,30 @@ export const useDriverStore = defineStore('driver', {
       }
     },
 
-    async removeDriver(driverId) {
+    async withdrawDriver(driverId) {
       this.loading = true
       this.error = ''
 
       try {
-        await deleteDriver(driverId)
+        await withdrawDriverApi(driverId)
         await this.loadDrivers()
       } catch (error) {
-        this.error = error.message || '기사 삭제에 실패했습니다.'
+        this.error = error.message || '기사 탈퇴 처리에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async reactivateDriver(driverId) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await reactivateDriverApi(driverId)
+        await this.loadDrivers()
+      } catch (error) {
+        this.error = error.message || '기사 재활성화에 실패했습니다.'
         throw error
       } finally {
         this.loading = false

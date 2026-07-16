@@ -13,7 +13,8 @@ const loginUser = computed(() => {
 })
 
 const currentWorkOrder = computed(() => {
-  return myWorkOrders.value[0] || null
+  const activeStatuses = ['DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED']
+  return myWorkOrders.value.find((order) => activeStatuses.includes(order.workStatus)) || null
 })
 
 const passStatus = computed(() => {
@@ -71,7 +72,7 @@ onUnmounted(() => {
     <section class="panel">
       <div class="section-title">
         <h2>내 작업 안내</h2>
-        <span class="status-pill">{{ myWorkOrders.length }}건</span>
+        <span class="status-pill">{{ currentWorkOrder ? 1 : 0 }}건</span>
       </div>
 
       <div v-if="loading" class="empty-panel">
