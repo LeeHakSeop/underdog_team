@@ -1,5 +1,4 @@
 import sys
-import os
 from pathlib import Path
 
 from PIL import Image
@@ -14,7 +13,7 @@ from ocr_postprocess import (
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 CRNN_SCRIPT_DIR = BASE_DIR / "scripts"
-CRNN_MODEL_PATH = Path(os.environ.get("CRNN_MODEL_PATH", BASE_DIR / "models" / "crnn_best.pt"))
+CRNN_MODEL_PATH = BASE_DIR / "models" / "crnn_best.pt"
 
 sys.path.append(str(CRNN_SCRIPT_DIR))
 
