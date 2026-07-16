@@ -112,4 +112,10 @@ public interface UserMapper {
         WHERE user_id = #{userId}
     """)
     int updateLastLogin(@Param("userId") Long userId);
+
+    @Delete("""
+        DELETE FROM users
+        WHERE user_id = #{userId}
+    """)
+    int delete(@Param("userId") Long userId);
 }

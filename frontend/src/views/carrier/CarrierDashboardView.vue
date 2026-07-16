@@ -33,22 +33,22 @@ const waitingDrivers = computed(() => {
 
 const actionCards = computed(() => [
   {
-    title: '기사 가입 승인',
+    title: '승인·회원 관리',
     count: waitingDrivers.value.length,
-    text: '운송사 승인이 필요한 소속 기사 목록을 확인합니다.',
+    text: '기사 가입 승인과 소속 차량 승인 현황을 함께 확인합니다.',
     path: '/carrier/driver-approval',
   },
   {
-    title: '승인 현황',
+    title: '배정·작업 조회',
     count: myDrivers.value.length,
-    text: '소속 기사와 차량 승인 상태를 확인합니다.',
-    path: '/carrier/approvals',
+    text: '배정 현황과 작업지시 목록·완료 내역을 확인합니다.',
+    path: '/carrier/inquiry',
   },
   {
-    title: '기사 작업지시',
+    title: '배정·작업 입력·수정',
     count: myDrivers.value.length,
-    text: '승인된 기사에게 작업지시를 등록합니다.',
-    path: '/carrier/work-orders',
+    text: '트레일러 배정과 승인 전 작업지시를 입력·수정합니다.',
+    path: '/carrier/input',
   },
 ])
 

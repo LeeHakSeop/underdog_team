@@ -205,4 +205,18 @@ public interface    VehicleMapper {
         WHERE vehicle_id = #{vehicleId}
         """)
     int delete(@Param("vehicleId") Long vehicleId);
+
+    @Update("""
+        UPDATE vehicle
+        SET driver_id = NULL
+        WHERE driver_id = #{driverId}
+        """)
+    int clearDriverReference(@Param("driverId") Long driverId);
+
+    @Update("""
+        UPDATE vehicle
+        SET user_id = NULL
+        WHERE user_id = #{userId}
+        """)
+    int clearUserReference(@Param("userId") Long userId);
 }

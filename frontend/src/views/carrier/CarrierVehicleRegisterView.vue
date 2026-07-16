@@ -1,11 +1,26 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { readCurrentUser } from '@/stores/authStore'
 import { fetchCarriers } from '@/api/carrierApi'
 import { fetchDrivers } from '@/api/driverApi'
 import { createVehicle, fetchVehiclesByCarrier } from '@/api/vehicleApi'
 import { fetchTrailerWorkInfo, fetchWorkOrders } from '@/api/adminApi/workOrderApi'
 import { vehicleTypeLabel } from '@/config/vehicleType'
+
+const props = defineProps({
+  embedded: {
+    type: Boolean,
+    default: false,
+  },
+  showSummary: {
+    type: Boolean,
+    default: true,
+  },
+  showInput: {
+    type: Boolean,
+    default: true,
+  },
+})
 
 const loading = ref(false)
 const saving = ref(false)
@@ -19,6 +34,10 @@ const workOrders = ref([])
 const trailerWorkInfos = ref({})
 const workOrderLoading = ref(false)
 const workOrderError = ref('')
+const driverSearch = ref('')
+const currentPage = ref(1)
+const pageSize = 10
+let refreshTimer = null
 
 const currentUser = readCurrentUser()
 
@@ -66,15 +85,18 @@ const isTrailerVehicle = (vehicleType) => {
 
 const getWorkOrderForVehicle = (vehicleId) => {
   const trailerInfo = trailerWorkInfos.value[vehicleId]
+  const workOrder = workOrders.value.find(
+    (order) =>
+      order.trailerVehicleId === vehicleId || order.vehicleId === vehicleId,
+  ) || null
 
   if (trailerInfo?.workOrderId) {
-    return trailerInfo
+    // 상세 작업정보와 목록 조회 정보가 서로 다른 DTO이므로
+    // 예약 시간·승인 상태 같은 목록 필드를 함께 유지한다.
+    return { ...workOrder, ...trailerInfo }
   }
 
-  return workOrders.value.find(
-    (workOrder) =>
-      workOrder.trailerVehicleId === vehicleId || workOrder.vehicleId === vehicleId,
-  ) || null
+  return workOrder
 }
 
 const assignedTrailerSummaries = computed(() => {
@@ -91,6 +113,37 @@ const assignedTrailerSummaries = computed(() => {
       }
     })
     .sort((left, right) => (right.workOrder?.workOrderId || 0) - (left.workOrder?.workOrderId || 0))
+})
+
+const filteredAssignedTrailerSummaries = computed(() => {
+  const keyword = driverSearch.value.trim().toLowerCase()
+
+  if (!keyword) return assignedTrailerSummaries.value
+
+  return assignedTrailerSummaries.value.filter((summary) =>
+    String(summary.driver?.driverName || '').toLowerCase().includes(keyword),
+  )
+})
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredAssignedTrailerSummaries.value.length / pageSize)),
+)
+
+const paginatedAssignedTrailerSummaries = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return filteredAssignedTrailerSummaries.value.slice(start, start + pageSize)
+})
+
+const pageNumbers = computed(() =>
+  Array.from({ length: totalPages.value }, (_, index) => index + 1),
+)
+
+watch(driverSearch, () => {
+  currentPage.value = 1
+})
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) currentPage.value = pageCount
 })
 
 const workStatusText = (workOrder) => {
@@ -169,7 +222,13 @@ const loadData = async () => {
 
     carriers.value = carrierData || []
     drivers.value = driverData || []
-    await loadAssignedWorkOrders()
+    if (props.showSummary) {
+      await loadAssignedWorkOrders()
+    } else {
+      assignedVehicles.value = []
+      workOrders.value = []
+      trailerWorkInfos.value = {}
+    }
   } catch (error) {
     errorMessage.value = error.message || '데이터를 불러오지 못했습니다.'
   } finally {
@@ -245,12 +304,25 @@ const submitVehicle = async () => {
   }
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadData()
+  if (props.showSummary) {
+    refreshTimer = setInterval(() => {
+      if (!loading.value && !saving.value && !workOrderLoading.value) {
+        loadData().catch(() => {})
+      }
+    }, 5000)
+  }
+})
+
+onUnmounted(() => {
+  clearInterval(refreshTimer)
+})
 </script>
 
 <template>
-  <div class="page-stack">
-    <section class="panel">
+  <div id="assignment-summary" class="page-stack">
+    <section v-if="!props.embedded" class="panel">
       <div class="section-title">
         <h2>트레일러 배정</h2>
         <span class="status-pill">
@@ -267,10 +339,34 @@ onMounted(loadData)
       </div>
     </section>
 
-    <section class="panel">
+    <section v-else-if="message || errorMessage" class="panel">
+      <div v-if="message" class="form-message success">
+        {{ message }}
+      </div>
+      <div v-if="errorMessage" class="form-message error">
+        {{ errorMessage }}
+      </div>
+    </section>
+
+    <section v-if="props.showSummary" class="panel">
       <div class="section-title">
-        <h2>기사·트레일러 종합 작업정보</h2>
-        <span class="status-pill green">{{ assignedTrailerSummaries.length }}건</span>
+        <h2>기사·트레일러 배정 및 작업정보</h2>
+        <div class="section-title-actions">
+          <span class="status-pill green">{{ filteredAssignedTrailerSummaries.length }}건</span>
+          <a class="ghost-button" href="#work-order-management">
+            작업지시 입력으로 이동
+          </a>
+        </div>
+      </div>
+
+      <div class="summary-toolbar">
+        <label for="driverSearch">기사 이름 검색</label>
+        <input
+          id="driverSearch"
+          v-model.trim="driverSearch"
+          type="search"
+          placeholder="기사 이름을 입력하세요"
+        />
       </div>
 
       <div v-if="workOrderLoading" class="empty-box">
@@ -281,47 +377,73 @@ onMounted(loadData)
         {{ workOrderError }}
       </div>
 
-      <div v-else-if="assignedTrailerSummaries.length === 0" class="empty-box">
-        기사에게 배정된 트레일러가 없습니다.
+      <div v-else-if="filteredAssignedTrailerSummaries.length === 0" class="empty-box">
+        {{ assignedTrailerSummaries.length === 0 ? '기사에게 배정된 트레일러가 없습니다.' : '검색 조건에 맞는 배정 내역이 없습니다.' }}
       </div>
 
-      <div v-else class="assignment-summary-list">
-        <article
-          v-for="summary in assignedTrailerSummaries"
-          :key="summary.vehicle.vehicleId"
-          class="assignment-summary-card"
+      <div v-else class="table-wrap assignment-summary-table-wrap">
+        <table class="data-table assignment-summary-table">
+          <thead>
+            <tr>
+              <th>기사</th>
+              <th>트레일러</th>
+              <th>차량 상태</th>
+              <th>WorkOrder</th>
+              <th>작업 유형</th>
+              <th>작업 상태</th>
+              <th>컨테이너·위치</th>
+              <th>예약 시간</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="summary in paginatedAssignedTrailerSummaries" :key="summary.vehicle.vehicleId">
+              <td>{{ summary.driver?.driverName || '기사 정보 없음' }}</td>
+              <td>
+                <strong>{{ summary.vehicle.plateNumber || '-' }}</strong>
+                <small>{{ vehicleTypeLabel(summary.vehicle.vehicleType) }}</small>
+              </td>
+              <td>{{ summary.vehicle.vehicleStatus || (summary.vehicle.isRegistered ? '승인' : '승인 대기') }}</td>
+              <td>{{ summary.workOrder?.workOrderId ? `#${summary.workOrder.workOrderId}` : '-' }}</td>
+              <td>{{ summary.workOrder?.workType || '-' }}</td>
+              <td>
+                <span class="status-pill" :class="workStatusClass(summary.workOrder)">
+                  {{ workStatusText(summary.workOrder) }}
+                </span>
+              </td>
+              <td>
+                {{ summary.workOrder?.containerNumber || summary.workOrder?.containerId || '-' }}
+                <small v-if="summary.workOrder?.yardLocation || summary.workOrder?.containerLocation">
+                  {{ summary.workOrder.yardLocation || summary.workOrder.containerLocation }}
+                </small>
+              </td>
+              <td>{{ summary.workOrder?.reservedTime || '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="filteredAssignedTrailerSummaries.length > 0" class="pagination" aria-label="기사·트레일러 배정 현황 페이지">
+        <button class="ghost-button" type="button" :disabled="currentPage === 1" @click="currentPage -= 1">
+          이전
+        </button>
+        <button
+          v-for="page in pageNumbers"
+          :key="page"
+          class="page-button"
+          :class="{ active: currentPage === page }"
+          type="button"
+          @click="currentPage = page"
         >
-          <div class="assignment-summary-head">
-            <div>
-              <strong>{{ summary.driver?.driverName || '기사 정보 없음' }}</strong>
-              <span>{{ summary.vehicle.plateNumber || '-' }} · {{ vehicleTypeLabel(summary.vehicle.vehicleType) }}</span>
-            </div>
-            <span class="status-pill" :class="workStatusClass(summary.workOrder)">
-              {{ workStatusText(summary.workOrder) }}
-            </span>
-          </div>
-
-          <div v-if="summary.workOrder" class="work-order-grid">
-            <div><span>WorkOrder</span><strong>#{{ summary.workOrder.workOrderId }}</strong></div>
-            <div><span>작업 유형</span><strong>{{ summary.workOrder.workType || '-' }}</strong></div>
-            <div><span>승인 여부</span><strong>{{ summary.workOrder.isApproved ? '승인' : '대기' }}</strong></div>
-            <div><span>예약 시간</span><strong>{{ summary.workOrder.reservedTime || '-' }}</strong></div>
-            <div><span>트랙터 ID</span><strong>{{ summary.workOrder.tractorVehicleId || '-' }}</strong></div>
-            <div><span>트레일러 ID</span><strong>{{ summary.workOrder.trailerVehicleId || summary.vehicle.vehicleId || '-' }}</strong></div>
-            <div><span>컨테이너</span><strong>{{ summary.workOrder.containerNumber || summary.workOrder.containerId || '-' }}</strong></div>
-            <div><span>야드 섹터</span><strong>{{ summary.workOrder.sectorName || summary.workOrder.sectorId || '-' }}</strong></div>
-            <div><span>작업 위치</span><strong>{{ summary.workOrder.yardLocation || summary.workOrder.containerLocation || '-' }}</strong></div>
-            <div><span>안내</span><strong>{{ summary.workOrder.guideMessage || summary.workOrder.workGuideMessage || '-' }}</strong></div>
-          </div>
-
-          <div v-else class="assignment-summary-empty">
-            차량 배정은 완료되었지만 연결된 WorkOrder가 없습니다. 작업지시가 생성되면 이 영역에 표시됩니다.
-          </div>
-        </article>
+          {{ page }}
+        </button>
+        <button class="ghost-button" type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">
+          다음
+        </button>
+        <span>{{ currentPage }} / {{ totalPages }} 페이지</span>
       </div>
     </section>
 
-    <section class="grid-2">
+    <section v-if="props.showInput" class="grid-2">
       <article class="panel">
         <div class="section-title">
           <h2>배정 정보 입력</h2>
@@ -530,74 +652,81 @@ onMounted(loadData)
   gap: 6px;
 }
 
-.assignment-summary-list {
-  display: grid;
-  gap: 10px;
-}
-
-.assignment-summary-card {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  background: #f7f9fb;
-  border: 1px solid var(--line);
-}
-
-.assignment-summary-head {
+.section-title-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.assignment-summary-head strong,
-.assignment-summary-head span {
-  display: block;
-}
-
-.assignment-summary-head strong {
-  font-size: 16px;
-}
-
-.assignment-summary-head div span {
-  margin-top: 4px;
-  color: var(--ink-500);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.work-order-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
-.work-order-grid div {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  padding: 10px;
+.summary-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 8px;
+  background: #f6f9fd;
+  border: 1px solid var(--line);
+}
+
+.summary-toolbar label {
+  color: var(--ink-700);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.summary-toolbar input {
+  width: min(320px, 100%);
+  min-height: 34px;
+  padding: 0 9px;
   background: #ffffff;
   border: 1px solid var(--line);
 }
 
-.work-order-grid span {
+.assignment-summary-table-wrap {
+  border: 1px solid var(--line);
+}
+
+.assignment-summary-table {
+  min-width: 1020px;
+  border: 0;
+}
+
+.assignment-summary-table td small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-500);
+  font-size: 11px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.pagination > span {
+  margin-left: 5px;
   color: var(--ink-500);
   font-size: 12px;
-  font-weight: 800;
-}
-
-.work-order-grid strong {
-  overflow-wrap: anywhere;
-  font-size: 13px;
-}
-
-.assignment-summary-empty {
-  padding: 12px;
-  color: var(--ink-500);
-  background: #ffffff;
-  border: 1px dashed var(--line);
   font-weight: 700;
+}
+
+.page-button {
+  min-width: 30px;
+  min-height: 30px;
+  color: var(--ink-700);
+  background: #f1f5f9;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  font-weight: 700;
+}
+
+.page-button.active {
+  color: #ffffff;
+  background: var(--blue-700);
+  border-color: var(--blue-700);
 }
 
 @media (max-width: 760px) {
@@ -619,13 +748,18 @@ onMounted(loadData)
     justify-items: start;
   }
 
-  .assignment-summary-head {
+  .section-title-actions {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .work-order-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .summary-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .summary-toolbar input {
+    width: 100%;
   }
 }
 </style>

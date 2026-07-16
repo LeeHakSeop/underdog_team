@@ -65,8 +65,16 @@ const getPlateNumber = (vehicleId) => {
   return getValue(vehicle, 'plateNumber', 'plate_number') || '-'
 }
 
+<<<<<<< HEAD
 const getTrailerPlateNumber = (order) => {
   return getPlateNumber(getId(order, 'trailerVehicleId'))
+=======
+const isVehicleType = (vehicle, expectedType) => {
+  const vehicleType = String(getValue(vehicle, 'vehicleType', 'vehicle_type')).trim().toUpperCase()
+  return vehicleType === expectedType ||
+    (expectedType === 'TRACTOR' && vehicleType === '트랙터') ||
+    (expectedType === 'TRAILER' && vehicleType === '트레일러')
+>>>>>>> origin/hakseop
 }
 
 const getVehicleForType = (order, vehicleType) => {
@@ -76,12 +84,24 @@ const getVehicleForType = (order, vehicleType) => {
     getId(order, 'vehicleId'),
   ].filter(Boolean)
 
+<<<<<<< HEAD
   return (
     vehicleIds
       .map((vehicleId) => getVehicle(vehicleId))
       .find((vehicle) => getValue(vehicle, 'vehicleType', 'vehicle_type') === vehicleType) || null
   )
+=======
+  return vehicleIds
+    .map((vehicleId) => getVehicle(vehicleId))
+    .find((vehicle) => isVehicleType(vehicle, vehicleType)) || null
+>>>>>>> origin/hakseop
 }
+
+const getTractorPlate = (order) =>
+  getPlateNumber(getId(order, 'tractorVehicleId') || getId(order, 'vehicleId'))
+
+const getTrailerPlate = (order) =>
+  getPlateNumber(getId(order, 'trailerVehicleId'))
 
 const getVehicleApprovalText = (vehicle) => {
   if (!vehicle) return '미연결'
@@ -422,7 +442,12 @@ onUnmounted(() => {
             <tr>
               <th>작업번호</th>
               <th>운송사</th>
+<<<<<<< HEAD
               <th>트레일러 번호</th>
+=======
+              <th>트랙터</th>
+              <th>트레일러</th>
+>>>>>>> origin/hakseop
               <th>기사</th>
               <th>컨테이너</th>
               <th>작업 유형</th>
@@ -438,7 +463,12 @@ onUnmounted(() => {
             <tr v-for="order in pagedCarrierRequests" :key="getId(order, 'workOrderId')">
               <td>{{ getId(order, 'workOrderId') }}</td>
               <td>{{ getCarrierName(order) }}</td>
+<<<<<<< HEAD
               <td>{{ getTrailerPlateNumber(order) }}</td>
+=======
+              <td>{{ getTractorPlate(order) }}</td>
+              <td>{{ getTrailerPlate(order) }}</td>
+>>>>>>> origin/hakseop
               <td>{{ getDriverName(getId(order, 'driverId')) }}</td>
               <td>{{ getContainerNumber(getId(order, 'containerId')) }}</td>
               <td>{{ getValue(order, 'workType', 'work_type') }}</td>
@@ -482,8 +512,13 @@ onUnmounted(() => {
                 </button>
               </td>
             </tr>
+<<<<<<< HEAD
             <tr v-if="filteredCarrierRequests.length === 0">
               <td colspan="12">조회된 배차 대기 작업이 없습니다.</td>
+=======
+            <tr v-if="carrierRequests.length === 0">
+              <td colspan="13">배차 대기 작업이 없습니다.</td>
+>>>>>>> origin/hakseop
             </tr>
           </tbody>
         </table>
@@ -555,7 +590,12 @@ onUnmounted(() => {
             <tr>
               <th>작업번호</th>
               <th>컨테이너</th>
+<<<<<<< HEAD
               <th>트레일러 번호</th>
+=======
+              <th>트랙터</th>
+              <th>트레일러</th>
+>>>>>>> origin/hakseop
               <th>기사</th>
               <th>야드 위치</th>
               <th>트랙터 승인</th>
@@ -569,7 +609,12 @@ onUnmounted(() => {
             <tr v-for="order in pagedProcessingTasks" :key="getId(order, 'workOrderId')">
               <td>{{ getId(order, 'workOrderId') }}</td>
               <td>{{ getContainerNumber(getId(order, 'containerId')) }}</td>
+<<<<<<< HEAD
               <td>{{ getTrailerPlateNumber(order) }}</td>
+=======
+              <td>{{ getTractorPlate(order) }}</td>
+              <td>{{ getTrailerPlate(order) }}</td>
+>>>>>>> origin/hakseop
               <td>{{ getDriverName(getId(order, 'driverId')) }}</td>
               <td>{{ getYardLocation(getId(order, 'containerId')) }}</td>
               <td>
@@ -614,8 +659,13 @@ onUnmounted(() => {
                 <span v-else>{{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}</span>
               </td>
             </tr>
+<<<<<<< HEAD
             <tr v-if="filteredProcessingTasks.length === 0">
               <td colspan="10">조회된 처리 작업이 없습니다.</td>
+=======
+            <tr v-if="processingTasks.length === 0">
+              <td colspan="11">처리 중인 작업이 없습니다.</td>
+>>>>>>> origin/hakseop
             </tr>
           </tbody>
         </table>
