@@ -163,6 +163,22 @@ class WorkOrderServiceTest {
         assertEquals("CANCELED", history.getNewStatus());
     }
 
+    @Test
+    void rejectsInvalidStatusTransition() {
+        WorkOrderDTO approved = order("APPROVED", true, null);
+        when(mapper.detail(8L)).thenReturn(approved);
+
+        assertThrows(ResponseStatusException.class, () -> service.changeStatus(
+                8L,
+                "COMPLETED",
+                "SYSTEM",
+                "invalid transition check",
+                null
+        ));
+        verify(mapper, never()).updateStatus(8L, "COMPLETED");
+        verifyNoInteractions(historyMapper);
+    }
+
     private WorkStatusHistoryDTO captureHistory() {
         ArgumentCaptor<WorkStatusHistoryDTO> captor = ArgumentCaptor.forClass(WorkStatusHistoryDTO.class);
         verify(historyMapper).insert(captor.capture());

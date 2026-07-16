@@ -15,25 +15,11 @@ const vehicleStore = useVehicleStore()
 
 const processingId = ref(null)
 const processMessage = ref('')
-<<<<<<< HEAD
-const requestQuery = ref('')
-const requestPage = ref(1)
-const requestPageSize = ref(10)
-const taskQuery = ref('')
-const taskStatus = ref('')
-const taskPage = ref(1)
-const taskPageSize = ref(10)
-=======
->>>>>>> origin/hakseop
 const containerQuery = ref('')
 const containerMessage = ref('')
 const editingContainerId = ref(null)
 const containerForm = ref({})
 const yardSectors = ref([])
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/hakseop
 let refreshTimer = null
 
 const getId = (row, key) => row?.[key] ?? row?.[key.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)]
@@ -60,16 +46,11 @@ const getPlateNumber = (vehicleId) => {
   return getValue(vehicle, 'plateNumber', 'plate_number') || '-'
 }
 
-<<<<<<< HEAD
-const getTrailerPlateNumber = (order) => {
-  return getPlateNumber(getId(order, 'trailerVehicleId'))
-=======
 const isVehicleType = (vehicle, expectedType) => {
   const vehicleType = String(getValue(vehicle, 'vehicleType', 'vehicle_type')).trim().toUpperCase()
   return vehicleType === expectedType ||
     (expectedType === 'TRACTOR' && vehicleType === '트랙터') ||
     (expectedType === 'TRAILER' && vehicleType === '트레일러')
->>>>>>> origin/hakseop
 }
 
 const getVehicleForType = (order, vehicleType) => {
@@ -79,17 +60,9 @@ const getVehicleForType = (order, vehicleType) => {
     getId(order, 'vehicleId'),
   ].filter(Boolean)
 
-<<<<<<< HEAD
-  return (
-    vehicleIds
-      .map((vehicleId) => getVehicle(vehicleId))
-      .find((vehicle) => getValue(vehicle, 'vehicleType', 'vehicle_type') === vehicleType) || null
-  )
-=======
   return vehicleIds
     .map((vehicleId) => getVehicle(vehicleId))
     .find((vehicle) => isVehicleType(vehicle, vehicleType)) || null
->>>>>>> origin/hakseop
 }
 
 const getTractorPlate = (order) =>
@@ -147,30 +120,6 @@ const processingTasks = computed(() => {
   return workOrderStore.workOrders.filter((order) => !carrierRequests.value.includes(order))
 })
 
-<<<<<<< HEAD
-const filteredCarrierRequests = computed(() => filterByQuery(carrierRequests.value, requestQuery.value))
-
-const filteredProcessingTasks = computed(() => {
-  const status = taskStatus.value
-  const statusFiltered = status
-    ? processingTasks.value.filter((order) => getValue(order, 'workStatus', 'work_status') === status)
-    : processingTasks.value
-
-  return filterByQuery(statusFiltered, taskQuery.value)
-})
-
-const requestPageCount = computed(() => getPageCount(filteredCarrierRequests.value.length, requestPageSize.value))
-const taskPageCount = computed(() => getPageCount(filteredProcessingTasks.value.length, taskPageSize.value))
-
-const pagedCarrierRequests = computed(() =>
-  paginate(filteredCarrierRequests.value, requestPage.value, requestPageSize.value),
-)
-const pagedProcessingTasks = computed(() =>
-  paginate(filteredProcessingTasks.value, taskPage.value, taskPageSize.value),
-)
-
-=======
->>>>>>> origin/hakseop
 const visibleContainers = computed(() => {
   const query = containerQuery.value.trim().toLowerCase()
   if (!query) return containerStore.containers
@@ -179,22 +128,6 @@ const visibleContainers = computed(() => {
     String(getValue(container, 'containerNumber', 'container_number')).toLowerCase().includes(query),
   )
 })
-<<<<<<< HEAD
-
-const resetRequestSearch = () => {
-  requestQuery.value = ''
-  requestPageSize.value = 10
-  requestPage.value = 1
-}
-
-const resetTaskSearch = () => {
-  taskQuery.value = ''
-  taskStatus.value = ''
-  taskPageSize.value = 10
-  taskPage.value = 1
-}
-=======
->>>>>>> origin/hakseop
 
 const emptyContainerForm = () => ({
   containerNumber: '',
@@ -427,13 +360,8 @@ onUnmounted(() => {
                 </button>
               </td>
             </tr>
-<<<<<<< HEAD
-            <tr v-if="filteredCarrierRequests.length === 0">
-              <td colspan="12">조회된 배차 대기 작업이 없습니다.</td>
-=======
             <tr v-if="carrierRequests.length === 0">
               <td colspan="13">배차 대기 작업이 없습니다.</td>
->>>>>>> origin/hakseop
             </tr>
           </tbody>
         </table>
@@ -515,39 +443,13 @@ onUnmounted(() => {
                 <span v-else>{{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}</span>
               </td>
             </tr>
-<<<<<<< HEAD
-            <tr v-if="filteredProcessingTasks.length === 0">
-              <td colspan="10">조회된 처리 작업이 없습니다.</td>
-=======
             <tr v-if="processingTasks.length === 0">
               <td colspan="11">처리 중인 작업이 없습니다.</td>
->>>>>>> origin/hakseop
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div class="pagination-bar">
-        <span>
-          {{ getPageStart(filteredProcessingTasks.length, taskPage, taskPageSize) }} -
-          {{ getPageEnd(filteredProcessingTasks.length, taskPage, taskPageSize) }} /
-          {{ filteredProcessingTasks.length }}건
-        </span>
-        <div class="pagination-controls">
-          <button class="ghost-button" type="button" :disabled="taskPage === 1" @click="taskPage -= 1">
-            이전
-          </button>
-          <strong>{{ taskPage }} / {{ taskPageCount }}</strong>
-          <button
-            class="ghost-button"
-            type="button"
-            :disabled="taskPage === taskPageCount"
-            @click="taskPage += 1"
-          >
-            다음
-          </button>
-        </div>
-      </div>
     </section>
 
     <section class="panel">
@@ -637,79 +539,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-<<<<<<< HEAD
-.work-order-toolbar {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.search-field {
-  display: grid;
-  flex: 1;
-  max-width: 430px;
-  gap: 4px;
-}
-
-.search-field label,
-.toolbar-actions label {
-  color: var(--ink-500);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.search-field input,
-.toolbar-actions select {
-  min-height: 30px;
-  color: var(--ink-900);
-  background: #ffffff;
-  border: 1px solid #aeb9c5;
-  border-radius: 2px;
-  padding: 0 8px;
-}
-
-.toolbar-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.toolbar-actions label {
-  display: grid;
-  gap: 4px;
-}
-
-.pagination-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 10px;
-  color: var(--ink-500);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.pagination-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pagination-controls strong {
-  min-width: 54px;
-  text-align: center;
-}
-
-.process-message,
-.container-message {
-=======
 .process-message {
->>>>>>> origin/hakseop
   margin: 0;
   padding: 10px 12px;
   color: var(--ink-700);
@@ -728,14 +558,6 @@ onUnmounted(() => {
   border-color: #e4a6a6;
 }
 
-<<<<<<< HEAD
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-=======
->>>>>>> origin/hakseop
 .work-table-scroll {
   max-height: 470px;
   overflow: auto;
@@ -806,34 +628,6 @@ button:disabled {
 }
 
 @media (max-width: 980px) {
-<<<<<<< HEAD
-  .container-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 760px) {
-  .work-order-toolbar,
-  .pagination-bar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .search-field {
-    max-width: none;
-  }
-
-  .toolbar-actions,
-  .pagination-controls,
-  .table-tools {
-    justify-content: flex-start;
-  }
-
-  .container-form {
-    grid-template-columns: 1fr;
-  }
-=======
   .container-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
->>>>>>> origin/hakseop
 }
 </style>
