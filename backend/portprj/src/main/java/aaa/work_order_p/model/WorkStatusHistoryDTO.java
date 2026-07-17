@@ -14,4 +14,12 @@ public class WorkStatusHistoryDTO {
     private String changedBy;
     private String reason;
     private String remark;
+
+    // 작업 이력 조회 화면에서 함께 표시할 작업·기사 정보입니다.
+    private String workType;
+    private LocalDateTime reservedTime;
+    private Long driverId;
+    private String driverName;
+    private String plateNumber;
+    private String containerNumber;
 }

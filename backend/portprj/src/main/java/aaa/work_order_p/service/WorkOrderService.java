@@ -46,6 +46,14 @@ public class WorkOrderService {
         return mapper.detail(workOrderId);
     }
 
+    public List<WorkStatusHistoryDTO> history() {
+        return historyMapper.list();
+    }
+
+    public List<WorkStatusHistoryDTO> historyByDriverUserId(Long userId) {
+        return historyMapper.listByDriverUserId(userId);
+    }
+
     public int insert(WorkOrderDTO dto) {
         if (dto.getWorkStatus() == null || dto.getWorkStatus().isBlank()) {
             dto.setWorkStatus(STATUS_DISPATCH_WAITING);
