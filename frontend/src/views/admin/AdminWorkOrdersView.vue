@@ -765,11 +765,19 @@ onUnmounted(() => {
 .search-field input,
 .toolbar-actions select {
   min-height: 30px;
+<<<<<<< HEAD
   color: var(--ink-900);
   background: #ffffff;
   border: 1px solid #aeb9c5;
   border-radius: 2px;
   padding: 0 8px;
+=======
+  padding: 0 8px;
+  color: var(--ink-900);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+>>>>>>> origin/hakseop
 }
 
 .toolbar-actions {
