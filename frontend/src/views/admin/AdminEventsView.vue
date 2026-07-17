@@ -36,7 +36,8 @@ const exceptionItems = computed(() => notifications.value.map((item) => ({
   ...item,
   key: getValue(item, 'exceptionLogId', 'exception_log_id')
     || `${getValue(item, 'exceptionType', 'exception_type')}-${getValue(item, 'occurredTime', 'occurred_time')}`,
-  time: formatDateTime(getValue(item, 'occurredTime', 'occurred_time')),
+  occurredTime: formatDateTime(getValue(item, 'occurredTime', 'occurred_time')),
+  processedTime: formatDateTime(getValue(item, 'processedTime', 'processed_time')),
   status: getValue(item, 'processStatus', 'process_status') || 'UNPROCESSED',
   type: getValue(item, 'exceptionType', 'exception_type') || '-',
   plateNumber: getValue(item, 'plateNumber', 'plate_number')
@@ -95,7 +96,10 @@ onMounted(() => {
         </div>
         <div class="timeline">
           <div v-for="item in exceptions" :key="item.key" class="timeline-row alert">
-            <time>{{ item.time }}</time>
+            <div class="exception-times">
+              <time>발생 {{ item.occurredTime }}</time>
+              <time v-if="item.processedTime !== '-'">처리 {{ item.processedTime }}</time>
+            </div>
             <div>
               <div class="exception-title">
                 <b>{{ item.type }} / {{ item.plateNumber }}</b>
@@ -120,6 +124,8 @@ onMounted(() => {
 .timeline-row { display: grid; grid-template-columns: 160px 1fr; gap: 12px; padding: 12px; background: #f6f9fd; border: 1px solid var(--line); border-radius: 8px; }
 .timeline-row.alert { background: #fff8f5; border-color: #f0cec5; }
 .timeline-row time { color: var(--blue-700); font-weight: 900; }
+.exception-times { display: grid; align-content: start; gap: 4px; }
+.exception-times time + time { color: var(--green-600); }
 .timeline-row b, .timeline-row span, .timeline-row small { display: block; }
 .timeline-row span { margin-top: 4px; color: var(--ink-500); font-size: 13px; font-weight: 700; }
 .timeline-row small { margin-top: 8px; color: var(--ink-500); font-weight: 700; }
@@ -127,4 +133,5 @@ onMounted(() => {
 .status-filter { min-width: 110px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink-700); font-weight: 700; }
 .exception-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .exception-title .status-pill { margin-top: 0; flex: 0 0 auto; }
+@media (max-width: 620px) { .timeline-row { grid-template-columns: 1fr; } }
 </style>
