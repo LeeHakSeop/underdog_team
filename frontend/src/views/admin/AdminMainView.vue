@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useContainerStore } from '@/stores/adminStore/containerStore'
 import { useGateLogStore } from '@/stores/adminStore/gateLogStore'
@@ -25,10 +25,10 @@ const gateRecognitionResults = reactive({})
 let refreshTimer = null
 
 const gateSlots = [
-  { id: 'G-01', gateNumber: 'G01', gateName: '입차 게이트 1', inOutType: 'IN' },
-  { id: 'G-02', gateNumber: 'G02', gateName: '입차 게이트 2', inOutType: 'IN' },
-  { id: 'G-03', gateNumber: 'G03', gateName: '출차 게이트 1', inOutType: 'OUT' },
-  { id: 'G-04', gateNumber: 'G04', gateName: '출차 게이트 2', inOutType: 'OUT' },
+  { id: 'G-01', gateNumber: 'G01', gateName: '?낆감 寃뚯씠??1', inOutType: 'IN' },
+  { id: 'G-02', gateNumber: 'G02', gateName: '?낆감 寃뚯씠??2', inOutType: 'IN' },
+  { id: 'G-03', gateNumber: 'G03', gateName: '異쒖감 寃뚯씠??1', inOutType: 'OUT' },
+  { id: 'G-04', gateNumber: 'G04', gateName: '異쒖감 寃뚯씠??2', inOutType: 'OUT' },
 ]
 
 const getId = (row, key) => row?.[key] ?? row?.[key.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)]
@@ -67,10 +67,10 @@ const getWorkStatus = (order) => getValue(order, 'workStatus', 'work_status')
 const statusText = (status) => {
   if (status === 'DISPATCH_WAITING') return '배차 대기'
   if (status === 'APPROVED') return '입차 대기'
-  if (status === 'GATE_IN') return '입차 완료'
+  if (status === 'GATE_IN') return '?낆감 ?꾨즺'
   if (status === 'IN_PROGRESS') return '작업 중'
   if (status === 'COMPLETED') return '출차 대기'
-  if (status === 'GATE_OUT') return '출차 완료'
+  if (status === 'GATE_OUT') return '異쒖감 ?꾨즺'
   return status || '-'
 }
 
@@ -279,7 +279,7 @@ const getGateProcessMissingItems = (type) => {
   const missingItems = [
     [payload.tractorVehicleId, '트랙터 차량'],
     [payload.trailerVehicleId, '트레일러 차량'],
-    [payload.workOrderId, '작업정보'],
+    [payload.workOrderId, '작업 정보'],
     [payload.containerId, '컨테이너'],
     [payload.sectorId, '야드 섹터'],
   ].filter(([value]) => !value).map(([, label]) => label)
@@ -299,7 +299,7 @@ const gateProcessMissingItems = computed(() => getGateProcessMissingItems(proces
 const canProcessGateFor = (type) => getGateProcessMissingItems(type).length === 0
 const canProcessGate = computed(() => canProcessGateFor(processType.value))
 
-const processTypeLabel = computed(() => (processType.value === 'OUT' ? '출차' : '입차'))
+const processTypeLabel = computed(() => (processType.value === 'OUT' ? '異쒖감' : '?낆감'))
 
 const isReadyForGateProcess = computed(() => canProcessGate.value)
 
@@ -310,7 +310,6 @@ const recognitionStatus = (result, expectedType) => {
   if (getVehicleType(result) !== normalizeVehicleType(expectedType)) return '차량 유형 불일치'
   if (result.needReview) return '관리자 확인 필요'
   return getPassText(result, expectedType) === '가능' ? '정상' : '인식 불가'
-<<<<<<< HEAD
 }
 
 const getGateRecognition = (gate, targetType) => gateRecognitionResults[gate.id]?.[targetType] || null
@@ -332,42 +331,11 @@ const getGateDbStatus = (gate) => {
   if (!tractor && !trailer) return { text: 'DB 대기', tone: 'idle' }
   if (tractor?.matched && trailer?.matched) return { text: 'DB 매칭', tone: 'success' }
   return { text: '미등록/불일치', tone: 'danger' }
-=======
->>>>>>> 77ad7840511fba06869d58e35c1bae49a95c8a39
 }
 
 const isRecognitionWarning = (result, expectedType) => {
   const status = recognitionStatus(result, expectedType)
   return status !== '인식 대기' && status !== '정상'
-<<<<<<< HEAD
-=======
-}
-
-const getGateRecognition = (gate, targetType) => gateRecognitionResults[gate.id]?.[targetType] || null
-
-const getGateOcrStatus = (gate) => {
-  const tractor = getGateRecognition(gate, 'tractor')
-  const trailer = getGateRecognition(gate, 'trailer')
-
-  if (!tractor && !trailer) return { text: 'OCR 대기', tone: 'idle' }
-  if (tractor?.needReview || trailer?.needReview) return { text: '확인 필요', tone: 'warning' }
-  if (
-    getPassText(tractor, 'TRACTOR') === '가능' &&
-    getPassText(trailer, 'TRAILER') === '가능'
-  ) {
-    return { text: 'OCR 성공', tone: 'success' }
-  }
-  return { text: 'OCR 실패', tone: 'danger' }
-}
-
-const getGateDbStatus = (gate) => {
-  const tractor = getGateRecognition(gate, 'tractor')
-  const trailer = getGateRecognition(gate, 'trailer')
-
-  if (!tractor && !trailer) return { text: 'DB 대기', tone: 'idle' }
-  if (tractor?.matched && trailer?.matched) return { text: 'DB 매칭', tone: 'success' }
-  return { text: '미등록/불일치', tone: 'danger' }
->>>>>>> 77ad7840511fba06869d58e35c1bae49a95c8a39
 }
 
 const selectGateImage = async (event, gate, targetType) => {
@@ -416,7 +384,7 @@ const submitGateProcess = async (type) => {
       await loadData()
     }
   } catch {
-    // gateLogStore.error를 화면에 표시해 최종 처리 실패 원인을 안내합니다.
+    // gateLogStore.error瑜??붾㈃???쒖떆??理쒖쥌 泥섎━ ?ㅽ뙣 ?먯씤???덈궡?⑸땲??
   }
 }
 
@@ -450,7 +418,7 @@ onUnmounted(() => {
 <template>
   <div class="control-room">
     <section class="control-layout">
-      <article class="cctv-wall" aria-label="4개 게이트 관제 현황">
+      <article class="cctv-wall" aria-label="4媛?寃뚯씠??愿???꾪솴">
         <article
           v-for="gate in gateCells"
           :key="gate.id"
@@ -464,18 +432,18 @@ onUnmounted(() => {
           </span>
           <span class="gate-body">
             <label class="camera-upload" :for="`tractorImage-${gate.id}`" @click.stop>
-              <span>트랙터 인식</span>
-              <img v-if="gatePreviewUrls[`${gate.id}-tractor`]" :src="gatePreviewUrls[`${gate.id}-tractor`]" alt="선택한 트랙터 이미지" />
-              <b v-else>트랙터 이미지 업로드</b>
+              <span>?몃옓???몄떇</span>
+              <img v-if="gatePreviewUrls[`${gate.id}-tractor`]" :src="gatePreviewUrls[`${gate.id}-tractor`]" alt="?좏깮???몃옓???대?吏" />
+              <b v-else>?몃옓???대?吏 ?낅줈??</b>
               <small :class="{ review: isRecognitionWarning(gateRecognitionResults[gate.id]?.tractor, 'TRACTOR') }">
                 {{ recognitionStatus(gateRecognitionResults[gate.id]?.tractor, 'TRACTOR') }}
               </small>
               <input :id="`tractorImage-${gate.id}`" accept="image/*" type="file" @change="selectGateImage($event, gate, 'tractor')" />
             </label>
             <label class="camera-upload" :for="`trailerImage-${gate.id}`" @click.stop>
-              <span>트레일러 인식</span>
-              <img v-if="gatePreviewUrls[`${gate.id}-trailer`]" :src="gatePreviewUrls[`${gate.id}-trailer`]" alt="선택한 트레일러 이미지" />
-              <b v-else>트레일러 이미지 업로드</b>
+              <span>?몃젅?쇰윭 ?몄떇</span>
+              <img v-if="gatePreviewUrls[`${gate.id}-trailer`]" :src="gatePreviewUrls[`${gate.id}-trailer`]" alt="?좏깮???몃젅?쇰윭 ?대?吏" />
+              <b v-else>?몃젅?쇰윭 ?대?吏 ?낅줈??</b>
               <small :class="{ review: isRecognitionWarning(gateRecognitionResults[gate.id]?.trailer, 'TRAILER') }">
                 {{ recognitionStatus(gateRecognitionResults[gate.id]?.trailer, 'TRAILER') }}
               </small>
@@ -488,44 +456,44 @@ onUnmounted(() => {
       <aside class="recognition-panel">
         <div class="info-stack">
           <section>
-            <h3>트랙터 조회 정보</h3>
+            <h3>?몃옓??議고쉶 ?뺣낫</h3>
             <dl>
-              <div><dt>차량 번호 / 유형</dt><dd>{{ tractorResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(tractorResult?.vehicle?.vehicleType) }}</dd></div>
-              <div><dt>차량 등록 / 상태</dt><dd>{{ getBooleanText(tractorResult?.vehicle?.isRegistered) }} / {{ tractorResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
-              <div><dt>기사</dt><dd>{{ tractorResult?.driver?.driverName || '-' }} / {{ tractorResult?.driver?.driverContact || '-' }}</dd></div>
-              <div><dt>기사 등록 / 출입</dt><dd>{{ getBooleanText(tractorResult?.driver?.isRegistered) }} / {{ getBooleanText(tractorResult?.driver?.canEnter) }}</dd></div>
-              <div><dt>운송사 / 연락처</dt><dd>{{ tractorResult?.carrier?.carrierName || '-' }} / {{ tractorResult?.carrier?.carrierContact || '-' }}</dd></div>
-              <div><dt>담당자 / 상태</dt><dd>{{ tractorResult?.carrier?.managerName || '-' }} / {{ tractorResult?.carrier?.carrierStatus || '-' }}</dd></div>
+              <div><dt>李⑤웾 踰덊샇 / ?좏삎</dt><dd>{{ tractorResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(tractorResult?.vehicle?.vehicleType) }}</dd></div>
+              <div><dt>李⑤웾 ?깅줉 / ?곹깭</dt><dd>{{ getBooleanText(tractorResult?.vehicle?.isRegistered) }} / {{ tractorResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
+              <div><dt>湲곗궗</dt><dd>{{ tractorResult?.driver?.driverName || '-' }} / {{ tractorResult?.driver?.driverContact || '-' }}</dd></div>
+              <div><dt>湲곗궗 ?깅줉 / 異쒖엯</dt><dd>{{ getBooleanText(tractorResult?.driver?.isRegistered) }} / {{ getBooleanText(tractorResult?.driver?.canEnter) }}</dd></div>
+              <div><dt>?댁넚??/ ?곕씫泥?</dt><dd>{{ tractorResult?.carrier?.carrierName || '-' }} / {{ tractorResult?.carrier?.carrierContact || '-' }}</dd></div>
+              <div><dt>?대떦??/ ?곹깭</dt><dd>{{ tractorResult?.carrier?.managerName || '-' }} / {{ tractorResult?.carrier?.carrierStatus || '-' }}</dd></div>
             </dl>
           </section>
 
           <section>
-            <h3>트레일러 조회 정보</h3>
+            <h3>?몃젅?쇰윭 議고쉶 ?뺣낫</h3>
             <dl>
-              <div><dt>차량 번호 / 유형</dt><dd>{{ trailerResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(trailerResult?.vehicle?.vehicleType) }}</dd></div>
-              <div><dt>차량 등록 / 상태</dt><dd>{{ getBooleanText(trailerResult?.vehicle?.isRegistered) }} / {{ trailerResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
-              <div><dt>작업 유형 / 상태</dt><dd>{{ trailerResult?.workOrder?.workType || '-' }} / {{ trailerResult?.workOrder?.workStatus || '-' }}</dd></div>
-              <div><dt>작업 승인 / 예약</dt><dd>{{ getBooleanText(trailerResult?.workOrder?.isApproved) }} / {{ trailerResult?.workOrder?.reservedTime || '-' }}</dd></div>
-              <div><dt>컨테이너 번호 / 크기</dt><dd>{{ trailerResult?.container?.containerNumber || '-' }} / {{ trailerResult?.container?.containerSize || '-' }}</dd></div>
-              <div><dt>위치 / 블록-베이-로우</dt><dd>{{ trailerResult?.container?.containerLocation || '-' }} / {{ trailerResult?.container?.block || '-' }}-{{ trailerResult?.container?.bay || '-' }}-{{ trailerResult?.container?.rowNo || '-' }}</dd></div>
-              <div><dt>야드 섹터 / 상태</dt><dd>{{ trailerResult?.yardSector?.sectorName || '-' }} / {{ trailerResult?.yardSector?.sectorStatus || '-' }}</dd></div>
-              <div><dt>대체 대기 / 안내</dt><dd>{{ trailerResult?.yardSector?.altWaitingArea || '-' }} / {{ trailerResult?.trailerWorkInfo?.guideMessage || trailerResult?.yardSector?.guideMessage || '-' }}</dd></div>
+              <div><dt>李⑤웾 踰덊샇 / ?좏삎</dt><dd>{{ trailerResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(trailerResult?.vehicle?.vehicleType) }}</dd></div>
+              <div><dt>李⑤웾 ?깅줉 / ?곹깭</dt><dd>{{ getBooleanText(trailerResult?.vehicle?.isRegistered) }} / {{ trailerResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
+              <div><dt>?묒뾽 ?좏삎 / ?곹깭</dt><dd>{{ trailerResult?.workOrder?.workType || '-' }} / {{ trailerResult?.workOrder?.workStatus || '-' }}</dd></div>
+              <div><dt>?묒뾽 ?뱀씤 / ?덉빟</dt><dd>{{ getBooleanText(trailerResult?.workOrder?.isApproved) }} / {{ trailerResult?.workOrder?.reservedTime || '-' }}</dd></div>
+              <div><dt>而⑦뀒?대꼫 踰덊샇 / ?ш린</dt><dd>{{ trailerResult?.container?.containerNumber || '-' }} / {{ trailerResult?.container?.containerSize || '-' }}</dd></div>
+              <div><dt>?꾩튂 / 釉붾줉-踰좎씠-濡쒖슦</dt><dd>{{ trailerResult?.container?.containerLocation || '-' }} / {{ trailerResult?.container?.block || '-' }}-{{ trailerResult?.container?.bay || '-' }}-{{ trailerResult?.container?.rowNo || '-' }}</dd></div>
+              <div><dt>?쇰뱶 ?뱁꽣 / ?곹깭</dt><dd>{{ trailerResult?.yardSector?.sectorName || '-' }} / {{ trailerResult?.yardSector?.sectorStatus || '-' }}</dd></div>
+              <div><dt>?泥??湲?/ ?덈궡</dt><dd>{{ trailerResult?.yardSector?.altWaitingArea || '-' }} / {{ trailerResult?.trailerWorkInfo?.guideMessage || trailerResult?.yardSector?.guideMessage || '-' }}</dd></div>
             </dl>
           </section>
 
           <section>
-            <h3>선택 게이트</h3>
+            <h3>?좏깮 寃뚯씠??</h3>
             <dl>
-              <div><dt>게이트</dt><dd>{{ selectedGate?.gateName || '-' }} / {{ gateText(selectedGate?.inOutType) }}</dd></div>
-              <div><dt>트랙터 인식</dt><dd>{{ tractorResult?.aiResult?.plateNumber || '-' }} / {{ tractorPassText }}</dd></div>
-              <div><dt>트레일러 인식</dt><dd>{{ trailerResult?.aiResult?.plateNumber || '-' }} / {{ trailerPassText }}</dd></div>
+              <div><dt>寃뚯씠??</dt><dd>{{ selectedGate?.gateName || '-' }} / {{ gateText(selectedGate?.inOutType) }}</dd></div>
+              <div><dt>?몃옓???몄떇</dt><dd>{{ tractorResult?.aiResult?.plateNumber || '-' }} / {{ tractorPassText }}</dd></div>
+              <div><dt>?몃젅?쇰윭 ?몄떇</dt><dd>{{ trailerResult?.aiResult?.plateNumber || '-' }} / {{ trailerPassText }}</dd></div>
               <div><dt>WorkOrder 일치</dt><dd>{{ workOrderMatch ? '일치' : '확인 필요' }}</dd></div>
               <div><dt>출입 가능 상태</dt><dd>{{ isWorkOrderGateStatusAllowed(selectedGateType) ? '가능' : '확인 필요' }}</dd></div>
             </dl>
           </section>
         </div>
         <div class="process-actions side-process-actions single-process-action">
-          <p class="process-mode-indicator">선택 게이트 기준 자동 판단: {{ processTypeLabel }}</p>
+          <p class="process-mode-indicator">?좏깮 寃뚯씠??湲곗? ?먮룞 ?먮떒: {{ processTypeLabel }}</p>
           <button
             v-if="processType === 'IN'"
             class="primary-button process-button"
@@ -547,16 +515,16 @@ onUnmounted(() => {
     <section class="ai-process-zone">
       <div class="decision-stack">
         <div :class="['final-decision', canProcessGate ? 'success' : 'warning']">
-          <span>최종 출입 판단</span>
-          <strong>{{ canProcessGate ? '통과' : '불가' }}</strong>
-          <p>{{ canProcessGate ? `${processType === 'OUT' ? '출차' : '입차'} 가능한 정보가 확인되었습니다.` : `확인 필요: ${gateProcessMissingItems.join(', ') || '번호판 인식 결과'}` }}</p>
+          <span>理쒖쥌 異쒖엯 ?먮떒</span>
+          <strong>{{ canProcessGate ? '?듦낵' : '遺덇?' }}</strong>
+          <p>{{ canProcessGate ? `${processType === 'OUT' ? '異쒖감' : '?낆감'} 媛?ν븳 ?뺣낫媛 ?뺤씤?섏뿀?듬땲??` : `?뺤씤 ?꾩슂: ${gateProcessMissingItems.join(', ') || '踰덊샇???몄떇 寃곌낵'}` }}</p>
         </div>
       </div>
-      <ol class="process-steps" aria-label="번호판 출입 처리 단계">
-        <li :class="{ complete: tractorResult }"><b>1</b><span>트랙터 인식</span></li>
-        <li :class="{ complete: trailerResult }"><b>2</b><span>트레일러 인식</span></li>
-        <li :class="{ complete: canProcessGate }"><b>3</b><span>정보 검증</span></li>
-        <li :class="{ complete: gateLogStore.processResult?.success }"><b>4</b><span>출입 처리</span></li>
+      <ol class="process-steps" aria-label="踰덊샇??異쒖엯 泥섎━ ?④퀎">
+        <li :class="{ complete: tractorResult }"><b>1</b><span>?몃옓???몄떇</span></li>
+        <li :class="{ complete: trailerResult }"><b>2</b><span>?몃젅?쇰윭 ?몄떇</span></li>
+        <li :class="{ complete: canProcessGate }"><b>3</b><span>?뺣낫 寃利?</span></li>
+        <li :class="{ complete: gateLogStore.processResult?.success }"><b>4</b><span>異쒖엯 泥섎━</span></li>
       </ol>
       <p v-if="gateLogStore.processResult" :class="['process-result', gateLogStore.processResult.success ? 'success' : 'warning']">{{ gateLogStore.processResult.message }}</p>
       <p v-if="plateRecognitionStore.error || gateLogStore.error" class="process-result warning">{{ plateRecognitionStore.error || gateLogStore.error }}</p>
@@ -565,7 +533,7 @@ onUnmounted(() => {
     <section class="ops-strip">
       <article v-for="card in statusCards" :key="card.label" class="ops-card" :class="card.tone">
         <span>{{ card.label }}</span>
-        <strong>{{ card.value }}건</strong>
+        <strong>{{ card.value }}嫄?</strong>
         <small>{{ card.detail }}</small>
       </article>
     </section>
@@ -573,8 +541,8 @@ onUnmounted(() => {
     <section class="monitor-grid">
       <article class="panel dark-panel">
         <div class="section-title dark-title">
-          <h2>작업 진행 요약</h2>
-          <span class="status-pill">{{ activeOrders.length }}건</span>
+          <h2>?묒뾽 吏꾪뻾 ?붿빟</h2>
+          <span class="status-pill">{{ activeOrders.length }}嫄?</span>
         </div>
         <div class="work-lane">
           <div v-for="order in activeOrders" :key="getId(order, 'workOrderId')" class="work-row">
@@ -582,38 +550,38 @@ onUnmounted(() => {
             <span>{{ getContainerNumber(getId(order, 'containerId')) }}</span>
             <small>{{ statusText(getWorkStatus(order)) }}</small>
           </div>
-          <div v-if="activeOrders.length === 0" class="empty-dark">진행 중인 작업이 없습니다.</div>
+          <div v-if="activeOrders.length === 0" class="empty-dark">吏꾪뻾 以묒씤 ?묒뾽???놁뒿?덈떎.</div>
         </div>
       </article>
 
       <article class="panel dark-panel">
         <div class="section-title dark-title">
-          <h2>야드 섹터 요약</h2>
-          <span class="status-pill">{{ yardSectors.length }}개</span>
+          <h2>?쇰뱶 ?뱁꽣 ?붿빟</h2>
+          <span class="status-pill">{{ yardSectors.length }}媛?</span>
         </div>
         <div class="yard-grid">
           <div v-for="sector in yardSectors" :key="sector.id" class="yard-node">
             <b>{{ sector.name }}</b>
             <strong>{{ sector.total }}</strong>
-            <span>반출 가능 {{ sector.canExit }} / 보류 {{ sector.hold }}</span>
+            <span>諛섏텧 媛??{{ sector.canExit }} / 蹂대쪟 {{ sector.hold }}</span>
           </div>
-          <div v-if="yardSectors.length === 0" class="empty-dark">야드 섹터 데이터가 없습니다.</div>
+          <div v-if="yardSectors.length === 0" class="empty-dark">?쇰뱶 ?뱁꽣 ?곗씠?곌? ?놁뒿?덈떎.</div>
         </div>
       </article>
     </section>
 
     <section class="panel log-panel">
       <div class="section-title dark-title">
-        <h2>최근 게이트 입출차 기록</h2>
-        <span class="status-pill">5초 갱신</span>
+        <h2>理쒓렐 寃뚯씠???낆텧李?湲곕줉</h2>
+        <span class="status-pill">5珥?媛깆떊</span>
       </div>
       <div class="compact-table">
         <div class="compact-row head">
-          <span>시간</span>
-          <span>차량</span>
-          <span>게이트</span>
-          <span>구분</span>
-          <span>처리 결과</span>
+          <span>?쒓컙</span>
+          <span>李⑤웾</span>
+          <span>寃뚯씠??</span>
+          <span>援щ텇</span>
+          <span>泥섎━ 寃곌낵</span>
         </div>
         <div v-for="log in latestGateLogs" :key="log.gateLogId || log.gate_log_id" class="compact-row">
           <span>{{ log.entryTime || log.entry_time || log.exitTime || log.exit_time || '-' }}</span>
@@ -624,7 +592,7 @@ onUnmounted(() => {
         </div>
         <div v-if="latestGateLogs.length === 0" class="compact-row">
           <span>-</span>
-          <span>게이트 로그 데이터가 없습니다.</span>
+          <span>寃뚯씠??濡쒓렇 ?곗씠?곌? ?놁뒿?덈떎.</span>
           <span>-</span>
           <span>-</span>
           <span>-</span>
@@ -1203,3 +1171,4 @@ onUnmounted(() => {
   font-weight: 700;
 }
 </style>
+
