@@ -202,13 +202,20 @@ const processingTasks = computed(() => {
 const filteredCarrierRequests = computed(() => filterByQuery(carrierRequests.value, requestQuery.value))
 
 const filteredProcessingTasks = computed(() => {
+<<<<<<< HEAD
   const statusFiltered = taskStatus.value
     ? processingTasks.value.filter((order) => getValue(order, 'workStatus', 'work_status') === taskStatus.value)
+=======
+  const status = taskStatus.value
+  const statusFiltered = status
+    ? processingTasks.value.filter((order) => getValue(order, 'workStatus', 'work_status') === status)
+>>>>>>> origin/hakseop
     : processingTasks.value
 
   return filterByQuery(statusFiltered, taskQuery.value)
 })
 
+<<<<<<< HEAD
 const requestPageCount = computed(() =>
   getPageCount(filteredCarrierRequests.value.length, requestPageSize.value),
 )
@@ -216,11 +223,18 @@ const requestPageCount = computed(() =>
 const taskPageCount = computed(() =>
   getPageCount(filteredProcessingTasks.value.length, taskPageSize.value),
 )
+=======
+const requestPageCount = computed(() => getPageCount(filteredCarrierRequests.value.length, requestPageSize.value))
+const taskPageCount = computed(() => getPageCount(filteredProcessingTasks.value.length, taskPageSize.value))
+>>>>>>> origin/hakseop
 
 const pagedCarrierRequests = computed(() =>
   paginate(filteredCarrierRequests.value, requestPage.value, requestPageSize.value),
 )
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/hakseop
 const pagedProcessingTasks = computed(() =>
   paginate(filteredProcessingTasks.value, taskPage.value, taskPageSize.value),
 )
@@ -356,6 +370,7 @@ const loadData = () => {
     .catch(() => {})
 }
 
+<<<<<<< HEAD
 const resetRequestSearch = () => {
   requestQuery.value = ''
   requestPageSize.value = 10
@@ -368,6 +383,8 @@ const resetTaskSearch = () => {
   taskPageSize.value = 10
   taskPage.value = 1
 }
+=======
+>>>>>>> origin/hakseop
 watch([requestQuery, requestPageSize], () => {
   requestPage.value = 1
 })
@@ -647,7 +664,16 @@ onUnmounted(() => {
             이전
           </button>
           <strong>{{ taskPage }} / {{ taskPageCount }}</strong>
+<<<<<<< HEAD
           <button class="ghost-button" type="button" :disabled="taskPage === taskPageCount" @click="taskPage += 1">
+=======
+          <button
+            class="ghost-button"
+            type="button"
+            :disabled="taskPage === taskPageCount"
+            @click="taskPage += 1"
+          >
+>>>>>>> origin/hakseop
             다음
           </button>
         </div>
