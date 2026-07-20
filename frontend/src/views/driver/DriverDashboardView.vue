@@ -269,6 +269,28 @@ onUnmounted(() => {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
 }
 
+.driver-grid > .panel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.driver-grid .data-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.driver-grid .data-table th,
+.driver-grid .data-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.driver-grid .data-table th {
+  width: 36%;
+}
+
 .driver-operation-panel {
   display: grid;
   grid-template-columns: 1.1fr 1fr 1fr;
