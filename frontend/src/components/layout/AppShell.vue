@@ -227,8 +227,11 @@ const logout = () => {
 <style scoped>
 .app-shell {
   display: grid;
+  width: 100%;
+  max-width: 100vw;
   min-height: 100vh;
   grid-template-columns: 230px minmax(0, 1fr);
+  overflow-x: clip;
   transition: grid-template-columns 0.16s ease;
 }
 
@@ -433,6 +436,7 @@ const logout = () => {
 
 .main-area {
   min-width: 0;
+  max-width: 100%;
 }
 
 .topbar {
@@ -459,7 +463,10 @@ const logout = () => {
 }
 
 .content {
+  min-width: 0;
+  max-width: 100%;
   padding: 10px;
+  overflow-x: hidden;
 }
 
 @media (max-width: 900px) {

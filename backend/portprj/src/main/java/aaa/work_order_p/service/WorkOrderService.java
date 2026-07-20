@@ -46,6 +46,14 @@ public class WorkOrderService {
         return mapper.detail(workOrderId);
     }
 
+    public List<WorkStatusHistoryDTO> history() {
+        return historyMapper.list();
+    }
+
+    public List<WorkStatusHistoryDTO> historyByDriverUserId(Long userId) {
+        return historyMapper.listByDriverUserId(userId);
+    }
+
     public int insert(WorkOrderDTO dto) {
         if (dto.getWorkStatus() == null || dto.getWorkStatus().isBlank()) {
             dto.setWorkStatus(STATUS_DISPATCH_WAITING);
@@ -177,11 +185,34 @@ public class WorkOrderService {
             return 0;
         }
 
+        if (!isAllowedTransition(current.getWorkStatus(), newStatus)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Invalid work-order status transition: " + current.getWorkStatus() + " -> " + newStatus
+            );
+        }
+
         int updated = mapper.updateStatus(workOrderId, newStatus);
         if (updated > 0) {
             saveHistory(current, newStatus, changedBy, reason, remark);
         }
         return updated;
+    }
+
+    private boolean isAllowedTransition(String currentStatus, String newStatus) {
+        if (STATUS_DISPATCH_WAITING.equals(currentStatus)) {
+            return STATUS_APPROVED.equals(newStatus) || STATUS_CANCELED.equals(newStatus);
+        }
+        if (STATUS_APPROVED.equals(currentStatus)) {
+            return STATUS_GATE_IN.equals(newStatus) || STATUS_CANCELED.equals(newStatus);
+        }
+        if (STATUS_GATE_IN.equals(currentStatus)) {
+            return STATUS_IN_PROGRESS.equals(newStatus) || STATUS_CANCELED.equals(newStatus);
+        }
+        if (STATUS_IN_PROGRESS.equals(currentStatus)) {
+            return STATUS_COMPLETED.equals(newStatus) || STATUS_CANCELED.equals(newStatus);
+        }
+        return STATUS_COMPLETED.equals(currentStatus) && STATUS_GATE_OUT.equals(newStatus);
     }
 
     private void saveHistory(WorkOrderDTO current, String newStatus, String changedBy, String reason, String remark) {

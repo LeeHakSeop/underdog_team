@@ -223,10 +223,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.driver-page {
-  max-width: 1180px;
-}
-
 .work-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -269,6 +265,7 @@ onUnmounted(() => {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
 }
 
+<<<<<<< HEAD
 .driver-grid > .panel {
   min-width: 0;
   overflow: hidden;
@@ -276,10 +273,14 @@ onUnmounted(() => {
 
 .driver-grid .data-table {
   width: 100%;
+=======
+.driver-grid .data-table {
+>>>>>>> origin/KSM
   min-width: 0;
   table-layout: fixed;
 }
 
+<<<<<<< HEAD
 .driver-grid .data-table th,
 .driver-grid .data-table td {
   white-space: normal;
@@ -289,6 +290,15 @@ onUnmounted(() => {
 
 .driver-grid .data-table th {
   width: 36%;
+=======
+.driver-grid .data-table th {
+  width: 96px;
+}
+
+.driver-grid .data-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+>>>>>>> origin/KSM
 }
 
 .driver-operation-panel {

@@ -6,6 +6,7 @@ import { useDriverStore } from '@/stores/driverStore'
 import { useVehicleStore } from '@/stores/vehicleStore'
 import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
 import { fetchYardSectors } from '@/api/adminApi/yardSectorApi'
+import { fetchWorkStatusHistory } from '@/api/adminApi/workOrderApi'
 
 const workOrderStore = useWorkOrderStore()
 const carrierStore = useCarrierStore()
@@ -22,12 +23,18 @@ const taskQuery = ref('')
 const taskStatus = ref('')
 const taskPage = ref(1)
 const taskPageSize = ref(10)
+const workHistory = ref([])
+const historyLoading = ref(false)
+const historyError = ref('')
+const historyQuery = ref('')
+const historyDate = ref('')
+const historyPage = ref(1)
+const historyPageSize = ref(10)
 const containerQuery = ref('')
 const containerMessage = ref('')
 const editingContainerId = ref(null)
 const containerForm = ref({})
 const yardSectors = ref([])
-
 let refreshTimer = null
 
 const pageSizeOptions = [10, 20, 50]
@@ -81,7 +88,9 @@ const getVehicleForType = (order, vehicleType) => {
     getId(order, 'vehicleId'),
   ].filter(Boolean)
 
-  return vehicleIds.map((vehicleId) => getVehicle(vehicleId)).find((vehicle) => isVehicleType(vehicle, vehicleType)) || null
+  return vehicleIds
+    .map((vehicleId) => getVehicle(vehicleId))
+    .find((vehicle) => isVehicleType(vehicle, vehicleType)) || null
 }
 
 const getTractorPlate = (order) => getPlateNumber(getId(order, 'tractorVehicleId') || getId(order, 'vehicleId'))
@@ -172,6 +181,29 @@ const filterByQuery = (orders, query) => {
   return orders.filter((order) => getSearchText(order).includes(keyword))
 }
 
+const getHistorySearchText = (history) => [
+  history.workOrderId,
+  history.driverName,
+  history.plateNumber,
+  history.containerNumber,
+  history.workType,
+  history.prevStatus,
+  history.newStatus,
+  history.reason,
+  history.changedBy,
+  history.changedTime,
+].join(' ').toLowerCase()
+
+const filteredWorkHistory = computed(() => {
+  const keyword = historyQuery.value.trim().toLowerCase()
+  const date = historyDate.value
+
+  return workHistory.value.filter((history) => (
+    (!keyword || getHistorySearchText(history).includes(keyword))
+    && (!date || String(history.changedTime || '').startsWith(date))
+  ))
+})
+
 const getPageCount = (total, pageSize) => Math.max(1, Math.ceil(total / pageSize))
 
 const paginate = (items, page, pageSize) => {
@@ -201,22 +233,34 @@ const processingTasks = computed(() => {
 const filteredCarrierRequests = computed(() => filterByQuery(carrierRequests.value, requestQuery.value))
 
 const filteredProcessingTasks = computed(() => {
-  const status = taskStatus.value
-  const statusFiltered = status
-    ? processingTasks.value.filter((order) => getValue(order, 'workStatus', 'work_status') === status)
+  const statusFiltered = taskStatus.value
+    ? processingTasks.value.filter((order) => getValue(order, 'workStatus', 'work_status') === taskStatus.value)
     : processingTasks.value
 
   return filterByQuery(statusFiltered, taskQuery.value)
 })
 
-const requestPageCount = computed(() => getPageCount(filteredCarrierRequests.value.length, requestPageSize.value))
-const taskPageCount = computed(() => getPageCount(filteredProcessingTasks.value.length, taskPageSize.value))
+const requestPageCount = computed(() =>
+  getPageCount(filteredCarrierRequests.value.length, requestPageSize.value),
+)
+
+const taskPageCount = computed(() =>
+  getPageCount(filteredProcessingTasks.value.length, taskPageSize.value),
+)
 
 const pagedCarrierRequests = computed(() =>
   paginate(filteredCarrierRequests.value, requestPage.value, requestPageSize.value),
 )
 const pagedProcessingTasks = computed(() =>
   paginate(filteredProcessingTasks.value, taskPage.value, taskPageSize.value),
+)
+
+const historyPageCount = computed(() =>
+  getPageCount(filteredWorkHistory.value.length, historyPageSize.value),
+)
+
+const pagedWorkHistory = computed(() =>
+  paginate(filteredWorkHistory.value, historyPage.value, historyPageSize.value),
 )
 
 const visibleContainers = computed(() => {
@@ -227,20 +271,6 @@ const visibleContainers = computed(() => {
     String(getValue(container, 'containerNumber', 'container_number')).toLowerCase().includes(query),
   )
 })
-
-const resetRequestSearch = () => {
-  requestQuery.value = ''
-  requestPageSize.value = 10
-  requestPage.value = 1
-}
-
-const resetTaskSearch = () => {
-  taskQuery.value = ''
-  taskStatus.value = ''
-  taskPageSize.value = 10
-  taskPage.value = 1
-}
-
 const emptyContainerForm = () => ({
   containerNumber: '',
   containerSize: '20FT',
@@ -362,8 +392,39 @@ const loadData = () => {
       yardSectors.value = data || []
     })
     .catch(() => {})
+  historyLoading.value = true
+  historyError.value = ''
+  fetchWorkStatusHistory()
+    .then((data) => {
+      workHistory.value = data || []
+    })
+    .catch((error) => {
+      historyError.value = error.message || '작업 이력을 불러오지 못했습니다.'
+    })
+    .finally(() => {
+      historyLoading.value = false
+    })
 }
 
+const resetRequestSearch = () => {
+  requestQuery.value = ''
+  requestPageSize.value = 10
+  requestPage.value = 1
+}
+
+const resetTaskSearch = () => {
+  taskQuery.value = ''
+  taskStatus.value = ''
+  taskPageSize.value = 10
+  taskPage.value = 1
+}
+
+const resetHistorySearch = () => {
+  historyQuery.value = ''
+  historyDate.value = ''
+  historyPageSize.value = 10
+  historyPage.value = 1
+}
 watch([requestQuery, requestPageSize], () => {
   requestPage.value = 1
 })
@@ -380,11 +441,22 @@ watch(taskPageCount, (pageCount) => {
   if (taskPage.value > pageCount) taskPage.value = pageCount
 })
 
+watch([historyQuery, historyDate, historyPageSize], () => {
+  historyPage.value = 1
+})
+
+watch(historyPageCount, (pageCount) => {
+  if (historyPage.value > pageCount) historyPage.value = pageCount
+})
+
 onMounted(() => {
   loadData()
   refreshTimer = setInterval(() => {
     if (!workOrderStore.loading && processingId.value === null) {
       workOrderStore.loadWorkOrders().catch(() => {})
+      fetchWorkStatusHistory().then((data) => {
+        workHistory.value = data || []
+      }).catch(() => {})
     }
   }, 5000)
 })
@@ -657,6 +729,87 @@ onUnmounted(() => {
 
     <section class="panel">
       <div class="section-title">
+        <h2>작업 상태 변경 이력</h2>
+        <span class="status-pill">{{ filteredWorkHistory.length }}건</span>
+      </div>
+
+      <div class="work-order-toolbar">
+        <div class="search-field">
+          <label for="historySearch">기사·작업 검색</label>
+          <input
+            id="historySearch"
+            v-model="historyQuery"
+            type="search"
+            placeholder="기사, 차량번호, 컨테이너, 작업번호, 상태"
+          />
+        </div>
+        <div class="toolbar-actions">
+          <label>
+            변경일
+            <input v-model="historyDate" type="date" />
+          </label>
+          <label>
+            표시
+            <select v-model.number="historyPageSize">
+              <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}건</option>
+            </select>
+          </label>
+          <button class="ghost-button" type="button" @click="resetHistorySearch">초기화</button>
+        </div>
+      </div>
+
+      <div v-if="historyLoading" class="empty-box">작업 이력을 불러오는 중입니다.</div>
+      <div v-else-if="historyError" class="empty-box warning">{{ historyError }}</div>
+      <div v-else class="table-wrap work-table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>변경 시간</th>
+              <th>작업번호</th>
+              <th>기사</th>
+              <th>트랙터</th>
+              <th>컨테이너</th>
+              <th>작업 유형</th>
+              <th>변경 전</th>
+              <th>변경 후</th>
+              <th>처리 사유</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="history in pagedWorkHistory" :key="history.historyId">
+              <td>{{ history.changedTime || '-' }}</td>
+              <td>{{ history.workOrderId }}</td>
+              <td>{{ history.driverName || '-' }}</td>
+              <td>{{ history.plateNumber || '-' }}</td>
+              <td>{{ history.containerNumber || '-' }}</td>
+              <td>{{ history.workType || '-' }}</td>
+              <td>{{ getStatusText(history.prevStatus) }}</td>
+              <td><span class="status-pill" :class="getStatusClass(history.newStatus)">{{ getStatusText(history.newStatus) }}</span></td>
+              <td>{{ history.reason || history.remark || '-' }}</td>
+            </tr>
+            <tr v-if="filteredWorkHistory.length === 0">
+              <td colspan="9">조회된 작업 이력이 없습니다.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="!historyLoading && !historyError" class="pagination-bar">
+        <span>
+          {{ getPageStart(filteredWorkHistory.length, historyPage, historyPageSize) }} -
+          {{ getPageEnd(filteredWorkHistory.length, historyPage, historyPageSize) }} /
+          {{ filteredWorkHistory.length }}건
+        </span>
+        <div class="pagination-controls">
+          <button class="ghost-button" type="button" :disabled="historyPage === 1" @click="historyPage -= 1">이전</button>
+          <strong>{{ historyPage }} / {{ historyPageCount }}</strong>
+          <button class="ghost-button" type="button" :disabled="historyPage === historyPageCount" @click="historyPage += 1">다음</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
         <h2>컨테이너 조회</h2>
         <div class="table-tools">
           <input v-model="containerQuery" type="search" placeholder="컨테이너 번호 검색" />
@@ -829,11 +982,6 @@ onUnmounted(() => {
   border-color: #e4a6a6;
 }
 
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
 .work-table-scroll {
   max-height: 470px;
   overflow: auto;
@@ -926,30 +1074,12 @@ button:disabled {
   }
 
   .toolbar-actions,
-  .pagination-controls,
-  .table-tools {
+  .pagination-controls {
     justify-content: flex-start;
   }
 
   .container-form {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 760px) {
-  .work-order-toolbar,
-  .pagination-bar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .search-field {
-    max-width: none;
-  }
-
-  .toolbar-actions,
-  .pagination-controls {
-    justify-content: flex-start;
   }
 }
 </style>

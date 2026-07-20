@@ -3,6 +3,7 @@ package aaa.work_order_p.controller;
 import aaa.work_order_p.model.TrailerWorkInfoDTO;
 import aaa.work_order_p.model.WorkOrderDTO;
 import aaa.work_order_p.model.WorkOrderProcessResultDTO;
+import aaa.work_order_p.model.WorkStatusHistoryDTO;
 import aaa.work_order_p.service.WorkOrderService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,16 @@ public class WorkOrderController {
     @GetMapping
     public List<WorkOrderDTO> list() {
         return service.list();
+    }
+
+    @GetMapping("/history")
+    public List<WorkStatusHistoryDTO> history() {
+        return service.history();
+    }
+
+    @GetMapping("/history/driver/{userId}")
+    public List<WorkStatusHistoryDTO> historyByDriverUserId(@PathVariable Long userId) {
+        return service.historyByDriverUserId(userId);
     }
 
     @GetMapping("/{workOrderId}")
