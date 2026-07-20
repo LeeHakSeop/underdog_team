@@ -1,41 +1,58 @@
 <script setup>
 import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import LoginForm from '@/components/auth/LoginForm.vue'
 import SignupWizard from '@/components/auth/SignupWizard.vue'
 
-const mode = ref('login')
+const route = useRoute()
+const router = useRouter()
+
+const mode = ref(route.query.mode === 'signup' ? 'signup' : 'login')
 const completeMessage = ref('')
 
+const setMode = (nextMode) => {
+  completeMessage.value = ''
+  mode.value = nextMode
+
+  router.replace({
+    path: '/login',
+    query: nextMode === 'signup' ? { mode: 'signup' } : {},
+  })
+}
+
 const goLogin = () => {
-  mode.value = 'login'
+  setMode('login')
 }
 
 const goSignup = () => {
-  completeMessage.value = ''
-  mode.value = 'signup'
+  setMode('signup')
 }
 
 const handleSignupCompleted = () => {
   completeMessage.value = '회원가입 신청이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.'
-  mode.value = 'login'
+  setMode('login')
 }
 </script>
 
 <template>
-  <main class="auth-page">
+  <main class="auth-page" :class="{ 'signup-mode': mode === 'signup' }">
     <section class="brand-panel">
       <p class="eyebrow">PORT GATE MANAGEMENT SYSTEM</p>
 
       <h1>
-        항만 게이트 차량 출입 및<br />
-        컨테이너 상차 섹터 안내 시스템
+        항만 게이트<br />
+        차량 출입 관리
       </h1>
+
+      <p class="brand-copy">
+        운송사, 기사, 차량 승인과 컨테이너 상차 섹터 안내를 한 화면에서 관리합니다.
+      </p>
 
       <div class="brand-features">
         <span>운송사 관리</span>
         <span>기사 등록</span>
         <span>차량 승인</span>
-        <span>게이트 출입 관리</span>
+        <span>게이트 출입</span>
       </div>
     </section>
 
@@ -66,7 +83,7 @@ const handleSignupCompleted = () => {
 .auth-page {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: minmax(0, 1.05fr) minmax(520px, 1fr);
+  grid-template-columns: minmax(400px, 0.82fr) minmax(620px, 1fr);
   background: #dfe6ee;
 }
 
@@ -75,8 +92,8 @@ const handleSignupCompleted = () => {
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  gap: 18px;
-  padding: clamp(32px, 6vw, 72px);
+  gap: 16px;
+  padding: clamp(34px, 5vw, 64px);
   color: #ffffff;
   background:
     linear-gradient(135deg, rgba(30, 58, 95, 0.96), rgba(22, 39, 58, 0.98)),
@@ -93,11 +110,20 @@ const handleSignupCompleted = () => {
 }
 
 .brand-panel h1 {
-  max-width: 720px;
+  max-width: 540px;
   margin: 0;
-  font-size: clamp(30px, 4vw, 48px);
+  font-size: clamp(38px, 3.6vw, 50px);
   font-weight: 800;
-  line-height: 1.22;
+  line-height: 1.18;
+}
+
+.brand-copy {
+  max-width: 500px;
+  margin: 0;
+  color: #dbe7f3;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.55;
 }
 
 .brand-features {
@@ -122,11 +148,11 @@ const handleSignupCompleted = () => {
   min-width: 0;
   align-items: center;
   justify-content: center;
-  padding: 26px;
+  padding: 20px 26px;
 }
 
 .auth-card {
-  width: min(100%, 900px);
+  width: min(100%, 920px);
   padding: 14px;
   background: #ffffff;
   border: 1px solid var(--line);
@@ -136,17 +162,18 @@ const handleSignupCompleted = () => {
 .auth-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
   background: #e7edf3;
   border: 1px solid var(--line);
   border-radius: 4px;
-  overflow: hidden;
 }
 
 .auth-tabs button {
-  min-height: 36px;
+  min-height: 38px;
   color: var(--ink-500);
   background: transparent;
   border: 0;
+  font-size: 14px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -167,13 +194,44 @@ const handleSignupCompleted = () => {
   font-weight: 700;
 }
 
+@media (max-height: 760px) and (min-width: 1100px) {
+  .auth-page {
+    grid-template-columns: minmax(360px, 0.76fr) minmax(640px, 1fr);
+  }
+
+  .auth-page.signup-mode {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-page.signup-mode .brand-panel {
+    display: none;
+  }
+
+  .brand-panel {
+    gap: 14px;
+    padding: 42px;
+  }
+
+  .brand-panel h1 {
+    font-size: 42px;
+  }
+
+  .auth-page.signup-mode .auth-card {
+    width: min(100%, 980px);
+  }
+
+  .auth-panel {
+    padding: 16px 24px;
+  }
+}
+
 @media (max-width: 1080px) {
   .auth-page {
     grid-template-columns: 1fr;
   }
 
   .brand-panel {
-    min-height: 300px;
+    min-height: 280px;
   }
 
   .auth-panel {

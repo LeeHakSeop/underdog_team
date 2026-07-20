@@ -104,14 +104,14 @@ const submitLogin = async () => {
 .form-head h2 {
   margin: 0;
   color: var(--ink-900);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
 }
 
 .form-head p {
   margin: 0;
   color: var(--ink-500);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .field {
@@ -121,13 +121,13 @@ const submitLogin = async () => {
 
 .field label {
   color: var(--ink-700);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .field input,
 .field select {
-  height: 40px;
+  height: 42px;
   padding: 0 12px;
   background: #ffffff;
   border: 1px solid var(--line);
@@ -148,7 +148,7 @@ const submitLogin = async () => {
 }
 
 .submit-button {
-  min-height: 38px;
+  min-height: 40px;
   color: #ffffff;
   background: var(--blue-700);
   border: 1px solid var(--blue-700);

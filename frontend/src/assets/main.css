@@ -64,6 +64,7 @@ a {
 .page-stack {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .section-title {
@@ -79,10 +80,21 @@ a {
 }
 
 .section-title h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   color: #20364f;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.section-title h2::before {
+  width: 4px;
+  height: 16px;
+  background: var(--blue-700);
+  border-radius: 999px;
+  content: '';
 }
 
 .grid-4,
@@ -115,6 +127,7 @@ a {
 }
 
 .panel {
+  min-width: 0;
   padding: 10px;
 }
 
@@ -181,39 +194,57 @@ a {
 
 .data-table th,
 .data-table td {
-  padding: 7px 8px;
+  padding: 8px 9px;
   border: 1px solid #c9d2dc;
   text-align: left;
   white-space: nowrap;
 }
 
 .data-table th {
-  color: #20364f;
-  font-size: 12px;
-  font-weight: 700;
-  background: linear-gradient(#edf4fa, #d7e3ef);
+  color: #172f49;
+  font-size: 13px;
+  font-weight: 800;
+  background: #dfeaf4;
 }
 
 .data-table tbody tr:nth-child(even) {
-  background: #f7f9fb;
+  background: #f5f8fb;
 }
 
 .data-table tbody tr:hover {
   background: #edf5fc;
 }
 
+.data-table td {
+  color: #23384d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   min-width: 56px;
-  padding: 3px 7px;
+  min-height: 24px;
+  padding: 3px 8px;
   color: var(--blue-700);
   background: #eaf2f9;
   border: 1px solid #9eb8d0;
-  border-radius: 2px;
-  font-size: 11px;
-  font-weight: 700;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.status-pill::before {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  background: currentColor;
+  border-radius: 50%;
+  content: '';
 }
 
 .status-pill.green {
@@ -232,6 +263,18 @@ a {
   color: #a23a35;
   background: #ffeceb;
   border-color: #f4bdb9;
+}
+
+.status-pill.blue {
+  color: var(--blue-700);
+  background: #eaf2f9;
+  border-color: #9eb8d0;
+}
+
+.status-pill.gray {
+  color: #566575;
+  background: #edf1f5;
+  border-color: #c6d0da;
 }
 
 .primary-button,
@@ -356,6 +399,55 @@ button,
 .metric-card strong,
 .section-title h2 {
   font-weight: 700 !important;
+}
+
+@media (min-width: 1100px) and (max-height: 760px) {
+  body {
+    font-size: 14px;
+    line-height: 1.42;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  .section-title {
+    min-height: 38px;
+  }
+
+  .section-title h2 {
+    font-size: 15px;
+  }
+
+  .field label,
+  .data-table th {
+    font-size: 13px;
+  }
+
+  .field input,
+  .field select,
+  .field textarea,
+  .table-tools input,
+  .table-tools select {
+    min-height: 34px !important;
+    font-size: 14px;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 8px 9px;
+  }
+
+  .primary-button,
+  .ghost-button {
+    min-height: 34px;
+    font-size: 13px;
+  }
+
+  .status-pill {
+    min-height: 24px;
+    font-size: 12px;
+  }
 }
 
 @media (max-width: 1100px) {

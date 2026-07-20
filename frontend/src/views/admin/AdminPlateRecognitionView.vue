@@ -948,6 +948,22 @@ const submitGateProcess = async () => {
   display: grid;
   align-content: start;
   gap: 12px;
+  min-width: 0;
+}
+
+.recognition-card .data-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.recognition-card .data-table th {
+  width: 34%;
+}
+
+.recognition-card .data-table th,
+.recognition-card .data-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .file-box {
@@ -1128,6 +1144,97 @@ const submitGateProcess = async () => {
   .matched-work-order-head {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+@media (min-width: 1100px) and (max-height: 760px) {
+  .top-control-area {
+    grid-template-columns: 180px 150px minmax(0, 1fr);
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .model-select {
+    gap: 4px;
+  }
+
+  .model-select select {
+    height: 34px;
+  }
+
+  .gate-pass-box {
+    padding: 8px 12px;
+  }
+
+  .gate-pass-box strong {
+    font-size: 23px;
+  }
+
+  .process-steps {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .process-steps li {
+    min-height: 36px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .gate-process-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px) 150px;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+  }
+
+  .gate-process-panel strong {
+    font-size: 19px;
+  }
+
+  .gate-process-button {
+    min-height: 40px;
+  }
+
+  .recognition-layout {
+    gap: 10px;
+  }
+
+  .recognition-card {
+    gap: 9px;
+  }
+
+  .alert-message {
+    min-height: 42px;
+    padding: 9px 11px;
+    font-size: 15px;
+  }
+
+  .file-box {
+    min-height: 72px;
+  }
+
+  .summary-panel {
+    padding: 10px;
+  }
+
+  .summary-panel strong {
+    font-size: 16px;
+  }
+
+  .result-grid div {
+    padding: 8px;
+  }
+
+  .result-grid strong {
+    font-size: 16px;
+  }
+
+  .recognition-card .data-table th,
+  .recognition-card .data-table td {
+    padding: 6px 7px;
+    font-size: 13px;
+    line-height: 1.3;
   }
 }
 </style>

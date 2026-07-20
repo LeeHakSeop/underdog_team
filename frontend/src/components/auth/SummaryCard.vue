@@ -43,9 +43,7 @@ const statusText = computed(() => {
         ? '운송사 정보 입력 중'
         : '기사 정보 입력 중'
     case 3:
-      return props.signupRole === 'DRIVER'
-        ? '차량 정보 입력 중'
-        : '가입 정보 확인'
+      return '가입 정보 확인'
     default:
       return '가입 준비 완료'
   }
@@ -60,7 +58,6 @@ const roleName = computed(() =>
 
 <template>
   <aside class="summary-card">
-
     <div class="summary-header">
       <h3>가입 현황</h3>
       <span class="badge">
@@ -79,7 +76,7 @@ const roleName = computed(() =>
     </div>
 
     <div
-      v-if="signupRole==='CARRIER'"
+      v-if="signupRole === 'CARRIER'"
       class="summary-item"
     >
       <label>운송사</label>
@@ -87,7 +84,7 @@ const roleName = computed(() =>
     </div>
 
     <div
-      v-if="signupRole==='CARRIER'"
+      v-if="signupRole === 'CARRIER'"
       class="summary-item"
     >
       <label>담당자</label>
@@ -95,7 +92,7 @@ const roleName = computed(() =>
     </div>
 
     <div
-      v-if="signupRole==='DRIVER'"
+      v-if="signupRole === 'DRIVER'"
       class="summary-item"
     >
       <label>기사명</label>
@@ -103,7 +100,7 @@ const roleName = computed(() =>
     </div>
 
     <div
-      v-if="signupRole==='DRIVER'"
+      v-if="signupRole === 'DRIVER'"
       class="summary-item"
     >
       <label>차량번호</label>
@@ -111,7 +108,7 @@ const roleName = computed(() =>
     </div>
 
     <div
-      v-if="signupRole==='DRIVER'"
+      v-if="signupRole === 'DRIVER'"
       class="summary-item"
     >
       <label>차량종류</label>
@@ -120,7 +117,7 @@ const roleName = computed(() =>
 
     <div class="status-box">
       <div class="status-icon">
-        🟡
+        !
       </div>
 
       <div>
@@ -131,147 +128,119 @@ const roleName = computed(() =>
         </p>
       </div>
     </div>
-
   </aside>
 </template>
 
 <style scoped>
-
-.summary-card{
-    display:grid;
-    gap:14px;
-
-    padding:20px;
-
-    background:#fff;
-
-    border:1px solid var(--line);
-
-    border-radius:6px;
-
-    position:sticky;
-
-    top:20px;
+.summary-card {
+  position: sticky;
+  top: 20px;
+  display: grid;
+  gap: 12px;
+  align-self: start;
+  padding: 18px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
 }
 
-.summary-header{
-    display:flex;
-
-    justify-content:space-between;
-
-    align-items:center;
-
-    border-bottom:1px solid var(--line);
-
-    padding-bottom:12px;
+.summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
 }
 
-.summary-header h3{
-    margin:0;
-
-    color:var(--blue-700);
-
-    font-size:18px;
+.summary-header h3 {
+  margin: 0;
+  color: var(--blue-700);
+  font-size: 19px;
+  font-weight: 800;
 }
 
-.badge{
-
-    padding:4px 10px;
-
-    background:#eef6ff;
-
-    color:#1d4e89;
-
-    border-radius:999px;
-
-    font-size:11px;
-
-    font-weight:700;
-
+.badge {
+  padding: 5px 10px;
+  color: #1d4e89;
+  white-space: nowrap;
+  background: #eef6ff;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
 }
 
-.summary-item{
-
-    display:flex;
-
-    justify-content:space-between;
-
-    align-items:center;
-
-    padding:8px 0;
-
-    border-bottom:1px solid #edf2f6;
-
+.summary-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  border-bottom: 1px solid #edf2f6;
 }
 
-.summary-item:last-of-type{
-
-    border-bottom:none;
-
+.summary-item:last-of-type {
+  border-bottom: 0;
 }
 
-.summary-item label{
-
-    color:#6b7b8d;
-
-    font-size:13px;
-
+.summary-item label {
+  color: #596b7d;
+  font-size: 14px;
+  font-weight: 700;
 }
 
-.summary-item strong{
-
-    color:#23384d;
-
-    text-align:right;
-
+.summary-item strong {
+  color: #1f3348;
+  text-align: right;
 }
 
-.status-box{
-
-    display:flex;
-
-    gap:10px;
-
-    padding:14px;
-
-    background:#fff8e7;
-
-    border:1px solid #ffe0a6;
-
-    border-radius:4px;
-
+.status-box {
+  display: flex;
+  gap: 10px;
+  padding: 13px;
+  background: #fff8e7;
+  border: 1px solid #f3cf82;
+  border-radius: 4px;
 }
 
-.status-icon{
-
-    font-size:26px;
-
+.status-icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #ffffff;
+  background: #d99a24;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: 900;
 }
 
-.status-box strong{
-
-    color:#b7791f;
-
+.status-box strong {
+  color: #9a640b;
 }
 
-.status-box p{
-
-    margin:4px 0 0;
-
-    color:#6b7b8d;
-
-    font-size:12px;
-
+.status-box p {
+  margin: 4px 0 0;
+  color: #596b7d;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
-@media(max-width:960px){
+@media (max-height: 760px) and (min-width: 1100px) {
+  .summary-card {
+    gap: 10px;
+    padding: 16px;
+  }
 
-.summary-card{
-
-position:static;
-
+  .summary-item {
+    min-height: 42px;
+  }
 }
 
+@media (max-width: 960px) {
+  .summary-card {
+    position: static;
+  }
 }
-
 </style>

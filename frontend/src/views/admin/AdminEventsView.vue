@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useGateLogStore } from '@/stores/adminStore/gateLogStore'
 import { useNotificationStore } from '@/stores/adminStore/notificationStore'
 import { useVehicleStore } from '@/stores/vehicleStore'
+import { displayTone, inOutTypeLabel, processResultLabel } from '@/config/displayLabels'
 
 const gateLogStore = useGateLogStore()
 const notificationStore = useNotificationStore()
@@ -48,14 +49,36 @@ const getPlateNumber = (vehicleId) => {
   return vehicle?.plateNumber || vehicle?.plate_number || vehicleId || '-'
 }
 
+const getLogVehiclePair = (log) => {
+  const tractorVehicleId = log.tractorVehicleId || log.tractor_vehicle_id
+  const trailerVehicleId = log.trailerVehicleId || log.trailer_vehicle_id
+  const fallbackVehicleId = log.vehicleId || log.vehicle_id
+
+  return {
+    tractor: getPlateNumber(tractorVehicleId || fallbackVehicleId),
+    trailer: getPlateNumber(trailerVehicleId || fallbackVehicleId),
+  }
+}
+
 const events = computed(() => {
-  return gateLogStore.gateLogs.map((log) => ({
-    key: log.gateLogId || log.gate_log_id,
-    time: formatDateTime(log.entryTime || log.entry_time || log.exitTime || log.exit_time),
-    title: `${log.inOutType || log.in_out_type || '-'} / ${getPlateNumber(log.vehicleId || log.vehicle_id)}`,
-    message: `${log.gateName || log.gate_name || '-'} / ${log.processResult || log.process_result || '-'}`,
-  }))
+  return gateLogStore.gateLogs.map((log) => {
+    const vehicles = getLogVehiclePair(log)
+
+    return {
+      key: log.gateLogId || log.gate_log_id,
+      time: formatDateTime(log.entryTime || log.entry_time || log.exitTime || log.exit_time),
+      inOutType: log.inOutType || log.in_out_type || '',
+      tractorPlateNumber: vehicles.tractor,
+      trailerPlateNumber: vehicles.trailer,
+      gateName: log.gateName || log.gate_name || '-',
+      processResult: log.processResult || log.process_result || '',
+    }
+  })
 })
+
+const getInOutClass = (value) => (value === 'OUT' ? 'red' : 'blue')
+
+const getProcessClass = (value) => displayTone('process', value)
 
 const buildFallbackTimeline = (item) => [{
   key: 'exception-fallback',
@@ -132,8 +155,17 @@ onMounted(() => {
           <div v-for="event in events" :key="event.key" class="timeline-row">
             <time>{{ event.time }}</time>
             <div>
-              <b>{{ event.title }}</b>
-              <span>{{ event.message }}</span>
+              <div class="gate-event-head">
+                <span class="status-pill" :class="getInOutClass(event.inOutType)">
+                  {{ inOutTypeLabel(event.inOutType) }}
+                </span>
+                <b>트랙터 {{ event.tractorPlateNumber }}</b>
+                <b>트레일러 {{ event.trailerPlateNumber }}</b>
+                <span class="status-pill" :class="getProcessClass(event.processResult)">
+                  {{ processResultLabel(event.processResult) }}
+                </span>
+              </div>
+              <span>{{ event.gateName }}</span>
             </div>
           </div>
           <div v-if="events.length === 0" class="timeline-row">
@@ -245,6 +277,23 @@ onMounted(() => {
 }
 
 .timeline-heading .status-pill {
+  flex: 0 0 auto;
+}
+
+.gate-event-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gate-event-head b {
+  color: var(--ink-900);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.gate-event-head .status-pill {
   flex: 0 0 auto;
 }
 

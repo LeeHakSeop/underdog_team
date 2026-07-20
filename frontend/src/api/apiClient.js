@@ -3,6 +3,20 @@
 // 외부 API 서버를 직접 호출해야 하는 환경에서는 VITE_API_BASE_URL을 지정합니다.
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
+const isPublicPath = (path) => {
+  const pathname = path.split('?')[0]
+
+  return [
+    '/api/login',
+    '/api/register',
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/signup',
+    '/api/auth/login-id/check',
+    '/api/auth/admin-init',
+  ].includes(pathname)
+}
+
 export const request = async (path, options = {}) => {
   const token = localStorage.getItem('token')
   const headers = new Headers(options.headers)
@@ -15,15 +29,7 @@ export const request = async (path, options = {}) => {
     headers.set('Content-Type', 'application/json')
   }
 
-  const isPublicRequest =
-    path === '/api/login' ||
-    path === '/api/register' ||
-    path === '/api/auth/login' ||
-    path === '/api/auth/register' ||
-    path === '/api/auth/signup' ||
-    path === '/api/auth/admin-init'
-
-  if (token && !isPublicRequest) {
+  if (token && !isPublicPath(path)) {
     headers.set('Authorization', `Bearer ${token}`)
   }
 
@@ -62,7 +68,7 @@ export const request = async (path, options = {}) => {
           message = text
         }
       } catch {
-        // 응답 본문을 읽을 수 없으면 기본 메시지 사용
+        // 응답 본문을 읽을 수 없으면 기본 메시지를 사용한다.
       }
     }
 

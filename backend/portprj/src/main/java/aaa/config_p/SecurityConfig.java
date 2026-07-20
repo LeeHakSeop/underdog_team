@@ -58,21 +58,22 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/register",
                                 "/api/auth/signup",
+                                "/api/auth/login-id/check",
                                 "/api/auth/admin-init",
                                 "/error"
                         ).permitAll()
 
                         /*
-                         * 관리자 회원관리 API
-                         * JWT 필터에서 권한이 ROLE_ADMIN 형식으로 등록되어 있어야 한다.
+                         * 관리자 회원 관리 API.
+                         * JWT 필터에서 권한은 ROLE_ADMIN 형식으로 등록된다.
                          */
                         .requestMatchers(
                                 "/api/auth/users/**"
                         ).hasRole("ADMIN")
 
                         /*
-                         * 현재 팀 프로젝트 기능 연결 중이므로 나머지 API는 허용한다.
-                         * 기능 통합 완료 후 역할별 접근제어로 변경 가능하다.
+                         * 현재는 프로젝트 기능 연결 중이라 나머지 API를 허용한다.
+                         * 기능 통합 완료 후 역할별 접근제어로 변경할 수 있다.
                          */
                         .requestMatchers(
                                 "/api/**"

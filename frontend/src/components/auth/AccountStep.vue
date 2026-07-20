@@ -8,11 +8,20 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  loginIdCheck: {
+    type: Object,
+    required: true,
+  },
+  checkingLoginId: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits([
   'update:modelValue',
   'update:signupRole',
+  'check-login-id',
 ])
 
 const updateField = (key, value) => {
@@ -52,15 +61,38 @@ const updateField = (key, value) => {
     </div>
 
     <div class="form-grid">
-      <div class="field">
+      <div class="field username-field">
         <label for="signupUsername">아이디</label>
-        <input
-          id="signupUsername"
-          :value="modelValue.username"
-          autocomplete="username"
-          required
-          @input="updateField('username', $event.target.value)"
-        />
+        <div
+          class="username-row"
+          :class="{
+            checked: loginIdCheck.available === true,
+            invalid: loginIdCheck.available === false,
+          }"
+        >
+          <input
+            id="signupUsername"
+            :value="modelValue.username"
+            autocomplete="username"
+            required
+            @input="updateField('username', $event.target.value)"
+          />
+          <button
+            type="button"
+            class="check-button"
+            :disabled="checkingLoginId"
+            @click="emit('check-login-id')"
+          >
+            {{ checkingLoginId ? '확인 중' : '확인' }}
+          </button>
+        </div>
+        <p
+          v-if="loginIdCheck.message"
+          class="check-message"
+          :class="{ available: loginIdCheck.available, unavailable: loginIdCheck.available === false }"
+        >
+          {{ loginIdCheck.message }}
+        </p>
       </div>
 
       <div class="field">
@@ -158,12 +190,35 @@ const updateField = (key, value) => {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .field {
   display: grid;
   gap: 5px;
+}
+
+.username-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.username-row:focus-within {
+  border-color: var(--blue-700);
+  box-shadow: 0 0 0 2px rgba(40, 103, 166, 0.12);
+}
+
+.username-row.checked {
+  border-color: #2f9e62;
+}
+
+.username-row.invalid {
+  border-color: #d94a4a;
 }
 
 .field label {
@@ -179,10 +234,62 @@ const updateField = (key, value) => {
   border-radius: 2px;
 }
 
+.username-row input {
+  border: 0;
+  border-radius: 0;
+}
+
+.username-row input:focus {
+  outline: none;
+}
+
+.check-button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 10px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--blue-700);
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.check-button:hover {
+  background: #1d4e89;
+}
+
+.check-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.check-message {
+  min-height: 16px;
+  margin: 1px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.check-message.available {
+  color: #155e3b;
+}
+
+.check-message.unavailable {
+  color: #8a1f1f;
+}
+
 @media (max-width: 620px) {
   .role-choice,
-  .form-grid {
+  .form-grid,
+  .username-row {
     grid-template-columns: 1fr;
+  }
+
+  .check-button {
+    width: 100%;
   }
 }
 </style>

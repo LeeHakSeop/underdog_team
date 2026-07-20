@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useDashboardStore } from '@/stores/adminStore/dashboardStore'
+import { displayTone, workStatusLabel } from '@/config/displayLabels'
 
 const dashboardStore = useDashboardStore()
 const { dashboard, loading, error } = storeToRefs(dashboardStore)
@@ -19,15 +20,9 @@ const recognitionRate = computed(() => {
   return total === 0 ? 0 : Math.round((success / total) * 100)
 })
 
-const getStatusText = (workStatus) => {
-  if (workStatus === 'DISPATCH_WAITING') return '작업 요청'
-  if (workStatus === 'APPROVED') return '입차 대기'
-  if (workStatus === 'GATE_IN') return '입차 완료'
-  if (workStatus === 'IN_PROGRESS') return '작업 진행'
-  if (workStatus === 'COMPLETED') return '출차 대기'
-  if (workStatus === 'GATE_OUT') return '출차 완료'
-  return workStatus || '-'
-}
+const getStatusText = (workStatus) => workStatusLabel(workStatus)
+
+const getStatusClass = (workStatus) => displayTone('work', workStatus)
 
 const metricCards = computed(() => [
   {
@@ -153,7 +148,7 @@ onUnmounted(() => {
           <article class="flow-card">
             <span>{{ card.label }}</span>
             <strong>{{ card.count }}건</strong>
-            <small>{{ card.status }}</small>
+            <small>{{ getStatusText(card.status) }}</small>
           </article>
           <span v-if="index < workFlowCards.length - 1" class="flow-arrow">→</span>
         </template>
@@ -192,7 +187,11 @@ onUnmounted(() => {
             </thead>
             <tbody>
               <tr v-for="status in workStatusList" :key="status.workStatus">
-                <td>{{ getStatusText(status.workStatus) }}</td>
+                <td>
+                  <span class="status-pill" :class="getStatusClass(status.workStatus)">
+                    {{ getStatusText(status.workStatus) }}
+                  </span>
+                </td>
                 <td>{{ status.workCount }}</td>
               </tr>
               <tr v-if="workStatusList.length === 0">
@@ -260,7 +259,11 @@ onUnmounted(() => {
               <td>{{ order.containerNumber || '-' }}</td>
               <td>{{ order.sectorName || '-' }}</td>
               <td>{{ order.workType || '-' }}</td>
-              <td><span class="status-pill">{{ order.workStatus || '-' }}</span></td>
+              <td>
+                <span class="status-pill" :class="getStatusClass(order.workStatus)">
+                  {{ getStatusText(order.workStatus) }}
+                </span>
+              </td>
               <td>{{ order.reservedTime || '-' }}</td>
             </tr>
             <tr v-if="recentWorkOrders.length === 0">

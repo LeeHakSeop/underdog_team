@@ -76,10 +76,7 @@ public class AuthService {
         res.setRoleCode(user.getRoleCode());
         res.setStatus(user.getStatus());
 
-        /*
-         * 湲곗〈 ?꾨줎?몄? origin/main ?묒そ ?명솚??
-         * LoginResponseDTO?먮룄 token, accessToken, tokenType ?꾨뱶瑜?紐⑤몢 ?붾떎.
-         */
+        // 프론트 호환성을 위해 같은 JWT를 token/accessToken 양쪽 필드에 담는다.
         res.setToken(token);
         res.setAccessToken(token);
         res.setTokenType("Bearer");
@@ -133,10 +130,6 @@ public class AuthService {
         }
     }
 
-    /**
-     * 湲곗〈 ?됰Ц ?뚯뒪??怨꾩젙怨?BCrypt 怨꾩젙??紐⑤몢 泥섎━?쒕떎.
-     * 湲곗〈 ?됰Ц 怨꾩젙??紐⑤몢 BCrypt濡??꾪솚???ㅼ뿉???됰Ц 鍮꾧탳 遺遺꾩쓣 ?쒓굅?섎뒗 寃껋씠 醫뗫떎.
-     */
     private boolean checkPassword(String inputPassword, String savedPassword) {
         if (inputPassword == null || savedPassword == null) {
             return false;
@@ -151,17 +144,23 @@ public class AuthService {
         return inputPassword.equals(savedPassword);
     }
 
+    public boolean isLoginIdAvailable(String loginId) {
+        String normalizedLoginId = normalizeLoginId(loginId);
+
+        return mapper.countByLoginId(normalizedLoginId) == 0;
+    }
+
     @Transactional
     public int register(RegisterDTO dto) {
         validateRegister(dto);
 
-        if (mapper.countByLoginId(dto.getLoginId()) > 0) {
+        if (!isLoginIdAvailable(dto.getLoginId())) {
             throw new RuntimeException("이미 사용 중인 아이디입니다.");
         }
 
         /*
-         * 愿???뚯씠釉??낅젰 ?꾩뿉 ??븷蹂??꾩닔媛믪쓣 寃?ы븳??
-         * 以묎컙 INSERT ???덉쇅媛 諛쒖깮?섎뜑?쇰룄 @Transactional濡?濡ㅻ갚?쒕떎.
+         * 사용자 정보와 권한별 상세 정보는 하나의 가입 작업이다.
+         * 중간 INSERT 실패 시 부분 저장을 막기 위해 트랜잭션으로 묶는다.
          */
         if ("CARRIER".equals(dto.getRoleCode())) {
             validateCarrierRegister(dto);
@@ -185,10 +184,7 @@ public class AuthService {
         }
 
         if ("DRIVER".equals(dto.getRoleCode())) {
-            /*
-             * 湲곗궗 ?뚯썝媛????李⑤웾? ?앹꽦?섏? ?딅뒗??
-             * 吏?뺥븳 ?댁넚?ш? ?뱀씤?????몃젅?쇰윭瑜?諛곗젙?쒕떎.
-             */
+            // 기사 가입 시 기사 기본 정보와 트랙터 차량 정보를 함께 등록한다.
             driverMapper.insertFromRegister(dto);
             insertDriverTractor(dto);
         }
@@ -207,11 +203,11 @@ public class AuthService {
     }
 
     /**
-     * 愿由ъ옄 怨꾩젙 ?곹깭 蹂寃?
+     * 관리자 회원 관리 상태 변경.
      *
-     * 愿由ъ옄 ?붾㈃?먯꽌??
-     * - ?댁넚??PENDING 怨꾩젙留?ACTIVE ?먮뒗 REJECTED 泥섎━
-     * - 湲곗궗??理쒖쥌 ?뱀씤? VehicleService.updateApproval()?먯꽌 泥섎━
+     * 상태 변경 흐름:
+     * - 운송사: PENDING -> ACTIVE 또는 REJECTED
+     * - 기사: 운송사 승인 후 CARRIER_APPROVED -> ACTIVE 또는 REJECTED
      */
     @Transactional
     public UserDTO updateStatus(Long userId, String status) {
@@ -258,13 +254,8 @@ public class AuthService {
         }
 
         /*
-         * 湲곗궗 理쒖쥌 ?뱀씤? ?ш린??泥섎━?섏? ?딅뒗??
-         *
-         * 湲곗궗 ?먮쫫:
-         * PENDING
-         * ???댁넚???뱀씤: CARRIER_APPROVED
-         * ???몃젅?쇰윭 諛곗젙
-         * ??愿由ъ옄 李⑤웾 理쒖쥌 ?뱀씤: ACTIVE
+         * 기사 계정은 운송사 승인과 트레일러 배정이 끝난 뒤에만
+         * 관리자가 최종 승인할 수 있다.
          */
         if ("DRIVER".equals(user.getRoleCode())
                 && !"CARRIER_APPROVED".equals(user.getStatus())) {
@@ -292,9 +283,7 @@ public class AuthService {
     }
 
     private void validateRegister(RegisterDTO dto) {
-        if (dto.getLoginId() == null || dto.getLoginId().isBlank()) {
-            throw new RuntimeException("아이디는 필수입니다.");
-        }
+        dto.setLoginId(normalizeLoginId(dto.getLoginId()));
 
         if (dto.getPassword() == null || dto.getPassword().length() < 4) {
             throw new RuntimeException("비밀번호는 4자 이상 입력하세요.");
@@ -313,6 +302,14 @@ public class AuthService {
                     "역할은 ADMIN, CARRIER, DRIVER 중 하나여야 합니다."
             );
         }
+    }
+
+    private String normalizeLoginId(String loginId) {
+        if (loginId == null || loginId.isBlank()) {
+            throw new RuntimeException("아이디는 필수입니다.");
+        }
+
+        return loginId.trim();
     }
 
     private void validateCarrierRegister(RegisterDTO dto) {

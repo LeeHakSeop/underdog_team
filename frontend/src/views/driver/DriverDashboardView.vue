@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDriverStore } from '@/stores/driverStore'
 import { vehicleTypeLabel } from '@/config/vehicleType'
+import { booleanLabel, displayTone, workStatusLabel } from '@/config/displayLabels'
 
 const driverStore = useDriverStore()
 const { myWorkOrders, loading, error } = storeToRefs(driverStore)
@@ -49,6 +50,12 @@ const getBooleanText = (value) => {
   if (value === false) return '미승인'
   return '-'
 }
+
+const getWorkStatusClass = (status) => displayTone('work', status)
+
+const getWorkStatusText = (status) => workStatusLabel(status)
+
+const getEntryClass = (value) => (value ? 'green' : 'red')
 
 onMounted(() => {
   if (loginUser.value?.userId) {
@@ -106,7 +113,11 @@ onUnmounted(() => {
         </div>
         <div>
           <span>작업 상태</span>
-          <strong>{{ currentWorkOrder.workStatus || '-' }}</strong>
+          <strong>
+            <span class="status-pill" :class="getWorkStatusClass(currentWorkOrder.workStatus)">
+              {{ getWorkStatusText(currentWorkOrder.workStatus) }}
+            </span>
+          </strong>
         </div>
         <div>
           <span>작업 승인</span>
@@ -170,7 +181,14 @@ onUnmounted(() => {
         <table class="data-table">
           <tbody>
             <tr><th>기사 연락처</th><td>{{ currentWorkOrder.driverContact || '-' }}</td></tr>
-            <tr><th>기사 출입 가능</th><td>{{ currentWorkOrder.canEnter ? '가능' : '불가' }}</td></tr>
+            <tr>
+              <th>기사 출입 가능</th>
+              <td>
+                <span class="status-pill" :class="getEntryClass(currentWorkOrder.canEnter)">
+                  {{ booleanLabel(currentWorkOrder.canEnter) }}
+                </span>
+              </td>
+            </tr>
             <tr><th>운송사 연락처</th><td>{{ currentWorkOrder.carrierContact || '-' }}</td></tr>
             <tr><th>차량 유형</th><td>{{ vehicleTypeLabel(currentWorkOrder.vehicleType) }}</td></tr>
             <tr><th>트레일러 번호</th><td>{{ currentWorkOrder.trailerPlateNumber || '-' }}</td></tr>
@@ -209,7 +227,11 @@ onUnmounted(() => {
               <td>{{ order.containerNumber || '-' }}</td>
               <td>{{ order.sectorName || '-' }}</td>
               <td>{{ order.reservedTime || '-' }}</td>
-              <td><span class="status-pill">{{ order.workStatus || '-' }}</span></td>
+              <td>
+                <span class="status-pill" :class="getWorkStatusClass(order.workStatus)">
+                  {{ getWorkStatusText(order.workStatus) }}
+                </span>
+              </td>
               <td>{{ getBooleanText(order.isApproved) }}</td>
             </tr>
             <tr v-if="myWorkOrders.length === 0">
@@ -224,19 +246,23 @@ onUnmounted(() => {
 
 <style scoped>
 .driver-page {
-  max-width: 1180px;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
 }
 
 .work-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  min-width: 0;
 }
 
 .work-summary div,
 .empty-panel {
   display: grid;
   gap: 4px;
+  min-width: 0;
   padding: 14px;
   background: #f6f9fd;
   border: 1px solid var(--line);
@@ -250,6 +276,8 @@ onUnmounted(() => {
 }
 
 .work-summary strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 17px;
   font-weight: 900;
 }
@@ -266,18 +294,21 @@ onUnmounted(() => {
 }
 
 .driver-grid {
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
 }
 
 .driver-operation-panel {
   display: grid;
   grid-template-columns: 1.1fr 1fr 1fr;
   gap: 10px;
+  min-width: 0;
 }
 
 .driver-pass-card {
   display: grid;
   gap: 7px;
+  min-width: 0;
   padding: 14px;
   background: #f7f9fb;
   border: 1px solid var(--line);
@@ -292,6 +323,8 @@ onUnmounted(() => {
 }
 
 .driver-pass-card strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--ink-900);
   font-size: 22px;
   font-weight: 900;
@@ -302,6 +335,52 @@ onUnmounted(() => {
   color: var(--ink-700);
   font-size: 12px;
   font-weight: 800;
+  line-height: 1.45;
+}
+
+.driver-grid .data-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.driver-grid .data-table th {
+  width: 42%;
+}
+
+.driver-grid .data-table th,
+.driver-grid .data-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 1100px) and (max-height: 760px) {
+  .work-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .work-summary div,
+  .empty-panel,
+  .driver-pass-card {
+    padding: 11px 12px;
+  }
+
+  .work-summary strong {
+    font-size: 16px;
+  }
+
+  .driver-operation-panel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .driver-pass-card strong {
+    font-size: 20px;
+  }
+
+  .driver-grid .data-table th,
+  .driver-grid .data-table td {
+    padding: 7px 8px;
+  }
 }
 
 @media (max-width: 900px) {
