@@ -155,6 +155,32 @@ const activeRole = computed(() => String(route.meta.role || currentUser.value?.r
 const activeMenus = computed(() => menus[activeRole.value] || menus.ADMIN)
 const pageTitle = computed(() => route.meta.title || '항만 게이트 시스템')
 
+const menuLabelOverrides = {
+  '/admin/main': '상황 관제판',
+  '/admin/dashboard': '데이터 현황',
+  '/admin/yard-map': '야드 맵',
+  '/admin/plate-recognition': 'AI 번호판 인식',
+  '/admin/members': '회원 관리',
+  '/admin/work-orders': '작업 관리',
+  '/admin/events': '알림/이벤트',
+  '/carrier/dashboard': '대시보드',
+  '/carrier/driver-approval': '기사 승인/회원 관리',
+  '/carrier/input': '트레일러 배정 및 작업지시',
+  '/carrier/inquiry': '작업정보 조회',
+  '/driver/dashboard': '작업 홈',
+  '/driver/work-status': '작업 현황',
+  '/driver/vehicles': '내 차량',
+}
+
+const roleLabelOverrides = {
+  CARRIER: '운송사 담당자',
+  DRIVER: '화물 기사',
+  ADMIN: '관리자',
+}
+
+const getMenuLabel = (item) => menuLabelOverrides[item.path] || item.label
+const activeRoleLabel = computed(() => roleLabelOverrides[activeRole.value] || '관리자')
+
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
   localStorage.setItem('portGateSidebar', isCollapsed.value ? 'collapsed' : 'expanded')
@@ -185,7 +211,7 @@ const logout = () => {
 
       <div class="role-badge">
         <small>현재 화면</small>
-        <strong>{{ roleLabels[activeRole] || '관리자' }}</strong>
+        <strong>{{ activeRoleLabel }}</strong>
       </div>
 
       <nav class="side-nav">
@@ -193,10 +219,10 @@ const logout = () => {
           <RouterLink
             :to="item.path"
             class="side-link"
-            :title="item.label"
+            :title="getMenuLabel(item)"
           >
             <span class="side-icon"><MenuIcon :name="item.icon" /></span>
-            <span class="side-label">{{ item.label }}</span>
+            <span class="side-label">{{ getMenuLabel(item) }}</span>
           </RouterLink>
         </template>
       </nav>
@@ -436,7 +462,11 @@ const logout = () => {
 
 .main-area {
   min-width: 0;
+<<<<<<< HEAD
   max-width: 100%;
+=======
+  overflow-x: hidden;
+>>>>>>> origin/pjh
 }
 
 .topbar {
@@ -464,9 +494,67 @@ const logout = () => {
 
 .content {
   min-width: 0;
+<<<<<<< HEAD
   max-width: 100%;
+=======
+>>>>>>> origin/pjh
   padding: 10px;
   overflow-x: hidden;
+}
+
+@media (min-width: 1100px) and (max-width: 1320px) and (max-height: 760px) {
+  .app-shell,
+  .app-shell.collapsed {
+    grid-template-columns: 54px minmax(0, 1fr);
+  }
+
+  .sidebar,
+  .app-shell.collapsed .sidebar {
+    align-items: center;
+    padding: 10px 8px;
+  }
+
+  .brand-toggle {
+    justify-content: center;
+    padding-bottom: 10px;
+  }
+
+  .brand-text,
+  .role-badge,
+  .side-note,
+  .side-label,
+  .logout-label {
+    display: none;
+  }
+
+  .side-link {
+    justify-content: center;
+    width: 34px;
+    padding: 0;
+  }
+
+  .logout-button {
+    width: 34px;
+    padding: 0;
+  }
+
+  .topbar {
+    min-height: 46px;
+    padding: 6px 12px;
+  }
+
+  .topbar small {
+    display: none;
+  }
+
+  .topbar h1 {
+    margin: 0;
+    font-size: 19px;
+  }
+
+  .content {
+    padding: 8px;
+  }
 }
 
 @media (max-width: 900px) {

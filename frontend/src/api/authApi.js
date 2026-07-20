@@ -21,6 +21,13 @@ export const register = (registerData) => {
 }
 
 /**
+ * 아이디 중복 확인
+ */
+export const checkLoginId = (loginId) => {
+    return request(`/api/auth/login-id/check?loginId=${encodeURIComponent(loginId)}`)
+}
+
+/**
  * 회원 목록 조회 (관리자)
  */
 export const getUsers = () => {

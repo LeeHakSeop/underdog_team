@@ -9,18 +9,25 @@ public interface ExceptionLogMapper {
 
     @Select("""
             SELECT
-                exception_log_id AS exceptionLogId,
-                gate_log_id AS gateLogId,
-                vehicle_id AS vehicleId,
-                plate_number,
-                exception_type,
-                exception_message,
-                occurred_time AS occurredTime,
-                process_status,
-                manager_action,
-                processed_time
-            FROM exception_log
-            ORDER BY occurred_time DESC
+                el.exception_log_id AS exceptionLogId,
+                el.gate_log_id AS gateLogId,
+                el.vehicle_id AS vehicleId,
+                el.plate_number,
+                el.exception_type,
+                el.exception_message,
+                el.occurred_time AS occurredTime,
+                el.process_status,
+                el.manager_action,
+                el.processed_time,
+                gl.gate_number,
+                gl.gate_name,
+                gl.entry_time,
+                gl.exit_time,
+                gl.in_out_type,
+                gl.process_result AS gateProcessResult
+            FROM exception_log el
+            LEFT JOIN gate_log gl ON gl.gate_log_id = el.gate_log_id
+            ORDER BY el.occurred_time DESC
             """)
     List<ExceptionLogDTO> list();
 

@@ -96,8 +96,6 @@ const getVehicleForType = (order, vehicleType) => {
 const getTractorPlate = (order) => getPlateNumber(getId(order, 'tractorVehicleId') || getId(order, 'vehicleId'))
 const getTrailerPlate = (order) => getPlateNumber(getId(order, 'trailerVehicleId'))
 
-const getTrailerPlateNumber = (order) => getTrailerPlate(order)
-
 const getVehicleApprovalText = (vehicle) => {
   if (!vehicle) return '미연결'
   const isRegistered = getValue(vehicle, 'isRegistered', 'is_registered')
@@ -1049,11 +1047,6 @@ onUnmounted(() => {
 .container-actions {
   display: flex;
   gap: 6px;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
 }
 
 @media (max-width: 980px) {

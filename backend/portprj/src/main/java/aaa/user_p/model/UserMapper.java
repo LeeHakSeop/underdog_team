@@ -1,7 +1,13 @@
 package aaa.user_p.model;
 
 import aaa.auth_p.model.RegisterDTO;
-import org.apache.ibatis.annotations.*;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -64,8 +70,8 @@ public interface UserMapper {
     int countByLoginId(@Param("loginId") String loginId);
 
     /**
-     * 회원가입
-     * 생성된 user_id를 RegisterDTO.userId에 자동 저장
+     * 회원가입.
+     * 생성된 user_id를 RegisterDTO.userId에 자동 저장한다.
      */
     @Insert("""
         INSERT INTO users

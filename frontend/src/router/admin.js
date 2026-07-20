@@ -16,19 +16,19 @@ export default [
         path: 'main',
         name: 'admin-main',
         component: AdminMainView,
-        meta: { role: 'admin', title: '관리자 메인' },
+        meta: { role: 'admin', title: '상황 관제판' },
       },
       {
         path: 'dashboard',
         name: 'admin-dashboard',
         component: AdminDashboardView,
-        meta: { role: 'admin', title: '센터 현황' },
+        meta: { role: 'admin', title: '데이터 현황' },
       },
       {
         path: 'yard-map',
         name: 'admin-yard-map',
         component: AdminYardMapView,
-        meta: { role: 'admin', title: '운영 맵' },
+        meta: { role: 'admin', title: '야드 맵' },
       },
       {
         path: 'plate-recognition',
@@ -40,7 +40,7 @@ export default [
         path: 'members',
         name: 'admin-members',
         component: AdminMembersView,
-        meta: { role: 'ADMIN', title: '가입 회원 관리' },
+        meta: { role: 'ADMIN', title: '회원 관리' },
       },
       {
         path: 'work-orders',

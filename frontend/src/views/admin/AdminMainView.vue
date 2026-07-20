@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useContainerStore } from '@/stores/adminStore/containerStore'
 import { useGateLogStore } from '@/stores/adminStore/gateLogStore'
@@ -8,6 +8,12 @@ import { useVehicleStore } from '@/stores/vehicleStore'
 import { useCarrierStore } from '@/stores/carrierStore'
 import { usePlateRecognitionStore } from '@/stores/adminStore/plateRecognitionStore'
 import { vehicleTypeLabel } from '@/config/vehicleType'
+import {
+  displayTone,
+  inOutTypeLabel,
+  processResultLabel,
+  workStatusLabel,
+} from '@/config/displayLabels'
 
 const gateLogStore = useGateLogStore()
 const workOrderStore = useWorkOrderStore()
@@ -39,6 +45,17 @@ const getPlateNumber = (vehicleId) => {
   return getValue(vehicle, 'plateNumber', 'plate_number') || vehicleId || '-'
 }
 
+const getLogVehiclePair = (log) => {
+  const tractorVehicleId = getId(log, 'tractorVehicleId')
+  const trailerVehicleId = getId(log, 'trailerVehicleId')
+  const fallbackVehicleId = getId(log, 'vehicleId')
+
+  return {
+    tractor: getPlateNumber(tractorVehicleId || fallbackVehicleId),
+    trailer: getPlateNumber(trailerVehicleId || fallbackVehicleId),
+  }
+}
+
 const getVehicle = (vehicleId) => {
   return vehicleStore.vehicles.find((item) => getId(item, 'vehicleId') === vehicleId) || null
 }
@@ -64,17 +81,13 @@ const getContainerNumber = (containerId) => {
 
 const getWorkStatus = (order) => getValue(order, 'workStatus', 'work_status')
 
-const statusText = (status) => {
-  if (status === 'DISPATCH_WAITING') return '배차 대기'
-  if (status === 'APPROVED') return '입차 대기'
-  if (status === 'GATE_IN') return '입차 완료'
-  if (status === 'IN_PROGRESS') return '작업 중'
-  if (status === 'COMPLETED') return '출차 대기'
-  if (status === 'GATE_OUT') return '출차 완료'
-  return status || '-'
-}
+const statusText = (status) => workStatusLabel(status)
 
-const gateText = (type) => (type === 'OUT' ? '출차' : '입차')
+const gateText = (type) => inOutTypeLabel(type || 'IN')
+
+const processResultText = (result) => processResultLabel(result)
+
+const processResultClass = (result) => displayTone('process', result)
 
 const latestGateLogs = computed(() => gateLogStore.gateLogs.slice(0, 8))
 
@@ -279,7 +292,7 @@ const getGateProcessMissingItems = (type) => {
   const missingItems = [
     [payload.tractorVehicleId, '트랙터 차량'],
     [payload.trailerVehicleId, '트레일러 차량'],
-    [payload.workOrderId, '작업정보'],
+    [payload.workOrderId, '작업 정보'],
     [payload.containerId, '컨테이너'],
     [payload.sectorId, '야드 섹터'],
   ].filter(([value]) => !value).map(([, label]) => label)
@@ -583,21 +596,38 @@ onUnmounted(() => {
       <div class="compact-table">
         <div class="compact-row head">
           <span>시간</span>
-          <span>차량</span>
+          <span>트랙터</span>
+          <span>트레일러</span>
           <span>게이트</span>
           <span>구분</span>
           <span>처리 결과</span>
         </div>
         <div v-for="log in latestGateLogs" :key="log.gateLogId || log.gate_log_id" class="compact-row">
           <span>{{ log.entryTime || log.entry_time || log.exitTime || log.exit_time || '-' }}</span>
-          <span>{{ getPlateNumber(getId(log, 'vehicleId')) }}</span>
+          <span>{{ getLogVehiclePair(log).tractor }}</span>
+          <span>{{ getLogVehiclePair(log).trailer }}</span>
           <span>{{ log.gateName || log.gate_name || '-' }}</span>
-          <span>{{ gateText(log.inOutType || log.in_out_type) }}</span>
-          <span>{{ log.processResult || log.process_result || '-' }}</span>
+          <span>
+            <span
+              class="status-pill"
+              :class="(log.inOutType || log.in_out_type) === 'OUT' ? 'red' : 'blue'"
+            >
+              {{ gateText(log.inOutType || log.in_out_type) }}
+            </span>
+          </span>
+          <span>
+            <span
+              class="status-pill"
+              :class="processResultClass(log.processResult || log.process_result)"
+            >
+              {{ processResultText(log.processResult || log.process_result) }}
+            </span>
+          </span>
         </div>
         <div v-if="latestGateLogs.length === 0" class="compact-row">
           <span>-</span>
           <span>게이트 로그 데이터가 없습니다.</span>
+          <span>-</span>
           <span>-</span>
           <span>-</span>
           <span>-</span>
@@ -1092,16 +1122,22 @@ onUnmounted(() => {
 
 .compact-row {
   display: grid;
-  min-width: 760px;
-  grid-template-columns: 160px 1fr 100px 100px 130px;
-  gap: 6px;
-  padding: 6px 8px;
+  min-width: 0;
+  grid-template-columns: minmax(145px, 1.15fr) minmax(100px, 0.85fr) minmax(100px, 0.85fr) 86px 74px minmax(130px, 1fr);
+  gap: 8px;
+  padding: 8px 10px;
   color: #dceaff;
   background: #151d31;
   border: 1px solid #263353;
   border-radius: 1px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
+}
+
+.compact-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
 }
 
 .compact-row.head {
@@ -1118,6 +1154,32 @@ onUnmounted(() => {
 
   .cctv-wall {
     min-height: 520px;
+  }
+}
+
+@media (min-width: 1100px) and (max-height: 760px) {
+  .cctv-wall {
+    min-height: 440px;
+  }
+
+  .dark-title {
+    min-height: 36px;
+  }
+
+  .dark-title h2 {
+    font-size: 15px;
+  }
+
+  .compact-table {
+    gap: 4px;
+    overflow-x: hidden;
+  }
+
+  .compact-row {
+    grid-template-columns: minmax(140px, 1.15fr) minmax(92px, 0.8fr) minmax(92px, 0.8fr) 80px 68px minmax(118px, 0.95fr);
+    min-height: 38px;
+    padding: 7px 9px;
+    font-size: 13px;
   }
 }
 
@@ -1176,3 +1238,4 @@ onUnmounted(() => {
   font-weight: 700;
 }
 </style>
+

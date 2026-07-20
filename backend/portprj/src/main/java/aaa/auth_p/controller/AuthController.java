@@ -6,7 +6,16 @@ import aaa.auth_p.model.RegisterDTO;
 import aaa.auth_p.service.AuthService;
 import aaa.user_p.model.UserDTO;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
@@ -40,6 +49,22 @@ public class AuthController {
         return Map.of(
                 "message",
                 "회원가입이 완료되었습니다."
+        );
+    }
+
+    @GetMapping("/login-id/check")
+    public Map<String, Object> checkLoginId(@RequestParam String loginId) {
+        boolean available = authService.isLoginIdAvailable(loginId);
+
+        return Map.of(
+                "loginId",
+                loginId.trim(),
+                "available",
+                available,
+                "message",
+                available
+                        ? "사용 가능한 아이디입니다."
+                        : "이미 사용 중인 아이디입니다."
         );
     }
 
