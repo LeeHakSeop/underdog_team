@@ -245,15 +245,12 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-<<<<<<< HEAD
-=======
 .driver-page {
   width: 100%;
   max-width: none;
   min-width: 0;
 }
 
->>>>>>> origin/pjh
 .work-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -301,7 +298,6 @@ onUnmounted(() => {
   min-width: 0;
 }
 
-<<<<<<< HEAD
 .driver-grid > .panel {
   min-width: 0;
   overflow: hidden;
@@ -309,14 +305,10 @@ onUnmounted(() => {
 
 .driver-grid .data-table {
   width: 100%;
-=======
-.driver-grid .data-table {
->>>>>>> origin/KSM
   min-width: 0;
   table-layout: fixed;
 }
 
-<<<<<<< HEAD
 .driver-grid .data-table th,
 .driver-grid .data-table td {
   white-space: normal;
@@ -325,16 +317,7 @@ onUnmounted(() => {
 }
 
 .driver-grid .data-table th {
-  width: 36%;
-=======
-.driver-grid .data-table th {
-  width: 96px;
-}
-
-.driver-grid .data-table td {
-  white-space: normal;
-  overflow-wrap: anywhere;
->>>>>>> origin/KSM
+  width: 42%;
 }
 
 .driver-operation-panel {
@@ -375,21 +358,6 @@ onUnmounted(() => {
   font-size: 12px;
   font-weight: 800;
   line-height: 1.45;
-}
-
-.driver-grid .data-table {
-  min-width: 0;
-  table-layout: fixed;
-}
-
-.driver-grid .data-table th {
-  width: 42%;
-}
-
-.driver-grid .data-table th,
-.driver-grid .data-table td {
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
 
 @media (min-width: 1100px) and (max-height: 760px) {

@@ -9,18 +9,9 @@ import { displayTone, inOutTypeLabel, processResultLabel } from '@/config/displa
 const gateLogStore = useGateLogStore()
 const notificationStore = useNotificationStore()
 const vehicleStore = useVehicleStore()
-<<<<<<< HEAD
-const { notifications } = storeToRefs(notificationStore)
-const exceptionFilter = ref('ALL')
-
-const getValue = (item, camelCaseKey, snakeCaseKey) => item?.[camelCaseKey] ?? item?.[snakeCaseKey]
-
-const formatDateTime = (value) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('ko-KR')
-=======
 const { notifications, loading, error } = storeToRefs(notificationStore)
+
+const exceptionFilter = ref('ALL')
 
 const eventTypeText = {
   GATE: '게이트',
@@ -53,130 +44,183 @@ const formatDateTime = (value) => {
     hour: '2-digit',
     minute: '2-digit',
   })
->>>>>>> origin/pjh
 }
 
 const getPlateNumber = (vehicleId) => {
-  const vehicle = vehicleStore.vehicles.find((item) => (item.vehicleId || item.vehicle_id) === vehicleId)
+  const vehicle = vehicleStore.vehicles.find((item) => String(item.vehicleId || item.vehicle_id) === String(vehicleId))
   return vehicle?.plateNumber || vehicle?.plate_number || vehicleId || '-'
 }
 
-<<<<<<< HEAD
-const events = computed(() => gateLogStore.gateLogs.map((log) => ({
-  key: getValue(log, 'gateLogId', 'gate_log_id'),
-  time: formatDateTime(getValue(log, 'entryTime', 'entry_time') || getValue(log, 'exitTime', 'exit_time')),
-  type: getValue(log, 'inOutType', 'in_out_type') || '-',
-  target: getPlateNumber(getValue(log, 'vehicleId', 'vehicle_id')),
-  message: `${getValue(log, 'gateName', 'gate_name') || '-'} / ${getValue(log, 'processResult', 'process_result') || '-'}`,
-})))
+const getVehicleById = (vehicleId) => vehicleStore.vehicles.find((item) => (
+  String(item.vehicleId || item.vehicle_id) === String(vehicleId)
+))
 
-const exceptionItems = computed(() => notifications.value.map((item) => ({
-  ...item,
-  key: getValue(item, 'exceptionLogId', 'exception_log_id')
-    || `${getValue(item, 'exceptionType', 'exception_type')}-${getValue(item, 'occurredTime', 'occurred_time')}`,
-  occurredTime: formatDateTime(getValue(item, 'occurredTime', 'occurred_time')),
-  processedTime: formatDateTime(getValue(item, 'processedTime', 'processed_time')),
-  status: getValue(item, 'processStatus', 'process_status') || 'UNPROCESSED',
-  type: getValue(item, 'exceptionType', 'exception_type') || '-',
-  plateNumber: getValue(item, 'plateNumber', 'plate_number')
-    || getPlateNumber(getValue(item, 'vehicleId', 'vehicle_id')),
-  message: getValue(item, 'exceptionMessage', 'exception_message') || '-',
-  managerAction: getValue(item, 'managerAction', 'manager_action') || '조치 대기',
-})))
+const normalizeVehicleType = (vehicleType) => {
+  if (vehicleType === 'TRACTOR' || vehicleType === '트랙터') return 'TRACTOR'
+  if (vehicleType === 'TRAILER' || vehicleType === '트레일러') return 'TRAILER'
+  return ''
+}
+
+const getLogVehiclePair = (log) => {
+  const tractorVehicleId = getValue(log, 'tractorVehicleId', 'tractor_vehicle_id')
+  const trailerVehicleId = getValue(log, 'trailerVehicleId', 'trailer_vehicle_id')
+  const fallbackVehicleId = getValue(log, 'vehicleId', 'vehicle_id')
+
+  let tractor = tractorVehicleId ? getPlateNumber(tractorVehicleId) : '-'
+  let trailer = trailerVehicleId ? getPlateNumber(trailerVehicleId) : '-'
+
+  // 번호판 인식 로그처럼 한쪽 차량 ID만 저장된 경우, 반대쪽에 같은 번호를 반복하지 않는다.
+  // 구형 로그에서만 vehicle_id를 차량 종류로 확인해 해당 칸에 보완한다.
+  if (!tractorVehicleId && !trailerVehicleId && fallbackVehicleId) {
+    const fallbackVehicle = getVehicleById(fallbackVehicleId)
+    const fallbackType = normalizeVehicleType(
+      fallbackVehicle?.vehicleType || fallbackVehicle?.vehicle_type,
+    )
+
+    if (fallbackType === 'TRACTOR') tractor = getPlateNumber(fallbackVehicleId)
+    if (fallbackType === 'TRAILER') trailer = getPlateNumber(fallbackVehicleId)
+  }
+
+  return {
+    tractor,
+    trailer,
+  }
+}
+
+const events = computed(() => gateLogStore.gateLogs.map((log) => {
+  const vehicles = getLogVehiclePair(log)
+
+  return {
+    key: getValue(log, 'gateLogId', 'gate_log_id'),
+    time: formatDateTime(
+      getValue(log, 'entryTime', 'entry_time') || getValue(log, 'exitTime', 'exit_time'),
+    ),
+    inOutType: getValue(log, 'inOutType', 'in_out_type') || '',
+    tractorPlateNumber: vehicles.tractor,
+    trailerPlateNumber: vehicles.trailer,
+    gateName: getValue(log, 'gateName', 'gate_name') || '-',
+    processResult: getValue(log, 'processResult', 'process_result') || '',
+  }
+}))
+
+const getInOutClass = (value) => (value === 'OUT' ? 'red' : 'blue')
+
+const getProcessClass = (value) => displayTone('process', value)
+
+const buildTimeline = (item) => {
+  const timeline = []
+  const inOutType = getValue(item, 'inOutType', 'in_out_type')
+  const entryTime = getValue(item, 'entryTime', 'entry_time')
+  const exitTime = getValue(item, 'exitTime', 'exit_time')
+  const gateTime = inOutType === 'OUT' ? exitTime || entryTime : entryTime || exitTime
+
+  if (gateTime) {
+    timeline.push({
+      key: 'gate',
+      type: 'GATE',
+      label: inOutType === 'OUT' ? '출차' : '입차',
+      time: formatDateTime(gateTime),
+      sortTime: gateTime,
+      description: getValue(item, 'gateName', 'gate_name') || '-',
+    })
+  }
+
+  const occurredTime = getValue(item, 'occurredTime', 'occurred_time')
+  if (occurredTime) {
+    timeline.push({
+      key: 'exception',
+      type: 'EXCEPTION',
+      label: eventTypeText.EXCEPTION,
+      time: formatDateTime(occurredTime),
+      sortTime: occurredTime,
+      description: getValue(item, 'exceptionMessage', 'exception_message') || '-',
+    })
+  }
+
+  const processedTime = getValue(item, 'processedTime', 'processed_time')
+  if (processedTime) {
+    timeline.push({
+      key: 'processed',
+      type: 'PROCESSED',
+      label: eventTypeText.PROCESSED,
+      time: formatDateTime(processedTime),
+      sortTime: processedTime,
+      description: getValue(item, 'managerAction', 'manager_action') || '관리자 조치 완료',
+    })
+  }
+
+  return timeline.sort((left, right) => new Date(left.sortTime) - new Date(right.sortTime))
+}
+
+const normalizeTimeline = (item) => {
+  const timeline = getValue(item, 'timeline')
+
+  if (!Array.isArray(timeline) || timeline.length === 0) {
+    return buildTimeline(item)
+  }
+
+  return timeline.map((event, index) => {
+    const eventType = getValue(event, 'eventType', 'event_type') || 'EXCEPTION'
+    const eventTime = getValue(event, 'eventTime', 'event_time')
+
+    return {
+      key: `${eventType}-${index}`,
+      type: eventType,
+      label: eventTypeText[eventType] || getValue(event, 'eventLabel', 'event_label') || '기록',
+      time: formatDateTime(eventTime),
+      sortTime: eventTime,
+      description: getValue(event, 'description') || getValue(event, 'eventLabel', 'event_label') || '-',
+    }
+  })
+}
+
+const exceptionItems = computed(() => notifications.value.map((item, index) => {
+  const key = getValue(item, 'exceptionLogId', 'exception_log_id', 'id')
+    || `${getValue(item, 'exceptionType', 'exception_type')}-${getValue(item, 'occurredTime', 'occurred_time')}-${index}`
+
+  return {
+    key,
+    status: getValue(item, 'processStatus', 'process_status') || 'UNPROCESSED',
+    type: getValue(item, 'exceptionType', 'exception_type') || 'EXCEPTION',
+    plateNumber: getValue(item, 'plateNumber', 'plate_number')
+      || getPlateNumber(getValue(item, 'vehicleId', 'vehicle_id')),
+    occurredTime: formatDateTime(getValue(item, 'occurredTime', 'occurred_time')),
+    processedTime: formatDateTime(getValue(item, 'processedTime', 'processed_time')),
+    message: getValue(item, 'exceptionMessage', 'exception_message') || '-',
+    managerAction: getValue(item, 'managerAction', 'manager_action') || '조치 대기',
+    timeline: normalizeTimeline(item),
+  }
+}))
 
 const exceptions = computed(() => exceptionItems.value.filter((item) => (
   exceptionFilter.value === 'ALL' || item.status === exceptionFilter.value
 )))
 
 const openExceptionCount = computed(() => exceptionItems.value.filter((item) => item.status !== 'PROCESSED').length)
-=======
-const getLogVehiclePair = (log) => {
-  const tractorVehicleId = log.tractorVehicleId || log.tractor_vehicle_id
-  const trailerVehicleId = log.trailerVehicleId || log.trailer_vehicle_id
-  const fallbackVehicleId = log.vehicleId || log.vehicle_id
 
-  return {
-    tractor: getPlateNumber(tractorVehicleId || fallbackVehicleId),
-    trailer: getPlateNumber(trailerVehicleId || fallbackVehicleId),
-  }
-}
-
-const events = computed(() => {
-  return gateLogStore.gateLogs.map((log) => {
-    const vehicles = getLogVehiclePair(log)
-
-    return {
-      key: log.gateLogId || log.gate_log_id,
-      time: formatDateTime(log.entryTime || log.entry_time || log.exitTime || log.exit_time),
-      inOutType: log.inOutType || log.in_out_type || '',
-      tractorPlateNumber: vehicles.tractor,
-      trailerPlateNumber: vehicles.trailer,
-      gateName: log.gateName || log.gate_name || '-',
-      processResult: log.processResult || log.process_result || '',
-    }
-  })
-})
-
-const getInOutClass = (value) => (value === 'OUT' ? 'red' : 'blue')
-
-const getProcessClass = (value) => displayTone('process', value)
-
-const buildFallbackTimeline = (item) => [{
-  key: 'exception-fallback',
-  type: 'EXCEPTION',
-  label: eventTypeText.EXCEPTION,
-  time: formatDateTime(getValue(item, 'occurredTime', 'occurred_time')),
-  description: getValue(item, 'exceptionMessage', 'exception_message') || '-',
-}]
-
-const normalizeTimeline = (item) => {
-  const timeline = getValue(item, 'timeline') || []
-
-  if (!Array.isArray(timeline) || timeline.length === 0) {
-    return buildFallbackTimeline(item)
-  }
-
-  return timeline.map((event, index) => {
-    const eventType = getValue(event, 'eventType', 'event_type')
-
-    return {
-      key: `${eventType || 'event'}-${index}`,
-      type: eventType,
-      label: eventTypeText[eventType] || getValue(event, 'eventLabel', 'event_label') || '기록',
-      time: formatDateTime(getValue(event, 'eventTime', 'event_time')),
-      description: getValue(event, 'description') || getValue(event, 'eventLabel', 'event_label') || '-',
-    }
-  })
-}
-
-const exceptions = computed(() => {
-  return notifications.value.map((item, index) => {
-    const exceptionLogId = getValue(item, 'exceptionLogId', 'exception_log_id', 'id') || index
-    const plateNumber = getValue(item, 'plateNumber', 'plate_number') || '-'
-    const exceptionType = getValue(item, 'exceptionType', 'exception_type') || '예외'
-
-    return {
-      key: exceptionLogId,
-      status: getValue(item, 'processStatus', 'process_status') || '미처리',
-      title: `${exceptionType} / ${plateNumber}`,
-      timeline: normalizeTimeline(item),
-    }
-  })
-})
-
-const exceptionTimelineRows = computed(() => {
-  return exceptions.value.flatMap((item) => {
-    return item.timeline.map((event) => ({
-      key: `${item.key}-${event.key}`,
-      time: event.time,
-      title: `${event.label} / ${item.title}`,
-      message: event.description,
+const exceptionTimelineRows = computed(() => exceptions.value.flatMap((item) => {
+  if (item.timeline.length === 0) {
+    return [{
+      key: `${item.key}-exception`,
+      time: item.occurredTime,
+      title: `${item.type} / ${item.plateNumber}`,
+      message: item.message,
       status: item.status,
-      type: event.type,
-    }))
-  })
-})
->>>>>>> origin/pjh
+      type: 'EXCEPTION',
+    }]
+  }
+
+  return item.timeline.map((event) => ({
+    key: `${item.key}-${event.key}`,
+    time: event.time,
+    title: `${event.label} / ${item.type} / ${item.plateNumber}`,
+    message: event.description,
+    status: item.status,
+    type: event.type,
+  }))
+}))
+
+const getExceptionStatusClass = (status) => (status === 'PROCESSED' ? 'green' : 'red')
 
 onMounted(() => {
   gateLogStore.loadGateLogs().catch(() => {})
@@ -201,8 +245,16 @@ onMounted(() => {
                 <span class="status-pill" :class="getInOutClass(event.inOutType)">
                   {{ inOutTypeLabel(event.inOutType) }}
                 </span>
-                <b>트랙터 {{ event.tractorPlateNumber }}</b>
-                <b>트레일러 {{ event.trailerPlateNumber }}</b>
+                <div class="gate-vehicles" aria-label="트랙터·트레일러 차량번호">
+                  <div class="vehicle-tag tractor">
+                    <span>트랙터</span>
+                    <strong>{{ event.tractorPlateNumber }}</strong>
+                  </div>
+                  <div class="vehicle-tag trailer">
+                    <span>트레일러</span>
+                    <strong>{{ event.trailerPlateNumber }}</strong>
+                  </div>
+                </div>
                 <span class="status-pill" :class="getProcessClass(event.processResult)">
                   {{ processResultLabel(event.processResult) }}
                 </span>
@@ -230,26 +282,11 @@ onMounted(() => {
           </select>
         </div>
         <div class="timeline">
-<<<<<<< HEAD
-          <div v-for="item in exceptions" :key="item.key" class="timeline-row alert">
-            <div class="exception-times">
-              <time>발생 {{ item.occurredTime }}</time>
-              <time v-if="item.processedTime !== '-'">처리 {{ item.processedTime }}</time>
-            </div>
-            <div>
-              <div class="exception-title">
-                <b>{{ item.type }} / {{ item.plateNumber }}</b>
-                <span class="status-pill" :class="item.status === 'PROCESSED' ? 'green' : 'red'">{{ item.status }}</span>
-              </div>
-              <span>{{ item.message }}</span>
-              <small>관리자 조치: {{ item.managerAction }}</small>
-=======
           <div v-if="loading" class="timeline-row alert">
             <time>-</time>
             <div>
               <b>예외 처리 기록을 불러오는 중입니다.</b>
               <span>-</span>
->>>>>>> origin/pjh
             </div>
           </div>
 
@@ -262,22 +299,19 @@ onMounted(() => {
             <div>
               <div class="timeline-heading">
                 <b>{{ event.title }}</b>
-                <span class="status-pill red">{{ event.status }}</span>
+                <span class="status-pill" :class="getExceptionStatusClass(event.status)">{{ event.status }}</span>
               </div>
               <span>{{ event.message }}</span>
+              <small v-if="event.type === 'PROCESSED'">관리자 조치 기록</small>
             </div>
           </div>
 
           <div v-if="!loading && exceptionTimelineRows.length === 0" class="timeline-row alert">
             <time>-</time>
-<<<<<<< HEAD
-            <div><b>표시할 예외 처리 내역이 없습니다.</b><span>-</span></div>
-=======
             <div>
-              <b>예외 처리 기록이 없습니다.</b>
+              <b>표시할 예외 처리 내역이 없습니다.</b>
               <span>{{ error || '-' }}</span>
             </div>
->>>>>>> origin/pjh
           </div>
         </div>
       </article>
@@ -286,22 +320,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-<<<<<<< HEAD
-.timeline { display: grid; gap: 10px; }
-.timeline-row { display: grid; grid-template-columns: 160px 1fr; gap: 12px; padding: 12px; background: #f6f9fd; border: 1px solid var(--line); border-radius: 8px; }
-.timeline-row.alert { background: #fff8f5; border-color: #f0cec5; }
-.timeline-row time { color: var(--blue-700); font-weight: 900; }
-.exception-times { display: grid; align-content: start; gap: 4px; }
-.exception-times time + time { color: var(--green-600); }
-.timeline-row b, .timeline-row span, .timeline-row small { display: block; }
-.timeline-row span { margin-top: 4px; color: var(--ink-500); font-size: 13px; font-weight: 700; }
-.timeline-row small { margin-top: 8px; color: var(--ink-500); font-weight: 700; }
-.section-hint { margin: 4px 0 0; color: var(--ink-500); font-size: 12px; font-weight: 700; }
-.status-filter { min-width: 110px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink-700); font-weight: 700; }
-.exception-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.exception-title .status-pill { margin-top: 0; flex: 0 0 auto; }
-@media (max-width: 620px) { .timeline-row { grid-template-columns: 1fr; } }
-=======
 .timeline {
   display: grid;
   gap: 10px;
@@ -314,7 +332,7 @@ onMounted(() => {
   padding: 12px;
   background: #f6f9fd;
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: 4px;
 }
 
 .timeline-row.alert {
@@ -339,7 +357,8 @@ onMounted(() => {
 }
 
 .timeline-row b,
-.timeline-row span {
+.timeline-row span,
+.timeline-row small {
   display: block;
 }
 
@@ -347,6 +366,12 @@ onMounted(() => {
   margin-top: 4px;
   color: var(--ink-500);
   font-size: 13px;
+  font-weight: 700;
+}
+
+.timeline-row small {
+  margin-top: 8px;
+  color: var(--ink-500);
   font-weight: 700;
 }
 
@@ -368,6 +393,56 @@ onMounted(() => {
   gap: 8px;
 }
 
+.gate-vehicles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 8px;
+  width: min(100%, 520px);
+}
+
+.vehicle-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.vehicle-tag span {
+  flex: 0 0 auto;
+  margin-top: 0;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.vehicle-tag strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink-900);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.vehicle-tag.tractor {
+  background: #eef6ff;
+  border-color: #a8c8e6;
+}
+
+.vehicle-tag.tractor span {
+  color: #1f5f91;
+}
+
+.vehicle-tag.trailer {
+  background: #fff8eb;
+  border-color: #e7c58f;
+}
+
+.vehicle-tag.trailer span {
+  color: #9a641b;
+}
+
 .gate-event-head b {
   color: var(--ink-900);
   font-size: 15px;
@@ -376,6 +451,23 @@ onMounted(() => {
 
 .gate-event-head .status-pill {
   flex: 0 0 auto;
+}
+
+.section-hint {
+  margin: 4px 0 0;
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-filter {
+  min-width: 110px;
+  padding: 8px 10px;
+  color: var(--ink-700);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-weight: 700;
 }
 
 @media (max-width: 760px) {
@@ -387,6 +479,10 @@ onMounted(() => {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .gate-vehicles {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
 }
->>>>>>> origin/pjh
 </style>

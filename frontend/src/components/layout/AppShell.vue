@@ -462,11 +462,8 @@ const logout = () => {
 
 .main-area {
   min-width: 0;
-<<<<<<< HEAD
   max-width: 100%;
-=======
   overflow-x: hidden;
->>>>>>> origin/pjh
 }
 
 .topbar {
@@ -494,10 +491,7 @@ const logout = () => {
 
 .content {
   min-width: 0;
-<<<<<<< HEAD
   max-width: 100%;
-=======
->>>>>>> origin/pjh
   padding: 10px;
   overflow-x: hidden;
 }

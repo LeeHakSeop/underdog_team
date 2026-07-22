@@ -260,8 +260,33 @@ public class AuthService {
         if ("DRIVER".equals(user.getRoleCode())
                 && !"CARRIER_APPROVED".equals(user.getStatus())) {
             throw new RuntimeException(
-                    "기사는 운송사 승인과 트레일러 배정 후 최종 승인할 수 있습니다."
+                "기사는 운송사 승인과 트레일러 배정 후 최종 승인할 수 있습니다."
             );
+        }
+
+        if ("DRIVER".equals(user.getRoleCode())) {
+            DriverDTO driver = driverMapper.findByUserId(user.getUserId());
+            VehicleDTO vehicle = driver == null || driver.getDriverId() == null
+                    ? null
+                    : vehicleMapper.findByDriverId(driver.getDriverId());
+
+            if (driver == null
+                    || !Boolean.TRUE.equals(driver.getIsRegistered())
+                    || vehicle == null
+                    || !Boolean.TRUE.equals(vehicle.getIsRegistered())) {
+                throw new RuntimeException(
+                        "운송사 승인과 차량 관리자 승인 후 최종 승인할 수 있습니다."
+                );
+            }
+
+            int updated = driverMapper.updateApprovalByUserId(
+                    user.getUserId(),
+                    true,
+                    true
+            );
+            if (updated != 1) {
+                throw new RuntimeException("기사 출입 승인 처리에 실패했습니다.");
+            }
         }
     }
 

@@ -312,6 +312,19 @@ const gateProcessMissingItems = computed(() => getGateProcessMissingItems(proces
 const canProcessGateFor = (type) => getGateProcessMissingItems(type).length === 0
 const canProcessGate = computed(() => canProcessGateFor(processType.value))
 
+const gateProcessSummary = computed(() => {
+  if (canProcessGate.value) {
+    return `${processType.value === 'OUT' ? '출차' : '입차'} 가능한 정보가 확인되었습니다.`
+  }
+
+  const missingItems = gateProcessMissingItems.value
+  if (missingItems.length === 0) return '번호판 인식 결과를 확인하세요.'
+
+  const visibleItems = missingItems.slice(0, 3).join(', ')
+  const remainingCount = missingItems.length - 3
+  return `확인 필요: ${visibleItems}${remainingCount > 0 ? ` 외 ${remainingCount}건` : ''}`
+})
+
 const processTypeLabel = computed(() => (processType.value === 'OUT' ? '출차' : '입차'))
 
 const isReadyForGateProcess = computed(() => canProcessGate.value)
@@ -473,8 +486,19 @@ onUnmounted(() => {
 
       <aside class="recognition-panel">
         <div class="info-stack">
-          <section>
-            <h3>트랙터 조회 정보</h3>
+          <section class="gate-summary">
+            <h3>선택 게이트 핵심 정보</h3>
+            <dl>
+              <div><dt>게이트</dt><dd>{{ selectedGate?.gateName || '-' }} / {{ gateText(selectedGate?.inOutType) }}</dd></div>
+              <div><dt>트랙터 인식</dt><dd>{{ tractorResult?.aiResult?.plateNumber || '-' }} / {{ tractorPassText }}</dd></div>
+              <div><dt>트레일러 인식</dt><dd>{{ trailerResult?.aiResult?.plateNumber || '-' }} / {{ trailerPassText }}</dd></div>
+              <div><dt>WorkOrder 일치</dt><dd>{{ workOrderMatch ? '일치' : '확인 필요' }}</dd></div>
+              <div><dt>출입 가능 상태</dt><dd>{{ isWorkOrderGateStatusAllowed(selectedGateType) ? '가능' : '확인 필요' }}</dd></div>
+            </dl>
+          </section>
+
+          <details class="detail-section">
+            <summary>트랙터 상세 정보</summary>
             <dl>
               <div><dt>차량 번호 / 유형</dt><dd>{{ tractorResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(tractorResult?.vehicle?.vehicleType) }}</dd></div>
               <div><dt>차량 등록 / 상태</dt><dd>{{ getBooleanText(tractorResult?.vehicle?.isRegistered) }} / {{ tractorResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
@@ -483,10 +507,10 @@ onUnmounted(() => {
               <div><dt>운송사 / 연락처</dt><dd>{{ tractorResult?.carrier?.carrierName || '-' }} / {{ tractorResult?.carrier?.carrierContact || '-' }}</dd></div>
               <div><dt>담당자 / 상태</dt><dd>{{ tractorResult?.carrier?.managerName || '-' }} / {{ tractorResult?.carrier?.carrierStatus || '-' }}</dd></div>
             </dl>
-          </section>
+          </details>
 
-          <section>
-            <h3>트레일러 조회 정보</h3>
+          <details class="detail-section">
+            <summary>트레일러·작업 상세 정보</summary>
             <dl>
               <div><dt>차량 번호 / 유형</dt><dd>{{ trailerResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(trailerResult?.vehicle?.vehicleType) }}</dd></div>
               <div><dt>차량 등록 / 상태</dt><dd>{{ getBooleanText(trailerResult?.vehicle?.isRegistered) }} / {{ trailerResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
@@ -497,18 +521,7 @@ onUnmounted(() => {
               <div><dt>야드 섹터 / 상태</dt><dd>{{ trailerResult?.yardSector?.sectorName || '-' }} / {{ trailerResult?.yardSector?.sectorStatus || '-' }}</dd></div>
               <div><dt>대체 대기 / 안내</dt><dd>{{ trailerResult?.yardSector?.altWaitingArea || '-' }} / {{ trailerResult?.trailerWorkInfo?.guideMessage || trailerResult?.yardSector?.guideMessage || '-' }}</dd></div>
             </dl>
-          </section>
-
-          <section>
-            <h3>선택 게이트</h3>
-            <dl>
-              <div><dt>게이트</dt><dd>{{ selectedGate?.gateName || '-' }} / {{ gateText(selectedGate?.inOutType) }}</dd></div>
-              <div><dt>트랙터 인식</dt><dd>{{ tractorResult?.aiResult?.plateNumber || '-' }} / {{ tractorPassText }}</dd></div>
-              <div><dt>트레일러 인식</dt><dd>{{ trailerResult?.aiResult?.plateNumber || '-' }} / {{ trailerPassText }}</dd></div>
-              <div><dt>WorkOrder 일치</dt><dd>{{ workOrderMatch ? '일치' : '확인 필요' }}</dd></div>
-              <div><dt>출입 가능 상태</dt><dd>{{ isWorkOrderGateStatusAllowed(selectedGateType) ? '가능' : '확인 필요' }}</dd></div>
-            </dl>
-          </section>
+          </details>
         </div>
         <div class="process-actions side-process-actions single-process-action">
           <p class="process-mode-indicator">선택 게이트 기준 자동 판단: {{ processTypeLabel }}</p>
@@ -535,7 +548,7 @@ onUnmounted(() => {
         <div :class="['final-decision', canProcessGate ? 'success' : 'warning']">
           <span>최종 출입 판단</span>
           <strong>{{ canProcessGate ? '통과' : '불가' }}</strong>
-          <p>{{ canProcessGate ? `${processType === 'OUT' ? '출차' : '입차'} 가능한 정보가 확인되었습니다.` : `확인 필요: ${gateProcessMissingItems.join(', ') || '번호판 인식 결과'}` }}</p>
+          <p>{{ gateProcessSummary }}</p>
         </div>
       </div>
       <ol class="process-steps" aria-label="번호판 출입 처리 단계">
@@ -641,7 +654,7 @@ onUnmounted(() => {
 .control-room {
   display: grid;
   gap: 10px;
-  color: #dceaff;
+  color: #16202a;
 }
 
 .ops-strip {
@@ -651,32 +664,38 @@ onUnmounted(() => {
 }
 
 .ops-card,
-.cctv-wall,
 .recognition-panel,
 .log-panel,
 .dark-panel {
-  background: #101624;
-  border: 1px solid #263353;
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
   border-radius: 2px;
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(23, 43, 64, 0.08);
+}
+
+.cctv-wall {
+  background: #132238;
+  border: 1px solid #637b95;
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(23, 43, 64, 0.16);
 }
 
 .ops-card {
   display: grid;
-  min-height: 76px;
+  min-height: 86px;
   gap: 2px;
-  padding: 10px 12px;
+  padding: 12px 14px;
 }
 
 .ops-card span,
 .ops-card small {
-  color: #91a0c0;
+  color: #536579;
   font-weight: 700;
 }
 
 .ops-card strong {
-  color: #ffffff;
-  font-size: 24px;
+  color: #16202a;
+  font-size: 28px;
 }
 
 .ops-card.blue {
@@ -717,9 +736,9 @@ onUnmounted(() => {
   min-width: 0;
   overflow: hidden;
   padding: 8px;
-  color: #dceaff;
-  background: #020407;
-  border: 1px solid #303b5c;
+  color: #edf5ff;
+  background: #0d192a;
+  border: 1px solid #6783a5;
   border-radius: 1px;
   text-align: left;
 }
@@ -730,7 +749,7 @@ onUnmounted(() => {
 }
 
 .cctv-cell.empty {
-  background: #070b12;
+  background: #13243a;
 }
 
 .cctv-cell.out .gate-type {
@@ -748,12 +767,12 @@ onUnmounted(() => {
 .gate-head b,
 .gate-head i {
   display: inline-flex;
-  min-height: 22px;
+  min-height: 28px;
   align-items: center;
-  padding: 3px 7px;
+  padding: 4px 9px;
   color: #ffffff;
   border-radius: 1px;
-  font-size: 11px;
+  font-size: 14px;
   font-style: normal;
   font-weight: 700;
   line-height: 1.1;
@@ -763,14 +782,14 @@ onUnmounted(() => {
 .gate-head b {
   min-width: 0;
   overflow: hidden;
-  background: #23639c;
-  border: 1px solid #6e94b7;
+  background: #2b70a8;
+  border: 1px solid #90b4d6;
   text-overflow: ellipsis;
 }
 
 .gate-head i {
   flex: 0 0 auto;
-  background: #2f7d57;
+  background: #2e815b;
   border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
@@ -796,16 +815,16 @@ onUnmounted(() => {
   gap: 4px;
   overflow: hidden;
   padding: 6px;
-  color: #91a0c0;
-  background: #070b12;
-  border: 1px dashed #4d638b;
+  color: #c4d6ea;
+  background: #13243a;
+  border: 1px dashed #7896b8;
   cursor: pointer;
   text-align: left;
 }
 
 .camera-upload > span {
-  color: #dceaff;
-  font-size: 11px;
+  color: #f1f7ff;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -813,8 +832,8 @@ onUnmounted(() => {
   display: grid;
   min-height: 0;
   place-items: center;
-  color: #57627b;
-  font-size: 11px;
+  color: #a9c0da;
+  font-size: 14px;
   font-weight: 700;
   text-align: center;
 }
@@ -829,11 +848,11 @@ onUnmounted(() => {
 
 .camera-upload > small {
   overflow: hidden;
-  padding: 3px 5px;
+  padding: 5px 7px;
   color: #a6e6c3;
-  background: #123b2a;
-  border: 1px solid #2f7d57;
-  font-size: 9px;
+  background: #155538;
+  border: 1px solid #54aa7d;
+  font-size: 12px;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -841,8 +860,8 @@ onUnmounted(() => {
 
 .camera-upload > small.review {
   color: #ffd0ce;
-  background: #491e22;
-  border-color: #b8403a;
+  background: #612a30;
+  border-color: #e06b68;
 }
 
 .camera-upload input { display: none; }
@@ -860,31 +879,34 @@ onUnmounted(() => {
   gap: 10px;
   align-items: stretch;
   padding: 8px;
-  background: #101624;
-  border: 1px solid #263353;
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
 }
 
 .final-decision {
   display: grid;
   gap: 3px;
   padding: 10px;
-  border: 1px solid #263353;
+  border: 1px solid #6b89ab;
 }
 
-.final-decision span { font-size: 12px; font-weight: 700; }
-.final-decision strong { font-size: 24px; }
-.final-decision p { margin: 0; font-size: 12px; font-weight: 700; line-height: 1.35; }
-.final-decision.success { color: #a6e6c3; background: #123b2a; border-color: #2f7d57; }
-.final-decision.warning { color: #ffd0ce; background: #491e22; border-color: #b8403a; }
+.final-decision span { font-size: 14px; font-weight: 700; }
+.final-decision strong { font-size: 34px; }
+.final-decision p { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.4; }
+.final-decision.success { color: #12643a; background: #eaf7ef; border-color: #78c69a; }
+.final-decision.warning { color: #a42626; background: #fff1f1; border-color: #e19a9a; }
 
 .decision-stack {
   display: grid;
+  align-self: start;
   gap: 6px;
 }
 
 .process-steps {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: start;
+  align-self: start;
   gap: 6px;
   margin: 0;
   padding: 0;
@@ -895,18 +917,19 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-height: 52px;
   padding: 8px;
-  color: #91a0c0;
-  background: #151d31;
-  border: 1px solid #263353;
-  font-size: 12px;
+  color: #27364b;
+  background: #f5f8fb;
+  border: 1px solid #b8c5d2;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .process-steps b {
   display: grid;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   flex: 0 0 auto;
   place-items: center;
   color: #172033;
@@ -914,8 +937,8 @@ onUnmounted(() => {
   border-radius: 999px;
 }
 
-.process-steps li.complete { color: #a6e6c3; border-color: #2f7d57; }
-.process-steps li.complete b { color: #ffffff; background: #2f7d57; }
+.process-steps li.complete { color: #12643a; background: #eef9f2; border-color: #78c69a; }
+.process-steps li.complete b { color: #ffffff; background: #2f8a5d; }
 
 .process-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .process-button { min-height: 32px; padding-block: 5px; }
@@ -924,24 +947,31 @@ onUnmounted(() => {
 .process-mode-indicator {
   margin: 0;
   padding: 6px 8px;
-  color: #a9badb;
-  background: #151d31;
-  border: 1px solid #263353;
-  font-size: 12px;
+  color: #34465b;
+  background: #eef4f9;
+  border: 1px solid #b8c5d2;
+  font-size: 14px;
   font-weight: 700;
   text-align: center;
 }
-.process-result { grid-column: 1 / -1; margin: 0; padding: 8px 10px; font-size: 13px; font-weight: 700; }
-.process-result.success { color: #a6e6c3; background: #123b2a; border: 1px solid #2f7d57; }
-.process-result.warning { color: #ffd0ce; background: #491e22; border: 1px solid #b8403a; }
+.process-result { grid-column: 1 / -1; margin: 0; padding: 10px 12px; font-size: 15px; font-weight: 700; }
+.process-result.success { color: #12643a; background: #eaf7ef; border: 1px solid #78c69a; }
+.process-result.warning { color: #a42626; background: #fff1f1; border: 1px solid #e19a9a; }
 
 .dark-title {
-  background: #0c1220;
-  border-color: #263353;
+  background: #edf3f8;
+  border-color: #b8c5d2;
 }
 
 .dark-title h2 {
-  color: #ffffff;
+  color: #16202a;
+  font-size: 18px;
+}
+
+.control-room .status-pill {
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: 13px;
 }
 
 .result-card {
@@ -981,9 +1011,9 @@ onUnmounted(() => {
 
 .decision-button {
   min-height: 34px;
-  color: #dceaff;
-  background: #1a233a;
-  border: 1px solid #303b5c;
+  color: #27364b;
+  background: #f5f8fb;
+  border: 1px solid #b8c5d2;
   border-radius: 2px;
   font-weight: 700;
 }
@@ -1003,8 +1033,9 @@ onUnmounted(() => {
 
 .info-stack {
   display: grid;
-  grid-template-rows: minmax(0, 0.85fr) minmax(0, 1.15fr) auto;
-  gap: 10px;
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  gap: 6px;
   min-height: 0;
 }
 
@@ -1012,15 +1043,72 @@ onUnmounted(() => {
   min-height: 0;
   overflow: auto;
   padding: 8px;
-  background: #151d31;
-  border: 1px solid #263353;
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
   border-radius: 2px;
+}
+
+.info-stack .gate-summary {
+  background: #eef6fd;
+  border-color: #80a4c4;
+}
+
+.info-stack .gate-summary dd {
+  color: #16202a;
+}
+
+.info-stack details {
+  min-height: 0;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 1px solid #b8c5d2;
+  border-radius: 2px;
+}
+
+.info-stack details[open] {
+  overflow: auto;
+}
+
+.info-stack summary {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  color: #16202a;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  list-style: none;
+}
+
+.info-stack summary::-webkit-details-marker {
+  display: none;
+}
+
+.info-stack summary::after {
+  color: #536579;
+  content: '상세 보기 ▸';
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.info-stack details[open] summary {
+  border-bottom: 1px solid #b8c5d2;
+}
+
+.info-stack details[open] summary::after {
+  content: '접기 ▾';
+}
+
+.info-stack details dl {
+  padding: 8px;
 }
 
 .info-stack h3 {
   margin: 0 0 6px;
-  color: #ffffff;
-  font-size: 13px;
+  color: #16202a;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -1032,19 +1120,21 @@ onUnmounted(() => {
 
 .info-stack dl div {
   display: grid;
-  grid-template-columns: 100px 1fr;
+  grid-template-columns: 116px 1fr;
   gap: 10px;
 }
 
 .info-stack dt {
-  color: #91a0c0;
-  font-size: 12px;
+  color: #536579;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .info-stack dd {
   margin: 0;
-  color: #dceaff;
+  color: #16202a;
+  font-size: 14px;
+  line-height: 1.4;
   font-weight: 700;
 }
 
@@ -1064,18 +1154,19 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) minmax(110px, 1fr) 96px;
   gap: 8px;
-  padding: 8px;
-  background: #151d31;
-  border: 1px solid #263353;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
+  font-size: 14px;
 }
 
 .work-row b {
-  color: #f6c34a;
+  color: #1565a8;
 }
 
 .work-row span,
 .work-row small {
-  color: #dceaff;
+  color: #34465b;
   font-weight: 700;
 }
 
@@ -1086,27 +1177,29 @@ onUnmounted(() => {
 .yard-node {
   display: grid;
   gap: 3px;
-  min-height: 74px;
-  padding: 8px;
-  background: #151d31;
-  border: 1px solid #263353;
+  min-height: 86px;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
+  font-size: 14px;
 }
 
 .yard-node b,
 .yard-node span {
-  color: #91a0c0;
+  color: #536579;
 }
 
 .yard-node strong {
-  color: #ffffff;
-  font-size: 22px;
+  color: #16202a;
+  font-size: 28px;
 }
 
 .empty-dark {
-  padding: 12px;
-  color: #91a0c0;
-  background: #151d31;
-  border: 1px solid #263353;
+  padding: 14px;
+  color: #536579;
+  background: #f8fafc;
+  border: 1px solid #b8c5d2;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -1125,12 +1218,12 @@ onUnmounted(() => {
   min-width: 0;
   grid-template-columns: minmax(145px, 1.15fr) minmax(100px, 0.85fr) minmax(100px, 0.85fr) 86px 74px minmax(130px, 1fr);
   gap: 8px;
-  padding: 8px 10px;
-  color: #dceaff;
-  background: #151d31;
-  border: 1px solid #263353;
+  padding: 10px 12px;
+  color: #16202a;
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
   border-radius: 1px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -1141,8 +1234,8 @@ onUnmounted(() => {
 }
 
 .compact-row.head {
-  color: #91a0c0;
-  background: #0c1220;
+  color: #34465b;
+  background: #edf3f8;
 }
 
 @media (max-width: 1180px) {
@@ -1167,7 +1260,7 @@ onUnmounted(() => {
   }
 
   .dark-title h2 {
-    font-size: 15px;
+    font-size: 17px;
   }
 
   .compact-table {
@@ -1179,7 +1272,7 @@ onUnmounted(() => {
     grid-template-columns: minmax(140px, 1.15fr) minmax(92px, 0.8fr) minmax(92px, 0.8fr) 80px 68px minmax(118px, 0.95fr);
     min-height: 38px;
     padding: 7px 9px;
-    font-size: 13px;
+    font-size: 14px;
   }
 }
 
@@ -1211,14 +1304,14 @@ onUnmounted(() => {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  color: #dceaff;
+  color: #16202a;
   font-size: 11px;
 }
 
 .recognition-info-table th,
 .recognition-info-table td {
   padding: 5px 6px;
-  border: 1px solid #334364;
+  border: 1px solid #b8c5d2;
   line-height: 1.2;
   text-align: left;
   vertical-align: middle;
@@ -1227,14 +1320,14 @@ onUnmounted(() => {
 
 .recognition-info-table th {
   width: 42%;
-  color: #bdd1e6;
-  background: #23324d;
+  color: #536579;
+  background: #edf3f8;
   font-weight: 800;
 }
 
 .recognition-info-table td {
-  color: #ffffff;
-  background: #101624;
+  color: #16202a;
+  background: #ffffff;
   font-weight: 700;
 }
 </style>

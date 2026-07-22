@@ -237,7 +237,7 @@ const reactivate = async (driver) => {
 
   try {
     await reactivateDriver(driver.driverId)
-    message.value = `${driver.driverName} 기사 계정을 재활성화했습니다. 관리자 최종 승인 후 출입할 수 있습니다.`
+    message.value = `${driver.driverName} 기사 계정을 재활성화했습니다. 관리자 최종 승인 완료 후 다시 출입할 수 있습니다.`
     await loadData()
   } catch (error) {
     errorMessage.value = error.message || '기사 재활성화에 실패했습니다.'
