@@ -44,14 +44,11 @@ const driverForm = ref({
   driverContact: '',
   carrierId: '',
   plateNumber: '',
-  tractorNo: '',
 })
 
 const emptyVehicleForm = {
   plateNumber: '',
   vehicleType: '',
-  tractorNo: '',
-  chassisNo: '',
 }
 
 const steps = computed(() => [
@@ -108,15 +105,12 @@ const resetForm = () => {
     driverContact: '',
     carrierId: '',
     plateNumber: '',
-    tractorNo: '',
   }
 }
 
 const driverVehicleForm = computed(() => ({
   plateNumber: driverForm.value.plateNumber,
   vehicleType: '트랙터',
-  tractorNo: driverForm.value.tractorNo,
-  chassisNo: '',
 }))
 
 const validateAccountFields = () => {
@@ -219,9 +213,6 @@ const validateDriver = () => {
     throw new Error('트랙터 차량번호를 입력하세요.')
   }
 
-  if (!driverForm.value.tractorNo.trim()) {
-    throw new Error('트랙터 번호를 입력하세요.')
-  }
 }
 
 const validateCurrentStep = async () => {
@@ -297,7 +288,6 @@ const buildPayload = () => {
     carrierId: Number(driverForm.value.carrierId),
     plateNumber: driverForm.value.plateNumber,
     vehicleType: 'TRACTOR',
-    tractorNo: driverForm.value.tractorNo,
   }
 }
 

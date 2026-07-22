@@ -375,10 +375,6 @@ public class AuthService {
             throw new RuntimeException("기사 트랙터 차량번호는 필수입니다.");
         }
 
-        if (dto.getTractorNo() == null || dto.getTractorNo().isBlank()) {
-            throw new RuntimeException("트랙터 번호는 필수입니다.");
-        }
-
         if (vehicleMapper.findByPlateNumber(dto.getPlateNumber()) != null) {
             throw new RuntimeException("이미 등록된 차량번호입니다.");
         }
@@ -386,18 +382,14 @@ public class AuthService {
         VehicleDTO vehicle = new VehicleDTO();
         vehicle.setPlateNumber(dto.getPlateNumber());
         vehicle.setVehicleType("TRACTOR");
-        vehicle.setTonnage(dto.getTonnage());
+        vehicle.setTonnage(null);
         vehicle.setIsRegistered(false);
         vehicle.setVehicleStatus("승인대기");
-        vehicle.setTractorNo(dto.getTractorNo());
+        vehicle.setTractorNo(null);
         vehicle.setChassisNo(null);
         vehicle.setDriverId(dto.getDriverId());
         vehicle.setCarrierId(dto.getCarrierId());
         vehicle.setUserId(dto.getUserId());
-
-        if (vehicle.getTonnage() == null || vehicle.getTonnage().isBlank()) {
-            vehicle.setTonnage("25T");
-        }
 
         vehicleMapper.insert(vehicle);
     }

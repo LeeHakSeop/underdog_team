@@ -28,6 +28,7 @@ const processType = ref('IN')
 const selectedOcrType = ref('crnn')
 const gatePreviewUrls = reactive({})
 const gateRecognitionResults = reactive({})
+const draggingUploadKey = ref('')
 let refreshTimer = null
 
 const gateSlots = [
@@ -369,9 +370,18 @@ const getGateDbStatus = (gate) => {
   return { text: '미등록/불일치', tone: 'danger' }
 }
 
-const selectGateImage = async (event, gate, targetType) => {
-  const file = event.target.files?.[0] || null
+const isImageFile = (file) => {
+  if (!file) return false
+  return file.type.startsWith('image/') || /\.(jpe?g|png|webp|bmp)$/i.test(file.name)
+}
+
+const processGateImage = async (file, gate, targetType) => {
   if (!file) return
+
+  if (!isImageFile(file)) {
+    gateLogStore.error = '이미지 파일(JPG, PNG, WEBP, BMP)만 업로드할 수 있습니다.'
+    return
+  }
 
   selectedGateId.value = gate.id
   gateLogStore.processResult = null
@@ -388,6 +398,22 @@ const selectGateImage = async (event, gate, targetType) => {
       ? plateRecognitionStore.tractorResult
       : plateRecognitionStore.trailerResult,
   }
+}
+
+const selectGateImage = async (event, gate, targetType) => {
+  const file = event.target.files?.[0] || null
+  await processGateImage(file, gate, targetType)
+  event.target.value = ''
+}
+
+const setGateImageDrag = (gate, targetType, active) => {
+  draggingUploadKey.value = active ? `${gate.id}-${targetType}` : ''
+}
+
+const dropGateImage = async (event, gate, targetType) => {
+  draggingUploadKey.value = ''
+  const file = event.dataTransfer?.files?.[0] || null
+  await processGateImage(file, gate, targetType)
 }
 
 const clearGateRecognition = (gateId) => {
@@ -462,19 +488,37 @@ onUnmounted(() => {
             <i>{{ gateText(gate.inOutType) }}</i>
           </span>
           <span class="gate-body">
-            <label class="camera-upload" :for="`tractorImage-${gate.id}`" @click.stop>
+            <label
+              class="camera-upload"
+              :class="{ 'drag-active': draggingUploadKey === `${gate.id}-tractor` }"
+              :for="`tractorImage-${gate.id}`"
+              @click.stop
+              @dragenter.prevent.stop="setGateImageDrag(gate, 'tractor', true)"
+              @dragover.prevent.stop="setGateImageDrag(gate, 'tractor', true)"
+              @dragleave.prevent.stop="setGateImageDrag(gate, 'tractor', false)"
+              @drop.prevent.stop="dropGateImage($event, gate, 'tractor')"
+            >
               <span>트랙터 인식</span>
               <img v-if="gatePreviewUrls[`${gate.id}-tractor`]" :src="gatePreviewUrls[`${gate.id}-tractor`]" alt="선택한 트랙터 이미지" />
-              <b v-else>트랙터 이미지 업로드</b>
+              <b v-else>클릭하거나 이미지를<br />끌어다 놓으세요</b>
               <small :class="{ review: isRecognitionWarning(gateRecognitionResults[gate.id]?.tractor, 'TRACTOR') }">
                 {{ recognitionStatus(gateRecognitionResults[gate.id]?.tractor, 'TRACTOR') }}
               </small>
               <input :id="`tractorImage-${gate.id}`" accept="image/*" type="file" @change="selectGateImage($event, gate, 'tractor')" />
             </label>
-            <label class="camera-upload" :for="`trailerImage-${gate.id}`" @click.stop>
+            <label
+              class="camera-upload"
+              :class="{ 'drag-active': draggingUploadKey === `${gate.id}-trailer` }"
+              :for="`trailerImage-${gate.id}`"
+              @click.stop
+              @dragenter.prevent.stop="setGateImageDrag(gate, 'trailer', true)"
+              @dragover.prevent.stop="setGateImageDrag(gate, 'trailer', true)"
+              @dragleave.prevent.stop="setGateImageDrag(gate, 'trailer', false)"
+              @drop.prevent.stop="dropGateImage($event, gate, 'trailer')"
+            >
               <span>트레일러 인식</span>
               <img v-if="gatePreviewUrls[`${gate.id}-trailer`]" :src="gatePreviewUrls[`${gate.id}-trailer`]" alt="선택한 트레일러 이미지" />
-              <b v-else>트레일러 이미지 업로드</b>
+              <b v-else>클릭하거나 이미지를<br />끌어다 놓으세요</b>
               <small :class="{ review: isRecognitionWarning(gateRecognitionResults[gate.id]?.trailer, 'TRAILER') }">
                 {{ recognitionStatus(gateRecognitionResults[gate.id]?.trailer, 'TRAILER') }}
               </small>
@@ -820,6 +864,17 @@ onUnmounted(() => {
   border: 1px dashed #7896b8;
   cursor: pointer;
   text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.camera-upload.drag-active {
+  background: #1c3c5d;
+  border-color: #f6c34a;
+  box-shadow: inset 0 0 0 2px #f6c34a;
+}
+
+.camera-upload.drag-active > b {
+  color: #fff1b8;
 }
 
 .camera-upload > span {

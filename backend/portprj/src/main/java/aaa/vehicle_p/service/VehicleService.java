@@ -2,7 +2,6 @@ package aaa.vehicle_p.service;
 
 import aaa.driver_p.model.DriverDTO;
 import aaa.driver_p.model.DriverMapper;
-import aaa.user_p.model.UserMapper;
 import aaa.vehicle_p.model.TractorVehicleInfoDTO;
 import aaa.vehicle_p.model.VehicleDTO;
 import aaa.vehicle_p.model.VehicleMapper;
@@ -20,9 +19,6 @@ public class VehicleService {
 
     @Resource
     DriverMapper driverMapper;
-
-    @Resource
-    UserMapper userMapper;
 
     public List<VehicleDTO> list() {
         return vehicleMapper.list();
@@ -108,26 +104,11 @@ public class VehicleService {
         boolean approved = Boolean.TRUE.equals(dto.getIsRegistered());
         String vehicleStatus = approved ? "정상" : "승인거절";
 
-        int result = vehicleMapper.updateApproval(
+        return vehicleMapper.updateApproval(
                 vehicleId,
                 approved,
                 vehicleStatus
         );
-
-        driverMapper.updateApprovalByDriverId(
-                vehicle.getDriverId(),
-                true,
-                approved
-        );
-
-        if (driver.getUserId() != null) {
-            userMapper.updateStatus(
-                    driver.getUserId(),
-                    approved ? "ACTIVE" : "CARRIER_APPROVED"
-            );
-        }
-
-        return result;
     }
 
     private void validateInsert(VehicleDTO dto) {
