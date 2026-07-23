@@ -25,10 +25,13 @@ const plateRecognitionStore = usePlateRecognitionStore()
 
 const selectedGateId = ref('G-01')
 const processType = ref('IN')
-const selectedOcrType = ref('crnn')
 const gatePreviewUrls = reactive({})
 const gateRecognitionResults = reactive({})
 const draggingUploadKey = ref('')
+const gateProcessFeedback = reactive({
+  status: '',
+  message: '',
+})
 let refreshTimer = null
 
 const gateSlots = [
@@ -384,6 +387,8 @@ const processGateImage = async (file, gate, targetType) => {
   }
 
   selectedGateId.value = gate.id
+  gateProcessFeedback.status = ''
+  gateProcessFeedback.message = ''
   gateLogStore.processResult = null
   gateLogStore.error = ''
   const key = `${gate.id}-${targetType}`
@@ -391,7 +396,7 @@ const processGateImage = async (file, gate, targetType) => {
   if (oldPreviewUrl) URL.revokeObjectURL(oldPreviewUrl)
   gatePreviewUrls[key] = URL.createObjectURL(file)
 
-  await plateRecognitionStore.recognize(file, selectedOcrType.value, targetType)
+  await plateRecognitionStore.recognize(file, targetType)
   gateRecognitionResults[gate.id] = {
     ...(gateRecognitionResults[gate.id] || {}),
     [targetType]: targetType === 'tractor'
@@ -434,14 +439,27 @@ const submitGateProcess = async (type) => {
 
   if (!canProcessGateFor(type)) return
 
+  gateProcessFeedback.status = 'processing'
+  gateProcessFeedback.message = `${type === 'OUT' ? '출차' : '입차'} 처리를 진행하고 있습니다.`
+
   try {
     await gateLogStore.processGate(buildGateProcessPayload(type))
     if (gateLogStore.processResult?.success) {
+      gateProcessFeedback.status = 'success'
+      gateProcessFeedback.message = type === 'OUT'
+        ? '출차 처리가 완료되었습니다.'
+        : '입차 처리가 완료되었습니다. 기사 작업 상태가 입차 완료로 변경되었습니다.'
       clearGateRecognition(selectedGateId.value)
       await loadData()
+    } else {
+      gateProcessFeedback.status = 'warning'
+      gateProcessFeedback.message =
+        gateLogStore.processResult?.message || `${type === 'OUT' ? '출차' : '입차'} 처리에 실패했습니다.`
     }
-  } catch {
-    // gateLogStore.error를 화면에 표시해 최종 처리 실패 원인을 안내합니다.
+  } catch (error) {
+    gateProcessFeedback.status = 'warning'
+    gateProcessFeedback.message =
+      gateLogStore.error || error.message || `${type === 'OUT' ? '출차' : '입차'} 처리에 실패했습니다.`
   }
 }
 
@@ -459,6 +477,11 @@ const loadData = async () => {
 watch(selectedGate, (gate) => {
   processType.value = gate?.inOutType || 'IN'
 }, { immediate: true })
+
+watch(selectedGateId, () => {
+  gateProcessFeedback.status = ''
+  gateProcessFeedback.message = ''
+})
 
 onMounted(() => {
   plateRecognitionStore.reset()
@@ -545,29 +568,35 @@ onUnmounted(() => {
             <summary>트랙터 상세 정보</summary>
             <dl>
               <div><dt>차량 번호 / 유형</dt><dd>{{ tractorResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(tractorResult?.vehicle?.vehicleType) }}</dd></div>
-              <div><dt>차량 등록 / 상태</dt><dd>{{ getBooleanText(tractorResult?.vehicle?.isRegistered) }} / {{ tractorResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
               <div><dt>기사</dt><dd>{{ tractorResult?.driver?.driverName || '-' }} / {{ tractorResult?.driver?.driverContact || '-' }}</dd></div>
-              <div><dt>기사 등록 / 출입</dt><dd>{{ getBooleanText(tractorResult?.driver?.isRegistered) }} / {{ getBooleanText(tractorResult?.driver?.canEnter) }}</dd></div>
-              <div><dt>운송사 / 연락처</dt><dd>{{ tractorResult?.carrier?.carrierName || '-' }} / {{ tractorResult?.carrier?.carrierContact || '-' }}</dd></div>
-              <div><dt>담당자 / 상태</dt><dd>{{ tractorResult?.carrier?.managerName || '-' }} / {{ tractorResult?.carrier?.carrierStatus || '-' }}</dd></div>
+              <div><dt>운송사</dt><dd>{{ tractorResult?.carrier?.carrierName || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>차량 승인 / 상태</dt><dd>{{ getBooleanText(tractorResult?.vehicle?.isRegistered) }} / {{ tractorResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>기사 출입</dt><dd>{{ getBooleanText(tractorResult?.driver?.canEnter) }}</dd></div>
             </dl>
           </details>
 
           <details class="detail-section">
-            <summary>트레일러·작업 상세 정보</summary>
+            <summary>{{ processType === 'OUT' ? '트레일러·작업 확인' : '트레일러·작업 상세 정보' }}</summary>
             <dl>
               <div><dt>차량 번호 / 유형</dt><dd>{{ trailerResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(trailerResult?.vehicle?.vehicleType) }}</dd></div>
-              <div><dt>차량 등록 / 상태</dt><dd>{{ getBooleanText(trailerResult?.vehicle?.isRegistered) }} / {{ trailerResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
               <div><dt>작업 유형 / 상태</dt><dd>{{ trailerResult?.workOrder?.workType || '-' }} / {{ trailerResult?.workOrder?.workStatus || '-' }}</dd></div>
-              <div><dt>작업 승인 / 예약</dt><dd>{{ getBooleanText(trailerResult?.workOrder?.isApproved) }} / {{ trailerResult?.workOrder?.reservedTime || '-' }}</dd></div>
-              <div><dt>컨테이너 번호 / 크기</dt><dd>{{ trailerResult?.container?.containerNumber || '-' }} / {{ trailerResult?.container?.containerSize || '-' }}</dd></div>
-              <div><dt>위치 / 블록-베이-로우</dt><dd>{{ trailerResult?.container?.containerLocation || '-' }} / {{ trailerResult?.container?.block || '-' }}-{{ trailerResult?.container?.bay || '-' }}-{{ trailerResult?.container?.rowNo || '-' }}</dd></div>
-              <div><dt>야드 섹터 / 상태</dt><dd>{{ trailerResult?.yardSector?.sectorName || '-' }} / {{ trailerResult?.yardSector?.sectorStatus || '-' }}</dd></div>
-              <div><dt>대체 대기 / 안내</dt><dd>{{ trailerResult?.yardSector?.altWaitingArea || '-' }} / {{ trailerResult?.trailerWorkInfo?.guideMessage || trailerResult?.yardSector?.guideMessage || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>차량 승인 / 상태</dt><dd>{{ getBooleanText(trailerResult?.vehicle?.isRegistered) }} / {{ trailerResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>작업 승인 / 예약</dt><dd>{{ getBooleanText(trailerResult?.workOrder?.isApproved) }} / {{ trailerResult?.workOrder?.reservedTime || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>컨테이너 번호 / 크기</dt><dd>{{ trailerResult?.container?.containerNumber || '-' }} / {{ trailerResult?.container?.containerSize || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>위치 / 블록-베이-로우</dt><dd>{{ trailerResult?.container?.containerLocation || '-' }} / {{ trailerResult?.container?.block || '-' }}-{{ trailerResult?.container?.bay || '-' }}-{{ trailerResult?.container?.rowNo || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>야드 섹터 / 상태</dt><dd>{{ trailerResult?.yardSector?.sectorName || '-' }} / {{ trailerResult?.yardSector?.sectorStatus || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>대체 대기 / 안내</dt><dd>{{ trailerResult?.yardSector?.altWaitingArea || '-' }} / {{ trailerResult?.trailerWorkInfo?.guideMessage || trailerResult?.yardSector?.guideMessage || '-' }}</dd></div>
             </dl>
           </details>
         </div>
         <div class="process-actions side-process-actions single-process-action">
+          <p
+            v-if="gateProcessFeedback.message"
+            :class="['process-result', gateProcessFeedback.status === 'success' ? 'success' : gateProcessFeedback.status === 'warning' ? 'warning' : 'processing']"
+            role="status"
+          >
+            {{ gateProcessFeedback.message }}
+          </p>
           <p class="process-mode-indicator">선택 게이트 기준 자동 판단: {{ processTypeLabel }}</p>
           <button
             v-if="processType === 'IN'"
@@ -575,14 +604,26 @@ onUnmounted(() => {
             type="button"
             :disabled="!canProcessGateFor('IN') || gateLogStore.loading"
             @click="submitGateProcess('IN')"
-          >{{ gateLogStore.loading ? '처리 중' : '입차 처리' }}</button>
+          >{{
+            gateLogStore.loading
+              ? '입차 처리 중...'
+              : gateProcessFeedback.status === 'success'
+                ? '입차 처리 완료'
+                : '입차 처리'
+          }}</button>
           <button
             v-else
             class="primary-button process-button out"
             type="button"
             :disabled="!canProcessGateFor('OUT') || gateLogStore.loading"
             @click="submitGateProcess('OUT')"
-          >{{ gateLogStore.loading ? '처리 중' : '출차 처리' }}</button>
+          >{{
+            gateLogStore.loading
+              ? '출차 처리 중...'
+              : gateProcessFeedback.status === 'success'
+                ? '출차 처리 완료'
+                : '출차 처리'
+          }}</button>
         </div>
       </aside>
     </section>
@@ -1012,6 +1053,7 @@ onUnmounted(() => {
 .process-result { grid-column: 1 / -1; margin: 0; padding: 10px 12px; font-size: 15px; font-weight: 700; }
 .process-result.success { color: #12643a; background: #eaf7ef; border: 1px solid #78c69a; }
 .process-result.warning { color: #a42626; background: #fff1f1; border: 1px solid #e19a9a; }
+.process-result.processing { color: #174f7d; background: #edf6ff; border: 1px solid #8bb8dc; }
 
 .dark-title {
   background: #edf3f8;

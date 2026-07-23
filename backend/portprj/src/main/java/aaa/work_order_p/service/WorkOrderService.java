@@ -1,6 +1,10 @@
 package aaa.work_order_p.service;
 
 import aaa.container_p.service.ContainerService;
+import aaa.driver_p.model.DriverDTO;
+import aaa.driver_p.model.DriverMapper;
+import aaa.vehicle_p.model.VehicleDTO;
+import aaa.vehicle_p.model.VehicleMapper;
 import aaa.work_order_p.model.TrailerWorkInfoDTO;
 import aaa.work_order_p.model.WorkOrderDTO;
 import aaa.work_order_p.model.WorkOrderMapper;
@@ -37,6 +41,12 @@ public class WorkOrderService {
 
     @Resource
     ContainerService containerService;
+
+    @Resource
+    DriverMapper driverMapper;
+
+    @Resource
+    VehicleMapper vehicleMapper;
 
     public List<WorkOrderDTO> list() {
         return mapper.list();
@@ -118,6 +128,45 @@ public class WorkOrderService {
             );
         }
 
+        if (dto.getDriverId() != null) {
+            DriverDTO driver = driverMapper.detail(dto.getDriverId());
+            if (driver == null
+                    || !Boolean.TRUE.equals(driver.getIsRegistered())
+                    || !Boolean.TRUE.equals(driver.getCanEnter())
+                    || !"ACTIVE".equals(driver.getUserStatus())) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "관리자 최종 승인이 완료된 기사만 작업에 배정할 수 있습니다."
+                );
+            }
+
+            VehicleDTO tractor = dto.getTractorVehicleId() == null
+                    ? null
+                    : vehicleMapper.detail(dto.getTractorVehicleId());
+            if (tractor == null
+                    || !Objects.equals(tractor.getDriverId(), dto.getDriverId())
+                    || !Boolean.TRUE.equals(tractor.getIsRegistered())
+                    || !isTractor(tractor.getVehicleType())) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "관리자 최종 승인이 완료된 기사 소유 트랙터가 필요합니다."
+                );
+            }
+
+            VehicleDTO trailer = dto.getTrailerVehicleId() == null
+                    ? null
+                    : vehicleMapper.detail(dto.getTrailerVehicleId());
+            if (trailer == null
+                    || !Objects.equals(trailer.getDriverId(), dto.getDriverId())
+                    || !Boolean.TRUE.equals(trailer.getIsRegistered())
+                    || !isTrailer(trailer.getVehicleType())) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "관리자 최종 승인이 완료된 기사 배정 트레일러가 필요합니다."
+                );
+            }
+        }
+
         if (dto.getTrailerVehicleId() != null
                 && mapper.countActiveByTrailerVehicleId(dto.getTrailerVehicleId(), workOrderId) > 0) {
             throw new ResponseStatusException(
@@ -125,6 +174,16 @@ public class WorkOrderService {
                     "이미 다른 작업에 배정된 트레일러입니다."
             );
         }
+    }
+
+    private boolean isTractor(String vehicleType) {
+        return "TRACTOR".equalsIgnoreCase(vehicleType)
+                || "트랙터".equals(vehicleType);
+    }
+
+    private boolean isTrailer(String vehicleType) {
+        return "TRAILER".equalsIgnoreCase(vehicleType)
+                || "트레일러".equals(vehicleType);
     }
 
     public TrailerWorkInfoDTO findTrailerWorkInfo(Long vehicleId) {

@@ -61,6 +61,24 @@ const myDrivers = computed(() =>
   ),
 )
 
+const approvedDrivers = computed(() =>
+  myDrivers.value.filter(
+    (driver) =>
+      driver.canEnter === true &&
+      driver.userStatus === 'ACTIVE' &&
+      tractorVehicles.value.some(
+        (vehicle) =>
+          vehicle.driverId === driver.driverId &&
+          vehicle.isRegistered === true,
+      ) &&
+      trailerVehicles.value.some(
+        (vehicle) =>
+          vehicle.driverId === driver.driverId &&
+          vehicle.isRegistered === true,
+      ),
+  ),
+)
+
 const activeWorkStatuses = ['DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED']
 const isActiveWorkOrder = (order) => activeWorkStatuses.includes(order?.workStatus)
 
@@ -78,7 +96,7 @@ const assignedTrailerVehicleIds = computed(() => new Set(
     .filter(Boolean),
 ))
 
-const availableDrivers = computed(() => myDrivers.value.filter((driver) => (
+const availableDrivers = computed(() => approvedDrivers.value.filter((driver) => (
   !assignedDriverIds.value.has(driver.driverId) || driver.driverId === form.value.driverId
 )))
 
@@ -102,12 +120,15 @@ const trailerVehicles = computed(() =>
 )
 
 const availableTrailerVehicles = computed(() => trailerVehicles.value.filter((vehicle) => (
-  !assignedTrailerVehicleIds.value.has(vehicle.vehicleId)
-  || vehicle.vehicleId === form.value.trailerVehicleId
+  vehicle.driverId === form.value.driverId
+  && (
+    !assignedTrailerVehicleIds.value.has(vehicle.vehicleId)
+    || vehicle.vehicleId === form.value.trailerVehicleId
+  )
 )))
 
 const selectedDriver = computed(() =>
-  myDrivers.value.find((driver) => driver.driverId === form.value.driverId),
+  approvedDrivers.value.find((driver) => driver.driverId === form.value.driverId),
 )
 
 const selectedTractor = computed(() =>

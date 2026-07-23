@@ -149,7 +149,7 @@ public interface WorkOrderMapper {
                     WHEN wo.work_status = 'APPROVED'
                         THEN '입차 승인 완료. 게이트에서 입차 처리 후 야드 섹터로 이동하세요.'
                     WHEN wo.work_status = 'GATE_IN'
-                        THEN CONCAT('입차 처리 완료. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터로 이동하여 작업을 진행하세요.')
+                        THEN '입차 되었습니다. 해당 야드 섹터로 이동하여 작업을 실시하세요.'
                     WHEN wo.work_status = 'IN_PROGRESS'
                         THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
                     WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE
@@ -177,7 +177,7 @@ public interface WorkOrderMapper {
                             WHEN wo.work_status = 'APPROVED'
                                 THEN '입차 승인 완료. 게이트에서 입차 처리 후 야드 섹터로 이동하세요.'
                             WHEN wo.work_status = 'GATE_IN'
-                                THEN CONCAT('입차 처리 완료. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터로 이동하여 작업을 진행하세요.')
+                                THEN '입차 되었습니다. 해당 야드 섹터로 이동하여 작업을 실시하세요.'
                             WHEN wo.work_status = 'IN_PROGRESS'
                                 THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
                             WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE

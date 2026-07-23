@@ -1,6 +1,10 @@
 package aaa.work_order_p.service;
 
 import aaa.container_p.service.ContainerService;
+import aaa.driver_p.model.DriverDTO;
+import aaa.driver_p.model.DriverMapper;
+import aaa.vehicle_p.model.VehicleDTO;
+import aaa.vehicle_p.model.VehicleMapper;
 import aaa.work_order_p.model.WorkOrderDTO;
 import aaa.work_order_p.model.WorkOrderMapper;
 import aaa.work_order_p.model.WorkOrderProcessResultDTO;
@@ -35,6 +39,12 @@ class WorkOrderServiceTest {
 
     @Mock
     private ContainerService containerService;
+
+    @Mock
+    private DriverMapper driverMapper;
+
+    @Mock
+    private VehicleMapper vehicleMapper;
 
     @InjectMocks
     private WorkOrderService service;
@@ -145,6 +155,71 @@ class WorkOrderServiceTest {
         when(mapper.countActiveByTrailerVehicleId(20L, null)).thenReturn(1);
 
         assertThrows(ResponseStatusException.class, () -> service.insert(request));
+        verify(mapper, never()).insert(any(WorkOrderDTO.class));
+    }
+
+    @Test
+    void insertRejectsDriverWithoutAdminFinalApproval() {
+        WorkOrderDTO request = order("DISPATCH_WAITING", false, null);
+        request.setDriverId(10L);
+
+        DriverDTO driver = new DriverDTO();
+        driver.setDriverId(10L);
+        driver.setIsRegistered(true);
+        driver.setCanEnter(false);
+        driver.setUserStatus("CARRIER_APPROVED");
+        when(driverMapper.detail(10L)).thenReturn(driver);
+
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class,
+                () -> service.insert(request)
+        );
+
+        assertEquals(
+                "관리자 최종 승인이 완료된 기사만 작업에 배정할 수 있습니다.",
+                error.getReason()
+        );
+        verify(mapper, never()).insert(any(WorkOrderDTO.class));
+    }
+
+    @Test
+    void insertRejectsTrailerWithoutAdminFinalApproval() {
+        WorkOrderDTO request = order("DISPATCH_WAITING", false, null);
+        request.setDriverId(10L);
+        request.setTractorVehicleId(20L);
+        request.setTrailerVehicleId(30L);
+
+        DriverDTO driver = new DriverDTO();
+        driver.setDriverId(10L);
+        driver.setIsRegistered(true);
+        driver.setCanEnter(true);
+        driver.setUserStatus("ACTIVE");
+
+        VehicleDTO tractor = new VehicleDTO();
+        tractor.setVehicleId(20L);
+        tractor.setDriverId(10L);
+        tractor.setVehicleType("TRACTOR");
+        tractor.setIsRegistered(true);
+
+        VehicleDTO trailer = new VehicleDTO();
+        trailer.setVehicleId(30L);
+        trailer.setDriverId(10L);
+        trailer.setVehicleType("TRAILER");
+        trailer.setIsRegistered(false);
+
+        when(driverMapper.detail(10L)).thenReturn(driver);
+        when(vehicleMapper.detail(20L)).thenReturn(tractor);
+        when(vehicleMapper.detail(30L)).thenReturn(trailer);
+
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class,
+                () -> service.insert(request)
+        );
+
+        assertEquals(
+                "관리자 최종 승인이 완료된 기사 배정 트레일러가 필요합니다.",
+                error.getReason()
+        );
         verify(mapper, never()).insert(any(WorkOrderDTO.class));
     }
 

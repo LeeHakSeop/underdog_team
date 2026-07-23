@@ -51,7 +51,6 @@ const form = ref({
   plateNumber: '',
   vehicleType: '트레일러',
   tonnage: '25톤',
-  chassisNo: '',
 })
 
 const myCarrier = computed(() =>
@@ -239,18 +238,12 @@ const loadData = async () => {
   }
 }
 
-const generateCode = (prefix) => {
-  const number = Math.floor(Math.random() * 900000 + 100000)
-  return `${prefix}-${number}`
-}
-
 const resetForm = () => {
   form.value = {
     driverId: null,
     plateNumber: '',
     vehicleType: '트레일러',
     tonnage: '25톤',
-    chassisNo: '',
   }
 }
 
@@ -294,7 +287,7 @@ const submitVehicle = async () => {
       vehicleType: '트레일러',
       tonnage: form.value.tonnage,
       tractorNo: null,
-      chassisNo: form.value.chassisNo,
+      chassisNo: null,
     })
 
     message.value = '트레일러 배정 내용이 관리자에게 전달되었습니다. 최종 승인 후 출입 가능합니다.'
@@ -577,14 +570,6 @@ onUnmounted(() => {
                 {{ ton }}
               </option>
             </select>
-          </div>
-
-          <div class="field">
-            <label for="chassisNo">샤시 번호</label>
-            <div class="inline-field">
-              <input id="chassisNo" v-model.trim="form.chassisNo" placeholder="예: CH-999999" />
-              <button type="button" @click="form.chassisNo = generateCode('CH')">자동</button>
-            </div>
           </div>
 
           <button class="primary-button full submit-button" type="submit" :disabled="saving">
