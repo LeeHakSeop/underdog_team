@@ -39,6 +39,9 @@ public class PlateRecognitionService {
 
     private static final String RECOGNITION_SUCCESS = "RECOGNITION_SUCCESS";
     private static final String RECOGNITION_NEED_REVIEW = "RECOGNITION_NEED_REVIEW";
+    private static final String DEFAULT_OCR_TYPE = "crnn";
+    private static final String FALLBACK_OCR_TYPE = "crnn";
+    private static final String AI_PROCESS_FAILED = "AI_PROCESS_FAILED";
 
     @Value("${ai.plate.url:http://127.0.0.1:8000/api/plate-recognition}")
     String fastApiUrl;
@@ -56,7 +59,7 @@ public class PlateRecognitionService {
     ExceptionLogService exceptionLogService;
 
     public PlateRecognitionResultDTO recognize(MultipartFile file) throws IOException {
-        return recognize(file, "paddle", "TRAILER");
+        return recognize(file, DEFAULT_OCR_TYPE, "TRAILER");
     }
 
     public PlateRecognitionResultDTO recognize(MultipartFile file, String ocrType, String plateType) throws IOException {
@@ -99,6 +102,11 @@ public class PlateRecognitionService {
             String inOutType
     ) throws IOException {
         FastApiPlateResponseDTO aiResult = requestPlateRecognition(file, ocrType);
+
+        if (shouldRetryWithCrnn(aiResult, ocrType)) {
+            aiResult = requestPlateRecognition(file, FALLBACK_OCR_TYPE);
+        }
+
         normalizePlateNumber(aiResult);
         plateType = normalizePlateType(plateType);
 
@@ -232,6 +240,16 @@ public class PlateRecognitionService {
         } catch (RestClientException e) {
             return null;
         }
+    }
+
+    private boolean shouldRetryWithCrnn(FastApiPlateResponseDTO aiResult, String requestedOcrType) {
+        if (FALLBACK_OCR_TYPE.equalsIgnoreCase(requestedOcrType)) {
+            return false;
+        }
+
+        return aiResult != null
+                && aiResult.getReviewReasons() != null
+                && aiResult.getReviewReasons().contains(AI_PROCESS_FAILED);
     }
 
     private GateLogDTO createGateLog(

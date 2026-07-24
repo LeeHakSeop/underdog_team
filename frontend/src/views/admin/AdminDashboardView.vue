@@ -291,22 +291,22 @@ onUnmounted(() => {
 .flow-card {
   display: grid;
   gap: 4px;
-  min-height: 82px;
-  padding: 10px;
-  background: #f6f9fd;
+  min-height: 96px;
+  padding: 12px;
+  background: #ffffff;
   border: 1px solid var(--line);
 }
 
 .flow-card span,
 .flow-card small {
   color: var(--ink-500);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
 }
 
 .flow-card strong {
   color: var(--ink-900);
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 900;
 }
 
@@ -342,20 +342,20 @@ onUnmounted(() => {
 .work-card {
   display: grid;
   gap: 4px;
-  padding: 12px;
-  background: #f6f9fd;
+  padding: 14px;
+  background: #ffffff;
   border: 1px solid var(--line);
 }
 
 .work-card span {
   color: var(--ink-500);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 900;
 }
 
 .work-card strong {
   color: var(--ink-900);
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 900;
 }
 
@@ -368,8 +368,8 @@ onUnmounted(() => {
 .sector-card {
   display: grid;
   gap: 8px;
-  padding: 12px;
-  background: #f6f9fd;
+  padding: 14px;
+  background: #ffffff;
   border: 1px solid var(--line);
 }
 
@@ -387,14 +387,14 @@ onUnmounted(() => {
 .sector-card span,
 .sector-card dt {
   color: var(--ink-500);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 900;
 }
 
 .sector-card p {
   margin: 0;
   color: var(--ink-700);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1.45;
 }
@@ -420,9 +420,9 @@ onUnmounted(() => {
 .priority-card {
   display: grid;
   gap: 6px;
-  min-height: 96px;
-  padding: 12px;
-  background: #f7f9fb;
+  min-height: 108px;
+  padding: 14px;
+  background: #ffffff;
   border: 1px solid var(--line);
   border-left: 4px solid var(--blue-700);
   border-radius: 2px;
@@ -430,20 +430,20 @@ onUnmounted(() => {
 
 .priority-card span {
   color: var(--ink-500);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 900;
 }
 
 .priority-card strong {
   color: var(--ink-900);
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 900;
 }
 
 .priority-card p {
   margin: 0;
   color: var(--ink-700);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
 }
 

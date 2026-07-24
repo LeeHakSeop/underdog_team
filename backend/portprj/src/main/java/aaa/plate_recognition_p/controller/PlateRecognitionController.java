@@ -21,7 +21,7 @@ public class PlateRecognitionController {
     @PostMapping(value = "/recognize", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public PlateRecognitionResultDTO recognize(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "ocrType", defaultValue = "paddle") String ocrType,
+            @RequestParam(value = "ocrType", defaultValue = "crnn") String ocrType,
             @RequestParam(value = "plateType", defaultValue = "TRAILER") String plateType,
             @RequestParam(value = "gateNumber", defaultValue = "G01") String gateNumber,
             @RequestParam(value = "gateName", defaultValue = "AI_GATE") String gateName,

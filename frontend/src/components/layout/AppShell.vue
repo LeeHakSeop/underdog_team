@@ -254,7 +254,7 @@ const logout = () => {
 .app-shell {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: 230px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   transition: grid-template-columns 0.16s ease;
 }
 
@@ -273,7 +273,7 @@ const logout = () => {
   overflow-y: auto;
   padding: 12px;
   color: #ffffff;
-  background: #26384d;
+  background: #22374e;
   border-right: 1px solid #172636;
 }
 
@@ -316,13 +316,13 @@ const logout = () => {
 }
 
 .brand-text b {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
 }
 
 .brand-text small {
   color: #c5d2df;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .menu-icon {
@@ -347,7 +347,7 @@ const logout = () => {
 .role-badge strong {
   display: block;
   margin-top: 2px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -358,7 +358,7 @@ const logout = () => {
 
 .side-link {
   display: flex;
-  min-height: 34px;
+  min-height: 40px;
   min-width: 0;
   align-items: center;
   gap: 8px;
@@ -464,30 +464,30 @@ const logout = () => {
 
 .topbar {
   display: flex;
-  min-height: 58px;
+  min-height: 66px;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 14px;
+  padding: 10px 16px;
   background: linear-gradient(#ffffff, #edf2f6);
   border-bottom: 1px solid var(--line);
 }
 
 .topbar small {
   color: var(--ink-500);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .topbar h1 {
   margin: 2px 0 0;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 700;
 }
 
 .content {
   min-width: 0;
-  padding: 10px;
+  padding: 12px;
 }
 
 @media (min-width: 1100px) and (max-width: 1320px) and (max-height: 760px) {

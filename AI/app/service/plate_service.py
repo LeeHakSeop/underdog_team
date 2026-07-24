@@ -56,6 +56,12 @@ async def predict_upload_file(file: UploadFile, ocr_type: str = "paddle"):
             "candidates": [],
         }
     except Exception as error:
+        if (ocr_type or "").lower() != "crnn":
+            try:
+                return predict_plate(save_path, "crnn")
+            except Exception:
+                pass
+
         return {
             "detected": False,
             "plateNumber": "",

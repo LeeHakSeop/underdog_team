@@ -7,7 +7,7 @@ import { vehicleTypeLabel } from '@/config/vehicleType'
 const plateRecognitionStore = usePlateRecognitionStore()
 const gateLogStore = useGateLogStore()
 
-const selectedOcrType = ref('paddle')
+const selectedOcrType = ref('crnn')
 const tractorFile = ref(null)
 const trailerFile = ref(null)
 const tractorPreviewUrl = ref('')
@@ -384,8 +384,8 @@ const submitGateProcess = async () => {
         <label class="model-select">
           <span>OCR 모델</span>
           <select v-model="selectedOcrType">
-            <option value="paddle">PaddleOCR</option>
             <option value="crnn">CRNN</option>
+            <option value="paddle">PaddleOCR</option>
           </select>
         </label>
 
