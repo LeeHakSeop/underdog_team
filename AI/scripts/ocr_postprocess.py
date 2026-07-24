@@ -9,7 +9,8 @@ PLATE_KOREAN = [
     "구", "누", "두", "루", "무",
     "부", "수", "우", "주",
     "아", "바", "사", "자",
-    "하", "허"
+    "하", "허",
+    "육", "합", "해", "호",
 ]
 
 def extract_plate_korean(text):
@@ -32,8 +33,6 @@ KOREAN_CORRECTION_MAP = {
     "덕": "더",
     "히": "하",
     "미": "마",
-    "어": "머",
-    "도": "노",
 }
 
 
@@ -74,19 +73,32 @@ def clean_plate_text(text):
 
 def normalize_plate_pattern(text):
     """
-    한국 번호판 형식 기반 간단 보정
+    번호판 뒤 숫자가 5자리로 인식된 경우,
+    마지막 숫자를 번호판 외곽선 오인식으로 보고 제거한다.
+
     예:
     01가74315 -> 01가7431
+    충북92아17031 -> 충북92아1703
     """
 
     text = clean_plate_text(text)
 
-    # 번호판이 너무 길고, 마지막이 숫자라면 마지막 1자리 제거 시도
-    # 예: 01가74315 -> 01가7431
-    if len(text) == 8:
-        # 앞 2자리 숫자 + 한글 + 뒤 5자리 숫자인 경우
-        if text[:2].isdigit() and text[2].isalpha() and text[3:].isdigit():
-            text = text[:7]
+    # 지역명 없는 번호판
+    # 숫자 2~3자리 + 한글 1글자 + 숫자 5자리
+    match_without_region = re.fullmatch(
+        r"\d{2,3}[가-힣]\d{5}",
+        text,
+    )
+
+    # 지역명 있는 번호판
+    # 지역명 2글자 + 숫자 2~3자리 + 한글 1글자 + 숫자 5자리
+    match_with_region = re.fullmatch(
+        r"[가-힣]{2}\d{2,3}[가-힣]\d{5}",
+        text,
+    )
+
+    if match_without_region or match_with_region:
+        text = text[:-1]
 
     return text
 

@@ -21,7 +21,11 @@ export const usePlateRecognitionStore = defineStore('plateRecognition', {
       this.trailerLoading = false
       this.error = ''
     },
+<<<<<<< HEAD
     async recognize(file, ocrType = 'crnn', targetType = 'trailer') {
+=======
+    async recognize(file, targetType = 'trailer') {
+>>>>>>> 7fbd6506b96f09e1a4feffc970b50aafa75abb64
       this.loading = true
       this.error = ''
       this.result = null
@@ -36,7 +40,7 @@ export const usePlateRecognitionStore = defineStore('plateRecognition', {
       }
 
       try {
-        const result = await recognizePlate(file, ocrType, plateType)
+        const result = await recognizePlate(file, plateType)
 
         this.result = result
 

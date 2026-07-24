@@ -130,7 +130,7 @@ onMounted(loadData)
         차량 정보를 불러오는 중입니다.
       </div>
 
-      <div v-else-if="error" class="empty-box warning">
+      <div v-else-if="error && !editError" class="empty-box warning">
         {{ error }}
       </div>
 

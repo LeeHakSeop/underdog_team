@@ -59,7 +59,11 @@ public class PlateRecognitionService {
     ExceptionLogService exceptionLogService;
 
     public PlateRecognitionResultDTO recognize(MultipartFile file) throws IOException {
+<<<<<<< HEAD
         return recognize(file, DEFAULT_OCR_TYPE, "TRAILER");
+=======
+        return recognize(file, "unified", "TRAILER");
+>>>>>>> 7fbd6506b96f09e1a4feffc970b50aafa75abb64
     }
 
     public PlateRecognitionResultDTO recognize(MultipartFile file, String ocrType, String plateType) throws IOException {
@@ -101,12 +105,16 @@ public class PlateRecognitionService {
             String gateName,
             String inOutType
     ) throws IOException {
+<<<<<<< HEAD
         FastApiPlateResponseDTO aiResult = requestPlateRecognition(file, ocrType);
 
         if (shouldRetryWithCrnn(aiResult, ocrType)) {
             aiResult = requestPlateRecognition(file, FALLBACK_OCR_TYPE);
         }
 
+=======
+        FastApiPlateResponseDTO aiResult = requestPlateRecognition(file);
+>>>>>>> 7fbd6506b96f09e1a4feffc970b50aafa75abb64
         normalizePlateNumber(aiResult);
         plateType = normalizePlateType(plateType);
 
@@ -156,7 +164,13 @@ public class PlateRecognitionService {
         boolean hasRequiredInfo = businessExceptionType == null;
         boolean needReview = businessExceptionType != null;
 
-        if (aiResult == null || Boolean.TRUE.equals(aiResult.getNeedReview())) {
+        /*
+         * AI가 낮은 신뢰도로 관리자 확인을 요청하더라도, 정규화된 인식 번호판이
+         * DB 차량번호와 정확히 일치하고 업무 검증까지 통과하면 자동 출입을 허용한다.
+         * 미등록 차량이나 작업/승인 오류는 businessExceptionType에서 계속 차단한다.
+         */
+        if (aiResult == null
+                || (Boolean.TRUE.equals(aiResult.getNeedReview()) && !matched)) {
             needReview = true;
         }
 
@@ -209,7 +223,7 @@ public class PlateRecognitionService {
         return result;
     }
 
-    private FastApiPlateResponseDTO requestPlateRecognition(MultipartFile file, String ocrType) throws IOException {
+    private FastApiPlateResponseDTO requestPlateRecognition(MultipartFile file) throws IOException {
         RestTemplate restTemplate = new RestTemplate();
 
         ByteArrayResource imageResource = new ByteArrayResource(file.getBytes()) {
@@ -221,7 +235,6 @@ public class PlateRecognitionService {
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", imageResource);
-        body.add("ocrType", ocrType);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);

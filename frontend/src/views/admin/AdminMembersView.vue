@@ -31,14 +31,6 @@ const carrierPendingUsers = computed(() =>
   ),
 )
 
-const driverPendingUsers = computed(() =>
-  users.value.filter(
-    (user) =>
-      user.roleCode === 'DRIVER' &&
-      (user.status === 'PENDING' || user.status === 'CARRIER_APPROVED'),
-  ),
-)
-
 const finalApprovalVehicles = computed(() =>
   vehicles.value.filter(
     (vehicle) =>
@@ -52,11 +44,6 @@ const tabs = computed(() => [
     key: 'user',
     label: '운송사 가입승인',
     count: carrierPendingUsers.value.length,
-  },
-  {
-    key: 'driverUser',
-    label: '기사 관리자 승인',
-    count: driverPendingUsers.value.length,
   },
   {
     key: 'carrier',
@@ -77,27 +64,6 @@ const tabs = computed(() => [
 
 const getDriver = (driverId) => {
   return drivers.value.find((driver) => driver.driverId === driverId)
-}
-
-const getDriverByUserId = (userId) => {
-  return drivers.value.find((driver) => driver.userId === userId)
-}
-
-const isDriverApprovalReady = (user) => {
-  if (user.status !== 'CARRIER_APPROVED') return false
-
-  const driver = getDriverByUserId(user.userId)
-  if (!driver || driver.isRegistered !== true) return false
-
-  return vehicles.value.some(
-    (vehicle) => vehicle.driverId === driver.driverId && vehicle.isRegistered === true,
-  )
-}
-
-const getDriverApprovalStatusLabel = (status) => {
-  if (status === 'CARRIER_APPROVED') return '관리자 승인 대기'
-  if (status === 'PENDING') return '운송사 승인 대기'
-  return status || '-'
 }
 
 const getCarrier = (carrierId) => {
@@ -208,35 +174,13 @@ const rejectCarrier = async (userId) => {
   }
 }
 
-const rejectDriverUser = async (userId) => {
-  errorMessage.value = ''
-
-  try {
-    await updateUserStatus(userId, 'REJECTED')
-    await loadData()
-  } catch (error) {
-    errorMessage.value = error.message || '기사 반려에 실패했습니다.'
-  }
-}
-
-const approveDriverUser = async (user) => {
+const approveVehicle = async (vehicleId) => {
   errorMessage.value = ''
   message.value = ''
 
   try {
-    await updateUserStatus(user.userId, 'ACTIVE')
-    message.value = `${user.userName || user.loginId} 기사 관리자 최종 승인을 완료했습니다. 이제 출입할 수 있습니다.`
-    await loadData()
-  } catch (error) {
-    errorMessage.value = error.message || '기사 관리자 최종 승인에 실패했습니다.'
-  }
-}
-
-const approveVehicle = async (vehicleId) => {
-  errorMessage.value = ''
-
-  try {
     await vehicleStore.approveVehicle(vehicleId, true)
+    message.value = '최종 승인이 완료되었습니다. 연결된 기사 계정과 출입 권한이 함께 활성화되었습니다.'
     await loadData()
   } catch (error) {
     errorMessage.value = error.message || '관리자 최종 승인에 실패했습니다.'
@@ -279,7 +223,6 @@ onUnmounted(() => {
 
         <span class="status-pill">
           운송사 승인대기 {{ carrierPendingUsers.length }} /
-          기사 검토대상 {{ driverPendingUsers.length }} /
           최종 승인대기 {{ finalApprovalVehicles.length }}
         </span>
       </div>
@@ -376,78 +319,6 @@ onUnmounted(() => {
           </div>
         </article>
       </div>
-    </section>
-
-    <section v-else-if="activeTab === 'driverUser'" class="panel">
-      <div class="section-title">
-        <h2>기사 관리자 최종 승인</h2>
-        <span class="status-pill amber">
-          운송사 승인·차량 관리자 승인 확인 대상
-        </span>
-      </div>
-
-      <div v-if="loading" class="empty-box">불러오는 중...</div>
-
-      <div v-else-if="driverPendingUsers.length === 0" class="empty-box">
-        검토 대상 기사가 없습니다.
-      </div>
-
-      <div v-else class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>회원 ID</th>
-              <th>아이디</th>
-              <th>회원명</th>
-              <th>상태</th>
-              <th>가입일</th>
-              <th>관리</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr
-              v-for="user in driverPendingUsers"
-              :key="user.userId"
-            >
-              <td>{{ user.userId }}</td>
-              <td>{{ user.loginId }}</td>
-              <td>{{ user.userName }}</td>
-              <td>
-                <span class="status-pill amber">
-                  {{ getDriverApprovalStatusLabel(user.status) }}
-                </span>
-              </td>
-              <td>{{ user.createdAt || '-' }}</td>
-              <td>
-                <div class="action-row">
-                  <button
-                    v-if="isDriverApprovalReady(user)"
-                    class="ghost-button approve"
-                    type="button"
-                    @click="approveDriverUser(user)"
-                  >
-                    관리자 최종 승인
-                  </button>
-
-                  <span v-else class="status-pill">
-                    운송사 승인 및 차량 관리자 승인 확인 필요
-                  </span>
-
-                  <button
-                    class="ghost-button reject"
-                    type="button"
-                    @click="rejectDriverUser(user.userId)"
-                  >
-                    반려
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
     </section>
 
     <section v-else-if="activeTab === 'carrier'" class="panel">
@@ -622,7 +493,6 @@ onUnmounted(() => {
               <th>차량 유형</th>
               <th>톤수</th>
               <th>트랙터 번호</th>
-              <th>샤시 번호</th>
               <th>상태</th>
               <th>최종 승인</th>
             </tr>
@@ -644,7 +514,6 @@ onUnmounted(() => {
               <td>{{ vehicleTypeLabel(vehicle.vehicleType) }}</td>
               <td>{{ vehicle.tonnage }}</td>
               <td>{{ vehicle.tractorNo || '-' }}</td>
-              <td>{{ vehicle.chassisNo || '-' }}</td>
               <td>
                 <span class="status-pill amber">
                   {{ vehicle.vehicleStatus }}

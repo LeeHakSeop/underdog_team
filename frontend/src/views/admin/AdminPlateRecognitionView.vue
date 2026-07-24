@@ -7,7 +7,10 @@ import { vehicleTypeLabel } from '@/config/vehicleType'
 const plateRecognitionStore = usePlateRecognitionStore()
 const gateLogStore = useGateLogStore()
 
+<<<<<<< HEAD
 const selectedOcrType = ref('crnn')
+=======
+>>>>>>> 7fbd6506b96f09e1a4feffc970b50aafa75abb64
 const tractorFile = ref(null)
 const trailerFile = ref(null)
 const tractorPreviewUrl = ref('')
@@ -292,6 +295,29 @@ const canProcessGate = computed(() => {
   return isReadyForGateProcess.value && gateProcessMissingItems.value.length === 0
 })
 
+const presentationChecks = computed(() => [
+  {
+    label: '트랙터',
+    value: tractorResult.value?.aiResult?.plateNumber || '인식 대기',
+    complete: tractorPassText.value === '가능',
+  },
+  {
+    label: '트레일러',
+    value: trailerResult.value?.aiResult?.plateNumber || '인식 대기',
+    complete: trailerPassText.value === '가능',
+  },
+  {
+    label: '배정 작업',
+    value: workOrderMatch.value ? '일치 확인' : '확인 필요',
+    complete: workOrderMatch.value,
+  },
+  {
+    label: '출입 단계',
+    value: automaticInOutType.value ? `${automaticInOutLabel.value} 가능 여부 확인` : '판단 대기',
+    complete: Boolean(automaticInOutType.value) && automaticGateStatusAllowed.value,
+  },
+])
+
 const tractorSummaryText = computed(() => {
   if (!tractorResult.value) {
     return '트랙터 번호판 인식 후 기사와 운송사 정보가 표시됩니다.'
@@ -346,7 +372,7 @@ const submitTractorRecognize = async () => {
     return
   }
 
-  await plateRecognitionStore.recognize(tractorFile.value, selectedOcrType.value, 'tractor')
+  await plateRecognitionStore.recognize(tractorFile.value, 'tractor')
 }
 
 const submitTrailerRecognize = async () => {
@@ -354,7 +380,7 @@ const submitTrailerRecognize = async () => {
     return
   }
 
-  await plateRecognitionStore.recognize(trailerFile.value, selectedOcrType.value, 'trailer')
+  await plateRecognitionStore.recognize(trailerFile.value, 'trailer')
 }
 
 const submitGateProcess = async () => {
@@ -381,6 +407,7 @@ const submitGateProcess = async () => {
       </div>
 
       <div class="top-control-area">
+<<<<<<< HEAD
         <label class="model-select">
           <span>OCR 모델</span>
           <select v-model="selectedOcrType">
@@ -388,6 +415,15 @@ const submitGateProcess = async () => {
             <option value="paddle">PaddleOCR</option>
           </select>
         </label>
+=======
+        <div class="ai-engine-card">
+          <span class="engine-icon">AI</span>
+          <div>
+            <span>번호판 자동 인식</span>
+            <strong>AI 엔진 연결 완료</strong>
+          </div>
+        </div>
+>>>>>>> 7fbd6506b96f09e1a4feffc970b50aafa75abb64
 
         <label class="model-select">
           <span>출입 구분 (자동)</span>
@@ -419,25 +455,21 @@ const submitGateProcess = async () => {
       </ol>
 
       <div class="gate-process-panel">
-        <div>
-          <span>최종 출입 처리 요청 데이터</span>
-          <strong>{{ canProcessGate ? '처리 가능' : '처리 대기' }}</strong>
-          <p>
-            {{
-              gateProcessMissingItems.length === 0
-                ? '트랙터, 트레일러, 작업정보, 컨테이너, 야드 섹터 정보가 준비되었습니다.'
-                : `부족한 정보: ${gateProcessMissingItems.join(', ')}`
-            }}
-          </p>
+        <div class="gate-process-summary">
+          <span>출입 준비 상태</span>
+          <strong>{{ canProcessGate ? `${automaticInOutLabel} 준비 완료` : '확인 필요' }}</strong>
+          <p>{{ canProcessGate ? '차량과 배정 작업 확인이 모두 완료되었습니다.' : gateDecisionMessage }}</p>
         </div>
 
-        <div class="gate-process-data">
-          <span>트랙터 ID: {{ gateProcessPayload.tractorVehicleId || '-' }}</span>
-          <span>트레일러 ID: {{ gateProcessPayload.trailerVehicleId || '-' }}</span>
-          <span>작업 ID: {{ gateProcessPayload.workOrderId || '-' }}</span>
-          <span>컨테이너 ID: {{ gateProcessPayload.containerId || '-' }}</span>
-          <span>섹터 ID: {{ gateProcessPayload.sectorId || '-' }}</span>
-          <span>출입 구분: {{ automaticInOutLabel }}</span>
+        <div class="presentation-checks">
+          <div
+            v-for="check in presentationChecks"
+            :key="check.label"
+            :class="{ complete: check.complete }"
+          >
+            <span>{{ check.label }}</span>
+            <strong>{{ check.value }}</strong>
+          </div>
         </div>
 
         <div
@@ -445,8 +477,8 @@ const submitGateProcess = async () => {
           class="matched-work-order"
         >
           <div class="matched-work-order-head">
-            <span>일치 WorkOrder 종합 정보</span>
-            <strong>#{{ matchedWorkOrder.workOrderId }} · {{ matchedWorkOrder.workType || '-' }}</strong>
+            <span>배정 작업 정보</span>
+            <strong>{{ matchedWorkOrder.workType || '-' }}</strong>
           </div>
           <div class="matched-work-order-grid">
             <div><span>작업 상태</span><strong>{{ matchedWorkOrder.workStatus || '-' }}</strong></div>
@@ -526,15 +558,11 @@ const submitGateProcess = async () => {
               <strong>{{ tractorResult?.aiResult?.plateNumber || '-' }}</strong>
             </div>
             <div>
-              <span>OCR 모델</span>
-              <strong>{{ tractorResult?.aiResult?.ocrType || selectedOcrType }}</strong>
+              <span>차량 등록</span>
+              <strong>{{ !tractorResult ? '확인 대기' : tractorResult.matched ? '등록 확인' : '미등록' }}</strong>
             </div>
             <div>
-              <span>인식 성공</span>
-              <strong>{{ tractorResult?.aiResult?.detected ? '성공' : '-' }}</strong>
-            </div>
-            <div>
-              <span>통과 여부</span>
+              <span>출입 검증</span>
               <strong>{{ tractorPassText }}</strong>
             </div>
           </div>
@@ -635,15 +663,11 @@ const submitGateProcess = async () => {
               <strong>{{ trailerResult?.aiResult?.plateNumber || '-' }}</strong>
             </div>
             <div>
-              <span>OCR 모델</span>
-              <strong>{{ trailerResult?.aiResult?.ocrType || selectedOcrType }}</strong>
+              <span>차량 등록</span>
+              <strong>{{ !trailerResult ? '확인 대기' : trailerResult.matched ? '등록 확인' : '미등록' }}</strong>
             </div>
             <div>
-              <span>인식 성공</span>
-              <strong>{{ trailerResult?.aiResult?.detected ? '성공' : '-' }}</strong>
-            </div>
-            <div>
-              <span>통과 여부</span>
+              <span>출입 검증</span>
               <strong>{{ trailerPassText }}</strong>
             </div>
           </div>
@@ -742,10 +766,50 @@ const submitGateProcess = async () => {
 <style scoped>
 .top-control-area {
   display: grid;
-  grid-template-columns: 220px 160px minmax(0, 1fr);
+  grid-template-columns: 240px 160px minmax(0, 1fr);
   gap: 14px;
   align-items: stretch;
   margin-bottom: 14px;
+}
+
+.ai-engine-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  color: #17456e;
+  background: linear-gradient(135deg, #eef7ff, #ffffff);
+  border: 1px solid #9fc3df;
+}
+
+.engine-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  color: #ffffff;
+  background: var(--blue-700);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.ai-engine-card div {
+  display: grid;
+  gap: 2px;
+}
+
+.ai-engine-card div span {
+  color: var(--ink-500);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ai-engine-card div strong {
+  color: #17456e;
+  font-size: 14px;
+  font-weight: 900;
 }
 
 .model-select {
@@ -806,7 +870,7 @@ const submitGateProcess = async () => {
 
 .gate-process-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 420px) 160px;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(420px, 1.4fr) 160px;
   gap: 12px;
   align-items: stretch;
   margin-bottom: 14px;
@@ -815,9 +879,10 @@ const submitGateProcess = async () => {
   border: 1px solid var(--line);
 }
 
-.gate-process-panel > div:first-child {
+.gate-process-summary {
   display: grid;
   gap: 4px;
+  align-content: center;
 }
 
 .gate-process-panel span {
@@ -840,14 +905,40 @@ const submitGateProcess = async () => {
   line-height: 1.45;
 }
 
-.gate-process-data {
+.presentation-checks {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px 10px;
-  align-content: center;
+  gap: 7px;
+}
+
+.presentation-checks div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: #ffffff;
+  border: 1px solid #c8d3de;
+  border-left: 4px solid #9aa9b7;
+}
+
+.presentation-checks div.complete {
+  background: #eefaf3;
+  border-color: #9dd8b8;
+  border-left-color: var(--green-600);
+}
+
+.presentation-checks strong,
+.gate-process-panel .presentation-checks strong {
+  overflow: hidden;
+  color: #243b53;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gate-process-button {
+  grid-column: 3;
+  grid-row: 1;
   align-self: center;
   min-height: 42px;
 }
@@ -1023,7 +1114,7 @@ const submitGateProcess = async () => {
 
 .result-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1145,11 +1236,16 @@ const submitGateProcess = async () => {
     align-items: stretch;
     flex-direction: column;
   }
+
+  .gate-process-button {
+    grid-column: auto;
+    grid-row: auto;
+  }
 }
 
 @media (min-width: 1100px) and (max-height: 760px) {
   .top-control-area {
-    grid-template-columns: 180px 150px minmax(0, 1fr);
+    grid-template-columns: 220px 150px minmax(0, 1fr);
     gap: 10px;
     margin-bottom: 10px;
   }
@@ -1182,7 +1278,7 @@ const submitGateProcess = async () => {
   }
 
   .gate-process-panel {
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px) 150px;
+    grid-template-columns: minmax(220px, 0.8fr) minmax(380px, 1.4fr) 150px;
     gap: 10px;
     margin-bottom: 10px;
     padding: 10px;

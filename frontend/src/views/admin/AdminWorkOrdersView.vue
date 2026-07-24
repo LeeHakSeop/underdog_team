@@ -363,15 +363,6 @@ const processWorkOrder = async (order, action) => {
       processMessage.value = '작업 요청을 반려했습니다.'
     }
 
-    if (action === 'start') {
-      await workOrderStore.start(workOrderId)
-      processMessage.value = '작업 시작 처리가 완료되었습니다.'
-    }
-
-    if (action === 'complete') {
-      await workOrderStore.complete(workOrderId)
-      processMessage.value = '작업 완료 처리가 완료되었습니다.'
-    }
   } catch (error) {
     processMessage.value = error.message || '작업 처리에 실패했습니다.'
   } finally {
@@ -509,7 +500,7 @@ onUnmounted(() => {
               <th>트레일러 승인</th>
               <th>기사 출입</th>
               <th>상태</th>
-              <th>처리</th>
+              <th>진행 주체</th>
             </tr>
           </thead>
           <tbody>
@@ -674,25 +665,13 @@ onUnmounted(() => {
                 </span>
               </td>
               <td>
-                <button
-                  v-if="getValue(order, 'workStatus', 'work_status') === 'GATE_IN'"
-                  class="primary-button"
-                  type="button"
-                  :disabled="processingId === getId(order, 'workOrderId')"
-                  @click="processWorkOrder(order, 'start')"
-                >
-                  {{ processingId === getId(order, 'workOrderId') ? '처리 중' : '작업 시작' }}
-                </button>
-                <button
-                  v-else-if="getValue(order, 'workStatus', 'work_status') === 'IN_PROGRESS'"
-                  class="primary-button"
-                  type="button"
-                  :disabled="processingId === getId(order, 'workOrderId')"
-                  @click="processWorkOrder(order, 'complete')"
-                >
-                  {{ processingId === getId(order, 'workOrderId') ? '처리 중' : '작업 완료' }}
-                </button>
-                <span v-else>{{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}</span>
+                <span v-if="getValue(order, 'workStatus', 'work_status') === 'GATE_IN'">
+                  기사 작업 시작 대기
+                </span>
+                <span v-else-if="getValue(order, 'workStatus', 'work_status') === 'IN_PROGRESS'">
+                  기사 작업 완료 대기
+                </span>
+                <span v-else>상태 조회</span>
               </td>
             </tr>
             <tr v-if="filteredProcessingTasks.length === 0">
