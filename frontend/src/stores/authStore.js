@@ -95,8 +95,6 @@ export const registerAccount = async (account) => {
 
     plateNumber: account.plateNumber,
     vehicleType: account.vehicleType,
-    tractorNo: account.tractorNo,
-    chassisNo: account.chassisNo,
   })
 }
 

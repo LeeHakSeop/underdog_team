@@ -87,9 +87,9 @@ const updateField = (key, value) => {
           </button>
         </div>
         <p
-          v-if="loginIdCheck.message"
           class="check-message"
           :class="{ available: loginIdCheck.available, unavailable: loginIdCheck.available === false }"
+          aria-live="polite"
         >
           {{ loginIdCheck.message }}
         </p>
@@ -195,6 +195,8 @@ const updateField = (key, value) => {
 
 .field {
   display: grid;
+  align-content: start;
+  align-self: start;
   gap: 5px;
 }
 
@@ -267,10 +269,12 @@ const updateField = (key, value) => {
 }
 
 .check-message {
-  min-height: 16px;
+  height: 16px;
+  overflow: hidden;
   margin: 1px 0 0;
   font-size: 12px;
   font-weight: 700;
+  line-height: 16px;
 }
 
 .check-message.available {

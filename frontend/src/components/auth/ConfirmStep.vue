@@ -134,16 +134,6 @@ const props = defineProps({
         <strong>{{ vehicleTypeLabel(vehicleForm.vehicleType) }}</strong>
       </div>
 
-      <div class="summary-row">
-        <span>트랙터번호</span>
-        <strong>{{ vehicleForm.tractorNo }}</strong>
-      </div>
-
-      <div class="summary-row">
-        <span>샤시번호</span>
-        <strong>{{ vehicleForm.chassisNo }}</strong>
-      </div>
-
     </div>
 
     <div class="notice-box">

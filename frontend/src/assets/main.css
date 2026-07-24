@@ -20,6 +20,7 @@
 }
 
 body {
+  max-width: 100%;
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
@@ -37,8 +38,14 @@ body {
     -apple-system,
     BlinkMacSystemFont,
     sans-serif;
+<<<<<<< HEAD
   font-size: 15px;
   line-height: 1.45;
+=======
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-x: hidden;
+>>>>>>> origin/hakseop
 }
 
 button,
@@ -59,6 +66,7 @@ a {
 
 #app {
   min-height: 100vh;
+  min-width: 0;
 }
 
 .page-stack {
@@ -180,8 +188,11 @@ a {
 }
 
 .table-wrap {
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 .data-table {

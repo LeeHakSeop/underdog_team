@@ -14,7 +14,18 @@ const { drivers } = storeToRefs(driverStore)
 const getId = (row, key) => row?.[key] ?? row?.[key.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)]
 
 const myCarrier = computed(() => {
-  return carriers.value.find((carrier) => getId(carrier, 'userId') === currentUser?.userId)
+  return carriers.value.find(
+    (carrier) => String(getId(carrier, 'userId')) === String(currentUser?.userId),
+  )
+})
+
+const carrierName = computed(() => {
+  if (carrierStore.loading) return '운송사 정보를 불러오는 중입니다.'
+  return myCarrier.value?.carrierName || myCarrier.value?.carrier_name || '운송사 정보 미등록'
+})
+
+const carrierManagerName = computed(() => {
+  return myCarrier.value?.managerName || myCarrier.value?.manager_name || currentUser?.displayName || '-'
 })
 
 const myDrivers = computed(() => {
@@ -64,6 +75,17 @@ onMounted(loadData)
   <div class="page-stack">
     <section v-if="carrierStore.error || driverStore.error" class="panel error-panel">
       {{ carrierStore.error || driverStore.error }}
+    </section>
+
+    <section class="carrier-identity" aria-label="현재 로그인 운송사">
+      <div class="identity-item">
+        <span>운송사명</span>
+        <strong>{{ carrierName }}</strong>
+      </div>
+      <div class="identity-item manager-item">
+        <span>담당자명</span>
+        <strong>{{ carrierManagerName }}</strong>
+      </div>
     </section>
 
     <section class="grid-4">
@@ -130,6 +152,66 @@ onMounted(loadData)
 </template>
 
 <style scoped>
+.carrier-identity {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
+  gap: 0;
+  overflow: hidden;
+  color: var(--ink-900);
+  background: #ffffff;
+  border: 1px solid #8fa8bf;
+  border-left: 5px solid var(--blue-700);
+  border-radius: 2px;
+}
+
+.identity-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 16px;
+}
+
+.identity-item + .identity-item {
+  border-left: 1px solid #c4d0dc;
+}
+
+.carrier-identity span {
+  display: block;
+  color: #40566d;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.carrier-identity strong {
+  display: block;
+  overflow: hidden;
+  color: #163d64;
+  font-size: 19px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manager-item {
+  background: #eef4f9;
+}
+
+.manager-item strong {
+  color: #1f2933;
+  font-size: 17px;
+}
+
+@media (max-width: 640px) {
+  .carrier-identity {
+    grid-template-columns: 1fr;
+  }
+
+  .identity-item + .identity-item {
+    border-top: 1px solid #c4d0dc;
+    border-left: 0;
+  }
+}
+
 .carrier-action-card {
   display: grid;
   gap: 6px;

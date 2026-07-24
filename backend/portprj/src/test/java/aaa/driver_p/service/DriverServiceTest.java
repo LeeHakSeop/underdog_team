@@ -48,7 +48,7 @@ class DriverServiceTest {
         DriverDTO driver = new DriverDTO();
         driver.setDriverId(10L);
         driver.setUserId(100L);
-        driver.setIsRegistered(true);
+        driver.setIsRegistered(false);
         driver.setUserStatus("WITHDRAWN");
 
         when(driverMapper.detail(10L)).thenReturn(driver);

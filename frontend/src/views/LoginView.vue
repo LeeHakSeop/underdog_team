@@ -40,8 +40,8 @@ const handleSignupCompleted = () => {
       <p class="eyebrow">PORT GATE MANAGEMENT SYSTEM</p>
 
       <h1>
-        항만 게이트<br />
-        차량 출입 관리
+        <span>항만 게이트 차량 출입</span>
+        <strong>컨테이너 상차 섹터 안내 시스템</strong>
       </h1>
 
       <p class="brand-copy">
@@ -112,9 +112,27 @@ const handleSignupCompleted = () => {
 .brand-panel h1 {
   max-width: 540px;
   margin: 0;
-  font-size: clamp(38px, 3.6vw, 50px);
+  line-height: 1.16;
+}
+
+.brand-panel h1 span,
+.brand-panel h1 strong {
+  display: block;
+}
+
+.brand-panel h1 span {
+  color: #d9e7f4;
+  font-size: clamp(21px, 2.6vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.brand-panel h1 strong {
+  margin-top: 8px;
+  color: #ffffff;
+  font-size: clamp(31px, 4vw, 48px);
   font-weight: 800;
-  line-height: 1.18;
+  letter-spacing: -0.045em;
 }
 
 .brand-copy {

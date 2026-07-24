@@ -17,7 +17,6 @@ const message = ref('')
 const editError = ref('')
 const editForm = ref({
   plateNumber: '',
-  tractorNo: '',
 })
 
 const loginUser = computed(() => {
@@ -63,7 +62,6 @@ const startEdit = () => {
 
   editForm.value = {
     plateNumber: myVehicle.value.plateNumber || '',
-    tractorNo: myVehicle.value.tractorNo || '',
   }
   message.value = ''
   editError.value = ''
@@ -86,18 +84,12 @@ const saveVehicle = async () => {
     return
   }
 
-  if (!editForm.value.tractorNo.trim()) {
-    editError.value = '트랙터 번호를 입력하세요.'
-    return
-  }
-
   saving.value = true
 
   try {
     await vehicleStore.editVehicle(myVehicle.value.vehicleId, {
       ...myVehicle.value,
       plateNumber: editForm.value.plateNumber.trim(),
-      tractorNo: editForm.value.tractorNo.trim(),
     })
     await vehicleStore.loadVehicleByDriver(myDriver.value.driverId)
     editing.value = false
@@ -123,7 +115,7 @@ onMounted(loadData)
       </div>
 
       <div class="notice-box">
-        트랙터는 기사 본인 소유 차량입니다. 차량이 변경되면 아래 수정 기능으로 차량번호와 트랙터 번호를 함께 갱신하세요.
+        트랙터는 기사 본인 소유 차량입니다. 차량이 변경되면 아래 수정 기능으로 차량번호를 갱신하세요.
       </div>
 
       <div v-if="message" class="form-message success">
@@ -170,11 +162,6 @@ onMounted(loadData)
               <input id="driverTractorPlate" v-model="editForm.plateNumber" />
             </div>
 
-            <div class="field">
-              <label for="driverTractorNo">트랙터 번호</label>
-              <input id="driverTractorNo" v-model="editForm.tractorNo" />
-            </div>
-
             <div class="edit-actions">
               <button class="secondary-button" type="button" @click="cancelEdit">취소</button>
               <button class="primary-button" type="submit" :disabled="saving">
@@ -187,9 +174,6 @@ onMounted(loadData)
             <tbody>
               <tr><th>차량 번호</th><td>{{ myVehicle.plateNumber }}</td></tr>
               <tr><th>차량 유형</th><td>{{ vehicleTypeLabel(myVehicle.vehicleType) }}</td></tr>
-              <tr><th>톤수</th><td>{{ myVehicle.tonnage || '-' }}</td></tr>
-              <tr><th>트랙터 번호</th><td>{{ myVehicle.tractorNo || '-' }}</td></tr>
-              <tr><th>샤시 번호</th><td>{{ myVehicle.chassisNo || '-' }}</td></tr>
               <tr><th>차량 상태</th><td>{{ myVehicle.vehicleStatus || '-' }}</td></tr>
             </tbody>
           </table>

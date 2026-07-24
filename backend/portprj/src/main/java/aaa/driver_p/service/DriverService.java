@@ -103,15 +103,12 @@ public class DriverService {
 
         int driverUpdated = driverMapper.updateApprovalByDriverId(
                 driverId,
-                Boolean.TRUE.equals(driver.getIsRegistered()),
+                true,
                 false
         );
-        String restoredStatus = Boolean.TRUE.equals(driver.getIsRegistered())
-                ? "CARRIER_APPROVED"
-                : "PENDING";
         int userUpdated = userMapper.updateStatus(
                 driver.getUserId(),
-                restoredStatus
+                "CARRIER_APPROVED"
         );
 
         if (driverUpdated != 1 || userUpdated != 1) {

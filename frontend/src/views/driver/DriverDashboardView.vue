@@ -298,6 +298,28 @@ onUnmounted(() => {
   min-width: 0;
 }
 
+.driver-grid > .panel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.driver-grid .data-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.driver-grid .data-table th,
+.driver-grid .data-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.driver-grid .data-table th {
+  width: 42%;
+}
+
 .driver-operation-panel {
   display: grid;
   grid-template-columns: 1.1fr 1fr 1fr;
@@ -336,21 +358,6 @@ onUnmounted(() => {
   font-size: 12px;
   font-weight: 800;
   line-height: 1.45;
-}
-
-.driver-grid .data-table {
-  min-width: 0;
-  table-layout: fixed;
-}
-
-.driver-grid .data-table th {
-  width: 42%;
-}
-
-.driver-grid .data-table th,
-.driver-grid .data-table td {
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
 
 @media (min-width: 1100px) and (max-height: 760px) {

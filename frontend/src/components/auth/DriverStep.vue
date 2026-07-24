@@ -27,11 +27,6 @@ const updateField = (key, value) => {
   })
 }
 
-const generateCode = (prefix) => {
-  const number = Math.floor(Math.random() * 900000 + 100000)
-  return `${prefix}-${number}`
-}
-
 const loadCarriers = async () => {
   loading.value = true
 
@@ -94,27 +89,13 @@ onMounted(loadCarriers)
         </select>
       </div>
 
-      <div class="field">
+      <div class="field field-full">
         <label>트랙터 차량번호</label>
         <input
           placeholder="예) 부산80바1234"
           :value="modelValue.plateNumber"
           @input="updateField('plateNumber', $event.target.value)"
         />
-      </div>
-
-      <div class="field">
-        <label>트랙터 번호</label>
-        <div class="inline-field">
-          <input
-            placeholder="예) TR-202607"
-            :value="modelValue.tractorNo"
-            @input="updateField('tractorNo', $event.target.value)"
-          />
-          <button class="inline-action-button" type="button" @click="updateField('tractorNo', generateCode('TR'))">
-            자동
-          </button>
-        </div>
       </div>
 
     </div>
@@ -182,32 +163,6 @@ onMounted(loadCarriers)
   border-radius: 4px;
 }
 
-.inline-field {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-  min-width: 0;
-}
-
-.inline-field input {
-  flex: 1;
-  min-width: 0;
-}
-
-.inline-action-button {
-  width: 64px;
-  flex-shrink: 0;
-  color: #ffffff;
-  background: var(--blue-700);
-  border: 1px solid var(--blue-700);
-  border-radius: 4px;
-  font-weight: 700;
-}
-
-.inline-action-button:hover {
-  background: #1d4e89;
-}
-
 .loading,
 .empty-message {
   color: var(--ink-500);
@@ -230,13 +185,5 @@ onMounted(loadCarriers)
     grid-column: auto;
   }
 
-  .inline-field {
-    flex-direction: column;
-  }
-
-  .inline-action-button {
-    width: 100%;
-    min-height: 36px;
-  }
 }
 </style>

@@ -253,8 +253,15 @@ const logout = () => {
 <style scoped>
 .app-shell {
   display: grid;
+  width: 100%;
+  max-width: 100vw;
   min-height: 100vh;
+<<<<<<< HEAD
   grid-template-columns: 248px minmax(0, 1fr);
+=======
+  grid-template-columns: 230px minmax(0, 1fr);
+  overflow-x: clip;
+>>>>>>> origin/hakseop
   transition: grid-template-columns 0.16s ease;
 }
 
@@ -459,6 +466,7 @@ const logout = () => {
 
 .main-area {
   min-width: 0;
+  max-width: 100%;
   overflow-x: hidden;
 }
 
@@ -487,7 +495,13 @@ const logout = () => {
 
 .content {
   min-width: 0;
+<<<<<<< HEAD
   padding: 12px;
+=======
+  max-width: 100%;
+  padding: 10px;
+  overflow-x: hidden;
+>>>>>>> origin/hakseop
 }
 
 @media (min-width: 1100px) and (max-width: 1320px) and (max-height: 760px) {

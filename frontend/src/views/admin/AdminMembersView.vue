@@ -55,7 +55,7 @@ const tabs = computed(() => [
   },
   {
     key: 'driverUser',
-    label: '기사 최종승인 대상',
+    label: '기사 관리자 승인',
     count: driverPendingUsers.value.length,
   },
   {
@@ -77,6 +77,27 @@ const tabs = computed(() => [
 
 const getDriver = (driverId) => {
   return drivers.value.find((driver) => driver.driverId === driverId)
+}
+
+const getDriverByUserId = (userId) => {
+  return drivers.value.find((driver) => driver.userId === userId)
+}
+
+const isDriverApprovalReady = (user) => {
+  if (user.status !== 'CARRIER_APPROVED') return false
+
+  const driver = getDriverByUserId(user.userId)
+  if (!driver || driver.isRegistered !== true) return false
+
+  return vehicles.value.some(
+    (vehicle) => vehicle.driverId === driver.driverId && vehicle.isRegistered === true,
+  )
+}
+
+const getDriverApprovalStatusLabel = (status) => {
+  if (status === 'CARRIER_APPROVED') return '관리자 승인 대기'
+  if (status === 'PENDING') return '운송사 승인 대기'
+  return status || '-'
 }
 
 const getCarrier = (carrierId) => {
@@ -195,6 +216,19 @@ const rejectDriverUser = async (userId) => {
     await loadData()
   } catch (error) {
     errorMessage.value = error.message || '기사 반려에 실패했습니다.'
+  }
+}
+
+const approveDriverUser = async (user) => {
+  errorMessage.value = ''
+  message.value = ''
+
+  try {
+    await updateUserStatus(user.userId, 'ACTIVE')
+    message.value = `${user.userName || user.loginId} 기사 관리자 최종 승인을 완료했습니다. 이제 출입할 수 있습니다.`
+    await loadData()
+  } catch (error) {
+    errorMessage.value = error.message || '기사 관리자 최종 승인에 실패했습니다.'
   }
 }
 
@@ -346,9 +380,9 @@ onUnmounted(() => {
 
     <section v-else-if="activeTab === 'driverUser'" class="panel">
       <div class="section-title">
-        <h2>기사 최종승인 대상</h2>
+        <h2>기사 관리자 최종 승인</h2>
         <span class="status-pill amber">
-          운송사 승인·차량 배정 확인 대상
+          운송사 승인·차량 관리자 승인 확인 대상
         </span>
       </div>
 
@@ -381,14 +415,23 @@ onUnmounted(() => {
               <td>{{ user.userName }}</td>
               <td>
                 <span class="status-pill amber">
-                  {{ user.status }}
+                  {{ getDriverApprovalStatusLabel(user.status) }}
                 </span>
               </td>
               <td>{{ user.createdAt || '-' }}</td>
               <td>
                 <div class="action-row">
-                  <span class="status-pill">
-                    차량 최종 승인 탭에서 처리
+                  <button
+                    v-if="isDriverApprovalReady(user)"
+                    class="ghost-button approve"
+                    type="button"
+                    @click="approveDriverUser(user)"
+                  >
+                    관리자 최종 승인
+                  </button>
+
+                  <span v-else class="status-pill">
+                    운송사 승인 및 차량 관리자 승인 확인 필요
                   </span>
 
                   <button
