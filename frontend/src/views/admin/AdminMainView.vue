@@ -739,11 +739,7 @@ onUnmounted(() => {
 .control-room {
   display: grid;
   gap: 10px;
-<<<<<<< HEAD
-  color: var(--ink-900);
-=======
   color: #16202a;
->>>>>>> origin/hakseop
 }
 
 .ops-strip {
@@ -757,11 +753,7 @@ onUnmounted(() => {
 .log-panel,
 .dark-panel {
   background: #ffffff;
-<<<<<<< HEAD
-  border: 1px solid var(--line);
-=======
   border: 1px solid #b8c5d2;
->>>>>>> origin/hakseop
   border-radius: 2px;
   box-shadow: 0 1px 3px rgba(23, 43, 64, 0.08);
 }
@@ -782,20 +774,12 @@ onUnmounted(() => {
 
 .ops-card span,
 .ops-card small {
-<<<<<<< HEAD
-  color: var(--ink-500);
-=======
   color: #536579;
->>>>>>> origin/hakseop
   font-weight: 700;
 }
 
 .ops-card strong {
-<<<<<<< HEAD
-  color: var(--ink-900);
-=======
   color: #16202a;
->>>>>>> origin/hakseop
   font-size: 28px;
 }
 
@@ -992,11 +976,7 @@ onUnmounted(() => {
   align-items: stretch;
   padding: 8px;
   background: #ffffff;
-<<<<<<< HEAD
-  border: 1px solid var(--line);
-=======
   border: 1px solid #b8c5d2;
->>>>>>> origin/hakseop
 }
 
 .final-decision {
@@ -1035,15 +1015,9 @@ onUnmounted(() => {
   gap: 6px;
   min-height: 52px;
   padding: 8px;
-<<<<<<< HEAD
-  color: var(--ink-700);
-  background: #f6f9fd;
-  border: 1px solid var(--line);
-=======
   color: #27364b;
   background: #f5f8fb;
   border: 1px solid #b8c5d2;
->>>>>>> origin/hakseop
   font-size: 14px;
   font-weight: 700;
 }
@@ -1059,21 +1033,8 @@ onUnmounted(() => {
   border-radius: 999px;
 }
 
-<<<<<<< HEAD
-.process-steps li.complete {
-  color: #155e38;
-  background: #eefaf3;
-  border-color: #2f7d57;
-}
-
-.process-steps li.complete b {
-  color: #ffffff;
-  background: #2f7d57;
-}
-=======
 .process-steps li.complete { color: #12643a; background: #eef9f2; border-color: #78c69a; }
 .process-steps li.complete b { color: #ffffff; background: #2f8a5d; }
->>>>>>> origin/hakseop
 
 .process-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .process-button { min-height: 32px; padding-block: 5px; }
@@ -1082,15 +1043,9 @@ onUnmounted(() => {
 .process-mode-indicator {
   margin: 0;
   padding: 6px 8px;
-<<<<<<< HEAD
-  color: var(--ink-700);
-  background: #f6f9fd;
-  border: 1px solid var(--line);
-=======
   color: #34465b;
   background: #eef4f9;
   border: 1px solid #b8c5d2;
->>>>>>> origin/hakseop
   font-size: 14px;
   font-weight: 700;
   text-align: center;
@@ -1101,14 +1056,6 @@ onUnmounted(() => {
 .process-result.processing { color: #174f7d; background: #edf6ff; border: 1px solid #8bb8dc; }
 
 .dark-title {
-<<<<<<< HEAD
-  background: linear-gradient(#f8fafc, #e3eaf2);
-  border-color: var(--line);
-}
-
-.dark-title h2 {
-  color: #20364f;
-=======
   background: #edf3f8;
   border-color: #b8c5d2;
 }
@@ -1122,7 +1069,6 @@ onUnmounted(() => {
   min-height: 28px;
   padding: 4px 10px;
   font-size: 13px;
->>>>>>> origin/hakseop
 }
 
 .result-card {
@@ -1193,15 +1139,9 @@ onUnmounted(() => {
 .info-stack section {
   min-height: 0;
   overflow: auto;
-<<<<<<< HEAD
-  padding: 12px;
-  background: #f8fbfe;
-  border: 1px solid var(--line);
-=======
   padding: 8px;
   background: #ffffff;
   border: 1px solid #b8c5d2;
->>>>>>> origin/hakseop
   border-radius: 2px;
 }
 
@@ -1264,11 +1204,7 @@ onUnmounted(() => {
 
 .info-stack h3 {
   margin: 0 0 6px;
-<<<<<<< HEAD
-  color: var(--ink-900);
-=======
   color: #16202a;
->>>>>>> origin/hakseop
   font-size: 16px;
   font-weight: 700;
 }
@@ -1281,22 +1217,12 @@ onUnmounted(() => {
 
 .info-stack dl div {
   display: grid;
-<<<<<<< HEAD
-  grid-template-columns: minmax(132px, 0.42fr) minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-}
-
-.info-stack dt {
-  color: var(--ink-500);
-=======
   grid-template-columns: 116px 1fr;
   gap: 10px;
 }
 
 .info-stack dt {
   color: #536579;
->>>>>>> origin/hakseop
   font-size: 14px;
   font-weight: 700;
   line-height: 1.35;
@@ -1306,14 +1232,9 @@ onUnmounted(() => {
 .info-stack dd {
   min-width: 0;
   margin: 0;
-<<<<<<< HEAD
-  color: var(--ink-900);
-  overflow-wrap: anywhere;
-=======
   color: #16202a;
   font-size: 14px;
   line-height: 1.4;
->>>>>>> origin/hakseop
   font-weight: 700;
   line-height: 1.35;
 }
@@ -1334,15 +1255,6 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) minmax(110px, 1fr) 96px;
   gap: 8px;
-<<<<<<< HEAD
-  padding: 8px;
-  background: #f8fbfe;
-  border: 1px solid var(--line);
-}
-
-.work-row b {
-  color: var(--blue-700);
-=======
   padding: 10px;
   background: #ffffff;
   border: 1px solid #b8c5d2;
@@ -1351,16 +1263,11 @@ onUnmounted(() => {
 
 .work-row b {
   color: #1565a8;
->>>>>>> origin/hakseop
 }
 
 .work-row span,
 .work-row small {
-<<<<<<< HEAD
-  color: var(--ink-700);
-=======
   color: #34465b;
->>>>>>> origin/hakseop
   font-weight: 700;
 }
 
@@ -1371,37 +1278,15 @@ onUnmounted(() => {
 .yard-node {
   display: grid;
   gap: 3px;
-<<<<<<< HEAD
-  min-height: 74px;
-  padding: 8px;
-  background: #f8fbfe;
-  border: 1px solid var(--line);
-=======
   min-height: 86px;
   padding: 10px;
   background: #ffffff;
   border: 1px solid #b8c5d2;
   font-size: 14px;
->>>>>>> origin/hakseop
 }
 
 .yard-node b,
 .yard-node span {
-<<<<<<< HEAD
-  color: var(--ink-500);
-}
-
-.yard-node strong {
-  color: var(--ink-900);
-  font-size: 26px;
-}
-
-.empty-dark {
-  padding: 12px;
-  color: var(--ink-500);
-  background: #f8fbfe;
-  border: 1px solid var(--line);
-=======
   color: #536579;
 }
 
@@ -1416,7 +1301,6 @@ onUnmounted(() => {
   background: #f8fafc;
   border: 1px solid #b8c5d2;
   font-size: 14px;
->>>>>>> origin/hakseop
   font-weight: 700;
 }
 
@@ -1435,17 +1319,10 @@ onUnmounted(() => {
   min-width: 0;
   grid-template-columns: minmax(145px, 1.15fr) minmax(100px, 0.85fr) minmax(100px, 0.85fr) 86px 74px minmax(130px, 1fr);
   gap: 8px;
-<<<<<<< HEAD
-  padding: 8px 10px;
-  color: var(--ink-900);
-  background: #f8fbfe;
-  border: 1px solid var(--line);
-=======
   padding: 10px 12px;
   color: #16202a;
   background: #ffffff;
   border: 1px solid #b8c5d2;
->>>>>>> origin/hakseop
   border-radius: 1px;
   font-size: 14px;
   font-weight: 700;
@@ -1458,13 +1335,8 @@ onUnmounted(() => {
 }
 
 .compact-row.head {
-<<<<<<< HEAD
-  color: var(--ink-500);
-  background: #dfeaf4;
-=======
   color: #34465b;
   background: #edf3f8;
->>>>>>> origin/hakseop
 }
 
 @media (max-width: 1180px) {
