@@ -32,6 +32,9 @@ frontend/node_modules/
 *.heic
 *.ico
 *.svg
+!frontend/public/
+!frontend/public/images/
+!frontend/public/images/gamman-pier.jpg
 *.docx
 *.xlsx
 
@@ -42,3 +45,7 @@ frontend/node_modules/
 team_ai/yolo11/*.pt
 team_ai/yolo11/weights/*.pt
 AI/.paddlex/
+work/
+outputs/
+AI/Ultralytics/persistent_cache.json
+

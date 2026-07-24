@@ -380,9 +380,10 @@ onUnmounted(() => {
 
 .work-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
   gap: 12px;
   min-width: 0;
+  overflow-x: auto;
 }
 
 .work-summary div,
@@ -520,7 +521,6 @@ onUnmounted(() => {
 @media (max-width: 900px) {
   .driver-identity,
   .tractor-summary,
-  .work-summary,
   .driver-operation-panel,
   .driver-grid {
     grid-template-columns: 1fr;
