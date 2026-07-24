@@ -21,7 +21,6 @@ const updateField = (key, value) => {
     <div class="section-head">
       <p class="section-label">STEP 2</p>
       <h3>운송사 정보</h3>
-      <p>운송사 기본 정보를 입력하세요.</p>
     </div>
 
     <div class="form-grid">
@@ -60,18 +59,21 @@ const updateField = (key, value) => {
 }
 
 .section-head {
+  display: grid;
+  gap: 4px;
   border-bottom: 1px solid var(--line);
-  padding-bottom: 12px;
+  padding-bottom: 8px;
 }
 
 .section-label {
+  margin: 0;
   color: var(--blue-700);
   font-size: 12px;
   font-weight: 700;
 }
 
 .section-head h3 {
-  margin: 4px 0;
+  margin: 0;
 }
 
 .section-head p {
@@ -80,7 +82,7 @@ const updateField = (key, value) => {
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 14px;
 }
 

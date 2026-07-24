@@ -438,8 +438,8 @@ const handleCheckLoginId = async () => {
 <style scoped>
 .signup-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
 }
 
 .wizard-panel {
@@ -526,11 +526,6 @@ const handleCheckLoginId = async () => {
 }
 
 @media (max-height: 760px) and (min-width: 1100px) {
-  .signup-layout {
-    grid-template-columns: minmax(0, 1fr) 280px;
-    gap: 16px;
-  }
-
   .wizard-panel {
     padding: 14px;
   }

@@ -47,7 +47,6 @@ onMounted(loadCarriers)
     <div class="section-head">
       <p class="section-label">STEP 2</p>
       <h3>기사 정보</h3>
-      <p>기사 정보와 가입을 요청할 운송사를 선택하세요.</p>
     </div>
 
     <div class="form-grid">
@@ -117,18 +116,21 @@ onMounted(loadCarriers)
 }
 
 .section-head {
-  padding-bottom: 12px;
+  display: grid;
+  gap: 4px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--line);
 }
 
 .section-label {
+  margin: 0;
   color: var(--blue-700);
   font-size: 12px;
   font-weight: 700;
 }
 
 .section-head h3 {
-  margin: 4px 0;
+  margin: 0;
 }
 
 .section-head p {
@@ -137,7 +139,7 @@ onMounted(loadCarriers)
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 14px;
 }
 

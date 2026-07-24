@@ -37,23 +37,15 @@ const handleSignupCompleted = () => {
 <template>
   <main class="auth-page" :class="{ 'signup-mode': mode === 'signup' }">
     <section class="brand-panel">
+      <div class="brand-message">
       <p class="eyebrow">PORT GATE MANAGEMENT SYSTEM</p>
 
       <h1>
         <span>항만 게이트 차량 출입</span>
         <strong>컨테이너 상차 섹터 안내 시스템</strong>
       </h1>
-
-      <p class="brand-copy">
-        운송사, 기사, 차량 승인과 컨테이너 상차 섹터 안내를 한 화면에서 관리합니다.
-      </p>
-
-      <div class="brand-features">
-        <span>운송사 관리</span>
-        <span>기사 등록</span>
-        <span>차량 승인</span>
-        <span>게이트 출입</span>
       </div>
+
     </section>
 
     <section class="auth-panel">
@@ -82,35 +74,61 @@ const handleSignupCompleted = () => {
 <style scoped>
 .auth-page {
   display: grid;
-  min-height: 100vh;
-  grid-template-columns: minmax(400px, 0.82fr) minmax(620px, 1fr);
+  height: 100dvh;
+  grid-template-columns: 6fr 4fr;
+  overflow: hidden;
   background: #dfe6ee;
 }
 
 .brand-panel {
   display: flex;
+  position: relative;
+  container-type: inline-size;
   min-width: 0;
   flex-direction: column;
   justify-content: center;
   gap: 16px;
   padding: clamp(34px, 5vw, 64px);
   color: #ffffff;
-  background:
-    linear-gradient(135deg, rgba(30, 58, 95, 0.96), rgba(22, 39, 58, 0.98)),
-    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.16), transparent 30%);
+  overflow: hidden;
+  background: #1f4e7b;
   border-right: 1px solid #172636;
+}
+
+.brand-panel::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: '';
+  background: url('/images/gamman-pier.jpg') center / cover no-repeat;
+  transform: scaleX(-1);
+}
+
+.brand-message {
+  position: relative;
+  z-index: 1;
+  width: max-content;
+  max-width: none;
+  align-self: flex-start;
+  padding: 18px 30px;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  box-shadow: 0 18px 42px rgba(10, 25, 40, 0.24);
+  backdrop-filter: blur(8px);
+  transform: none;
 }
 
 .eyebrow {
   margin: 0;
-  color: #c9d6e2;
+  color: var(--blue-700);
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
 .brand-panel h1 {
-  max-width: 540px;
+  width: max-content;
+  max-width: none;
   margin: 0;
   line-height: 1.16;
 }
@@ -121,60 +139,40 @@ const handleSignupCompleted = () => {
 }
 
 .brand-panel h1 span {
-  color: #d9e7f4;
-  font-size: clamp(21px, 2.6vw, 32px);
+  color: var(--ink-700);
+  font-size: clamp(19px, 2vw, 24px);
   font-weight: 700;
   letter-spacing: -0.03em;
 }
 
 .brand-panel h1 strong {
   margin-top: 8px;
-  color: #ffffff;
-  font-size: clamp(31px, 4vw, 48px);
+  color: var(--ink-900);
+  font-size: min(45px, 5cqw);
   font-weight: 800;
   letter-spacing: -0.045em;
-}
-
-.brand-copy {
-  max-width: 500px;
-  margin: 0;
-  color: #dbe7f3;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.55;
-}
-
-.brand-features {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-width: 600px;
-}
-
-.brand-features span {
-  padding: 7px 10px;
-  color: #dbeafe;
-  background: rgba(255, 255, 255, 0.09);
-  border: 1px solid rgba(219, 234, 254, 0.24);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
+  white-space: nowrap;
 }
 
 .auth-panel {
   display: flex;
   min-width: 0;
-  align-items: center;
+  min-height: 0;
+  align-items: flex-start;
   justify-content: center;
-  padding: 20px 26px;
+  overflow-y: auto;
+  padding: 24px 12px;
+  background: linear-gradient(145deg, #e8eef4, #f7f9fb);
 }
 
 .auth-card {
-  width: min(100%, 920px);
+  width: min(100%, 360px);
+  margin: auto 0;
   padding: 14px;
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 4px;
+  box-shadow: 0 18px 44px rgba(25, 46, 67, 0.14);
 }
 
 .auth-tabs {
@@ -214,7 +212,7 @@ const handleSignupCompleted = () => {
 
 @media (max-height: 760px) and (min-width: 1100px) {
   .auth-page {
-    grid-template-columns: minmax(360px, 0.76fr) minmax(640px, 1fr);
+    grid-template-columns: 6fr 4fr;
   }
 
   .auth-page.signup-mode {
@@ -227,7 +225,7 @@ const handleSignupCompleted = () => {
 
   .brand-panel {
     gap: 14px;
-    padding: 42px;
+    padding: 28px;
   }
 
   .brand-panel h1 {
@@ -235,7 +233,7 @@ const handleSignupCompleted = () => {
   }
 
   .auth-page.signup-mode .auth-card {
-    width: min(100%, 980px);
+    width: min(100%, 360px);
   }
 
   .auth-panel {
@@ -245,7 +243,10 @@ const handleSignupCompleted = () => {
 
 @media (max-width: 1080px) {
   .auth-page {
+    height: auto;
+    min-height: 100vh;
     grid-template-columns: 1fr;
+    overflow: visible;
   }
 
   .brand-panel {
@@ -254,6 +255,7 @@ const handleSignupCompleted = () => {
 
   .auth-panel {
     align-items: flex-start;
+    overflow: visible;
   }
 }
 
@@ -261,6 +263,16 @@ const handleSignupCompleted = () => {
   .auth-panel,
   .brand-panel {
     padding: 22px;
+  }
+
+  .brand-panel h1 strong {
+    font-size: clamp(26px, 8vw, 34px);
+    white-space: normal;
+  }
+
+  .brand-message {
+    width: fit-content;
+    max-width: 100%;
   }
 }
 </style>

@@ -628,7 +628,10 @@ onUnmounted(() => {
       </aside>
     </section>
 
-    <section class="ai-process-zone">
+    <section
+      class="ai-process-zone"
+      :class="{ 'has-process-feedback': gateLogStore.processResult || plateRecognitionStore.error || gateLogStore.error }"
+    >
       <div class="decision-stack">
         <div :class="['final-decision', canProcessGate ? 'success' : 'warning']">
           <span>최종 출입 판단</span>
@@ -801,13 +804,19 @@ onUnmounted(() => {
 
 .control-layout {
   display: grid;
+<<<<<<< HEAD
   grid-template-columns: minmax(0, 1.45fr) minmax(420px, 0.9fr);
+=======
+  height: 686px;
+  min-height: 0;
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 0.65fr);
+>>>>>>> origin/KSM
   gap: 10px;
 }
 
 .cctv-wall {
   display: grid;
-  min-height: 686px;
+  min-height: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(308px, 1fr));
   gap: 6px;
@@ -964,9 +973,15 @@ onUnmounted(() => {
 
 .recognition-panel {
   display: grid;
+  min-height: 0;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 10px;
+<<<<<<< HEAD
   padding: 12px;
+=======
+  padding: 10px;
+  overflow: hidden;
+>>>>>>> origin/KSM
 }
 
 .ai-process-zone {
@@ -977,6 +992,10 @@ onUnmounted(() => {
   padding: 8px;
   background: #ffffff;
   border: 1px solid #b8c5d2;
+}
+
+.ai-process-zone:not(.has-process-feedback) {
+  grid-template-columns: 340px minmax(0, 1fr);
 }
 
 .final-decision {
@@ -1134,6 +1153,9 @@ onUnmounted(() => {
   align-content: start;
   gap: 6px;
   min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
 }
 
 .info-stack section {
@@ -1344,6 +1366,19 @@ onUnmounted(() => {
   .monitor-grid,
   .ai-process-zone {
     grid-template-columns: 1fr;
+  }
+
+  .ai-process-zone:not(.has-process-feedback) {
+    grid-template-columns: 1fr;
+  }
+
+  .control-layout {
+    height: auto;
+  }
+
+  .recognition-panel,
+  .info-stack {
+    overflow: visible;
   }
 
   .cctv-wall {

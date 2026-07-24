@@ -180,6 +180,13 @@ const roleLabelOverrides = {
 
 const getMenuLabel = (item) => menuLabelOverrides[item.path] || item.label
 const activeRoleLabel = computed(() => roleLabelOverrides[activeRole.value] || '관리자')
+const accountDisplayName = computed(() =>
+  currentUser.value?.displayName ||
+  currentUser.value?.userName ||
+  currentUser.value?.loginId ||
+  currentUser.value?.username ||
+  '-',
+)
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
@@ -211,7 +218,7 @@ const logout = () => {
 
       <div class="role-badge">
         <small>현재 화면</small>
-        <strong>{{ activeRoleLabel }}</strong>
+        <strong>{{ accountDisplayName }} / {{ activeRoleLabel }}</strong>
       </div>
 
       <nav class="side-nav">
