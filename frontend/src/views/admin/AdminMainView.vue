@@ -32,7 +32,9 @@ const gateProcessFeedback = reactive({
   status: '',
   message: '',
 })
+const isGateProcessing = ref(false)
 let refreshTimer = null
+let refreshInFlight = false
 
 const gateSlots = [
   { id: 'G-01', gateNumber: 'G01', gateName: '입차 게이트 1', inOutType: 'IN' },
@@ -437,8 +439,9 @@ const clearGateRecognition = (gateId) => {
 const submitGateProcess = async (type) => {
   processType.value = type
 
-  if (!canProcessGateFor(type)) return
+  if (!canProcessGateFor(type) || isGateProcessing.value) return
 
+  isGateProcessing.value = true
   gateProcessFeedback.status = 'processing'
   gateProcessFeedback.message = `${type === 'OUT' ? '출차' : '입차'} 처리를 진행하고 있습니다.`
 
@@ -450,7 +453,7 @@ const submitGateProcess = async (type) => {
         ? '출차 처리가 완료되었습니다.'
         : '입차 처리가 완료되었습니다. 기사 작업 상태가 입차 완료로 변경되었습니다.'
       clearGateRecognition(selectedGateId.value)
-      await loadData()
+      await loadData({ duringProcess: true })
     } else {
       gateProcessFeedback.status = 'warning'
       gateProcessFeedback.message =
@@ -460,18 +463,27 @@ const submitGateProcess = async (type) => {
     gateProcessFeedback.status = 'warning'
     gateProcessFeedback.message =
       gateLogStore.error || error.message || `${type === 'OUT' ? '출차' : '입차'} 처리에 실패했습니다.`
+  } finally {
+    isGateProcessing.value = false
   }
 }
 
-const loadData = async () => {
-  await Promise.all([
-    gateLogStore.loadGateLogs(),
-    workOrderStore.loadWorkOrders(),
-    containerStore.loadContainers(),
-    vehicleStore.loadVehicles(),
-    driverStore.loadDrivers(),
-    carrierStore.loadCarriers(),
-  ].map((request) => request.catch(() => {})))
+const loadData = async ({ duringProcess = false } = {}) => {
+  if (refreshInFlight || (isGateProcessing.value && !duringProcess)) return
+
+  refreshInFlight = true
+  try {
+    await Promise.all([
+      gateLogStore.loadGateLogs(),
+      workOrderStore.loadWorkOrders(),
+      containerStore.loadContainers(),
+      vehicleStore.loadVehicles(),
+      driverStore.loadDrivers(),
+      carrierStore.loadCarriers(),
+    ].map((request) => request.catch(() => {})))
+  } finally {
+    refreshInFlight = false
+  }
 }
 
 watch(selectedGate, (gate) => {
@@ -602,10 +614,10 @@ onUnmounted(() => {
             v-if="processType === 'IN'"
             class="primary-button process-button"
             type="button"
-            :disabled="!canProcessGateFor('IN') || gateLogStore.loading"
+            :disabled="!canProcessGateFor('IN') || isGateProcessing"
             @click="submitGateProcess('IN')"
           >{{
-            gateLogStore.loading
+            isGateProcessing
               ? '입차 처리 중...'
               : gateProcessFeedback.status === 'success'
                 ? '입차 처리 완료'
@@ -615,10 +627,10 @@ onUnmounted(() => {
             v-else
             class="primary-button process-button out"
             type="button"
-            :disabled="!canProcessGateFor('OUT') || gateLogStore.loading"
+            :disabled="!canProcessGateFor('OUT') || isGateProcessing"
             @click="submitGateProcess('OUT')"
           >{{
-            gateLogStore.loading
+            isGateProcessing
               ? '출차 처리 중...'
               : gateProcessFeedback.status === 'success'
                 ? '출차 처리 완료'
