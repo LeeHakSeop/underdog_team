@@ -232,7 +232,7 @@ onMounted(() => {
 <template>
   <div class="page-stack">
     <section class="grid-2">
-      <article class="panel">
+      <article class="panel gate-history-panel">
         <div class="section-title">
           <h2>게이트 처리 이력</h2>
           <span class="status-pill">{{ events.length }}건</span>
@@ -242,8 +242,8 @@ onMounted(() => {
             <time>{{ event.time }}</time>
             <div>
               <div class="gate-event-head">
-                <span class="status-pill" :class="getInOutClass(event.inOutType)">
-                  {{ inOutTypeLabel(event.inOutType) }}
+                <span class="status-pill gate-direction-pill" :class="getInOutClass(event.inOutType)">
+                  {{ inOutTypeLabel(event.inOutType) }} : {{ event.gateName }}
                 </span>
                 <div class="gate-vehicles" aria-label="트랙터·트레일러 차량번호">
                   <div class="vehicle-tag tractor">
@@ -255,11 +255,10 @@ onMounted(() => {
                     <strong>{{ event.trailerPlateNumber }}</strong>
                   </div>
                 </div>
-                <span class="status-pill" :class="getProcessClass(event.processResult)">
+                <span class="status-pill gate-result-pill" :class="getProcessClass(event.processResult)">
                   {{ processResultLabel(event.processResult) }}
                 </span>
               </div>
-              <span>{{ event.gateName }}</span>
             </div>
           </div>
           <div v-if="events.length === 0" class="timeline-row">
@@ -320,6 +319,10 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.grid-2 {
+  grid-template-columns: minmax(0, calc(50% + 45px)) minmax(0, calc(50% - 55px));
+}
+
 .timeline {
   display: grid;
   gap: 10px;
@@ -387,25 +390,33 @@ onMounted(() => {
 }
 
 .gate-event-head {
-  display: flex;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: max-content 350px max-content;
+  grid-template-areas: 'direction vehicles result';
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
+  overflow-x: auto;
+}
+
+.gate-direction-pill {
+  grid-area: direction;
 }
 
 .gate-vehicles {
   display: grid;
-  grid-template-columns: repeat(2, minmax(150px, 1fr));
-  gap: 8px;
-  width: min(100%, 520px);
+  grid-area: vehicles;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
 }
 
 .vehicle-tag {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
-  padding: 6px 9px;
+  padding: 5px 6px;
   border: 1px solid var(--line);
   border-radius: 4px;
 }
@@ -413,13 +424,13 @@ onMounted(() => {
 .vehicle-tag span {
   flex: 0 0 auto;
   margin-top: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
 }
 
 .vehicle-tag strong {
   min-width: 0;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
   color: var(--ink-900);
   font-size: 14px;
   font-weight: 900;
@@ -450,7 +461,14 @@ onMounted(() => {
 }
 
 .gate-event-head .status-pill {
+  display: inline-flex;
   flex: 0 0 auto;
+  width: max-content;
+  margin-top: 0;
+}
+
+.gate-result-pill {
+  grid-area: result;
 }
 
 .section-hint {
@@ -470,6 +488,12 @@ onMounted(() => {
   font-weight: 700;
 }
 
+@media (max-width: 1100px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 760px) {
   .timeline-row {
     grid-template-columns: 1fr;
@@ -480,9 +504,5 @@ onMounted(() => {
     flex-direction: column;
   }
 
-  .gate-vehicles {
-    width: 100%;
-    grid-template-columns: 1fr;
-  }
 }
 </style>

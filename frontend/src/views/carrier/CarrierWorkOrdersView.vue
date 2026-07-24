@@ -431,7 +431,7 @@ onUnmounted(() => {
             </select>
           </div>
 
-          <div class="field full">
+          <div class="field">
             <label for="reservedTime">예약 시간</label>
             <input id="reservedTime" v-model="form.reservedTime" type="datetime-local" />
           </div>

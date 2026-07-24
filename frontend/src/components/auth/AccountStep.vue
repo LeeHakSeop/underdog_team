@@ -47,7 +47,6 @@ const updateField = (key, value) => {
         @click="emit('update:signupRole', 'CARRIER')"
       >
         <strong>운송사</strong>
-        <span>운송사 담당자 계정</span>
       </button>
 
       <button
@@ -56,7 +55,6 @@ const updateField = (key, value) => {
         @click="emit('update:signupRole', 'DRIVER')"
       >
         <strong>화물 기사</strong>
-        <span>기사 및 차량 등록</span>
       </button>
     </div>
 
@@ -162,10 +160,11 @@ const updateField = (key, value) => {
 
 .role-choice button {
   display: grid;
-  gap: 4px;
-  min-height: 70px;
-  padding: 12px;
-  text-align: left;
+  align-items: center;
+  justify-items: center;
+  min-height: 46px;
+  padding: 10px 12px;
+  text-align: center;
   background: #f7fafe;
   border: 1px solid var(--line);
   border-radius: 2px;
@@ -182,14 +181,9 @@ const updateField = (key, value) => {
   font-size: 14px;
 }
 
-.role-choice span {
-  color: var(--ink-500);
-  font-size: 12px;
-}
-
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
