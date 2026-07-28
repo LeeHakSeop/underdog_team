@@ -1,0 +1,42 @@
+﻿test_case_id,domain,scenario,target_table,case_type,input_or_condition,expected_result
+TC-WO-01,작업,DISPATCH_WAITING 최초 생성,work_order,정상,작업 생성 직후 미승인 상태,DISPATCH_WAITING
+TC-WO-02,작업,관리자 승인,work_order,정상,승인 상태 및 is_approved=true,APPROVED
+TC-WO-03,작업,게이트 입차,work_order,정상,입차 후 상태 변경,GATE_IN
+TC-WO-04,작업,작업 진행,work_order,정상,기사 작업 시작,IN_PROGRESS
+TC-WO-05,작업,작업 완료,work_order,정상,상하차 완료,COMPLETED
+TC-WO-06,작업,게이트 출차,work_order,정상,최종 출차 완료,GATE_OUT
+TC-WO-07,작업,작업 취소,work_order,경계,취소 상태 조회,CANCELED
+TC-WO-08,배차,동일 트레일러 중복 배정,work_order,예외,진행 중 작업과 동일 트레일러,중복 배정 차단
+TC-WO-09,배차,점검중 트레일러 배정,vehicle/work_order,예외,vehicle_id=6,배정 차단
+TC-WO-10,배차,출입제한·미등록 트레일러,vehicle/work_order,예외,vehicle_id=16,배정 차단
+TC-WO-11,배차,작업중 트레일러 재배정,vehicle/work_order,예외,vehicle_id=604,중복 배정 차단
+TC-GT-01,게이트,정상 입차,gate_log,정상,APPROVED 작업,gate_log IN 생성
+TC-GT-02,게이트,정상 출차,gate_log,정상,COMPLETED 작업,gate_log OUT 생성
+TC-GT-03,게이트,미승인 작업 입차,exception_log,예외,DISPATCH_WAITING 작업,WORK_NOT_APPROVED
+TC-GT-04,게이트,중복 입차,exception_log,예외,미출차 IN 기록 존재,DUPLICATE_GATE_IN
+TC-GT-05,게이트,입차 없는 출차,exception_log,예외,선행 IN 없음,DUPLICATE_GATE_OUT
+TC-GT-06,게이트,차량 조합 불일치,exception_log,예외,작업과 실제 트레일러 다름,TRACTOR_TRAILER_MISMATCH
+TC-GT-07,게이트,장비 통신 오류,exception_log,예외,process_result=실패,GATE_DEVICE_ERROR
+TC-OCR-01,OCR,고신뢰도 정상 인식,plate_recognition,정상,confidence=99.40,is_success=true
+TC-OCR-02,OCR,경계 신뢰도,plate_recognition,경계,confidence=80.00,정책 기준 확인
+TC-OCR-03,OCR,저신뢰도,plate_recognition,예외,confidence=62.50,PLATE_RECOGNITION_FAILED
+TC-OCR-04,OCR,미검출,plate_recognition,예외,recognized_plate NULL,PLATE_RECOGNITION_FAILED
+TC-OCR-05,OCR,오인식 후 수동 수정,plate_recognition,복구,manual_correction 존재,수정값 우선
+TC-OCR-06,OCR,미등록 번호판,exception_log,예외,vehicle에 없는 번호,UNREGISTERED_VEHICLE
+TC-OCR-07,OCR,트랙터 번호판 인식,plate_recognition,정상,plate_type=TRACTOR,트랙터 식별
+TC-OCR-08,OCR,UNKNOWN 번호판 유형,plate_recognition,경계,plate_type=UNKNOWN,관리자 검토
+TC-OCR-09,OCR,동일 gate 재인식 1:N,plate_recognition,정상,동일 gate_log_id 2건,재인식 이력 유지
+TC-EX-01,예외,컨테이너 출차 보류,exception_log,예외,can_exit=false,CONTAINER_EXIT_HOLD
+TC-EX-02,예외,처리 대기,exception_log,상태,process_status=PENDING,미처리 조회
+TC-EX-03,예외,처리 중,exception_log,상태,process_status=처리중,진행 조회
+TC-EX-04,예외,처리 완료,exception_log,상태,processed_time 존재,완료 조회
+TC-HI-01,이력,최초 상태 이력,work_status_history,정상,prev_status NULL,DISPATCH_WAITING 기록
+TC-HI-02,이력,정상 상태 전이,work_status_history,정상,순차 상태 변경,전 단계 이력
+TC-HI-03,이력,관리자 수동 복구,work_status_history,경계,역방향 상태 변경+사유,감사 이력 보존
+TC-VE-01,차량,실제 CSV 정상 트랙터,vehicle,정상,307 서울84사2453,정상 배정
+TC-VE-02,차량,실제 CSV 정상 트레일러,vehicle,정상,1 01가7431,정상 배정
+TC-VE-03,차량,실제 CSV 점검중 트레일러,vehicle,예외,6 01고6421,출입/배정 제한
+TC-VE-04,차량,실제 CSV 미등록 트레일러,vehicle,예외,16 01고8819,출입 제한
+TC-VE-05,차량,실제 CSV 작업중 트레일러,vehicle,예외,604 171머3292,중복 배정 제한
+TC-VE-06,차량,실제 CSV 카고 정상,vehicle,정상,2 부산80바1002,단독 차량 처리
+TC-VE-07,차량,실제 CSV 카고 미등록,vehicle,예외,8 부산80바1008,출입 제한

@@ -25,6 +25,11 @@ const icons = {
     ['path', { d: 'M13 10h7v10h-7z' }],
     ['path', { d: 'M4 13h7v7H4z' }],
   ],
+  map: [
+    ['path', { d: 'M4 6.5 9 4l6 2.5L20 4v13.5l-5 2-6-2.5-5 2z' }],
+    ['path', { d: 'M9 4v13' }],
+    ['path', { d: 'M15 6.5v13' }],
+  ],
   clipboard: [
     ['path', { d: 'M9 4h6l1 2h3v15H5V6h3z' }],
     ['path', { d: 'M9 4h6v4H9z' }],
@@ -114,39 +119,67 @@ const MenuIcon = (props) =>
   )
 
 const menus = {
-  carrier: [
-    { label: '운송사 업무', path: '/carrier/dashboard', icon: 'home' },
-    { label: '기사 가입 승인', path: '/carrier/driver-approval', icon: 'driver' },
-    { label: '트레일러 배정', path: '/carrier/vehicle-register', icon: 'truck' },
-    { label: '운송 요청', path: '/carrier/requests', icon: 'request' },
-    { label: '승인 현황', path: '/carrier/approvals', icon: 'approval' },
+  CARRIER: [
+    { label: '홈', path: '/carrier/dashboard', icon: 'home' },
+    { label: '승인·회원 관리', path: '/carrier/driver-approval', icon: 'approval' },
+    { label: '트레일러 배정 및 작업지시', path: '/carrier/input', icon: 'clipboard' },
+    { label: '작업정보 조회', path: '/carrier/inquiry', icon: 'list' },
   ],
-  driver: [
-    { label: '기사 작업', path: '/driver/dashboard', icon: 'driver' },
+  DRIVER: [
+    { label: '작업 홈', path: '/driver/dashboard', icon: 'driver' },
     { label: '작업 현황', path: '/driver/work-status', icon: 'list' },
     { label: '내 차량', path: '/driver/vehicles', icon: 'truck' },
   ],
-  admin: [
-    { label: '관리자 메인', path: '/admin/main', icon: 'cctv' },
-    { label: '센터 현황', path: '/admin/dashboard', icon: 'dashboard' },
-    { label: 'AI 번호판 인식', path: '/admin/plate-recognition', icon: 'scan' },
+  ADMIN: [
+    { label: '상황 관제판', path: '/admin/main', icon: 'cctv' },
+    { label: '통계 요약', path: '/admin/dashboard', icon: 'dashboard' },
+
+    { label: '운영 맵', path: '/admin/yard-map', icon: 'map' },
+    { label: 'AI 인식 검증', path: '/admin/plate-recognition', icon: 'scan' },
     { label: '가입 회원 관리', path: '/admin/members', icon: 'users' },
+
     { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
-    { label: '차량 출입 조회', path: '/admin/gate-logs', icon: 'truck' },
-    { label: '컨테이너 조회', path: '/admin/containers', icon: 'container' },
     { label: '알림/이벤트', path: '/admin/events', icon: 'bell' },
   ],
 }
 
 const roleLabels = {
-  carrier: '운송사 담당자',
-  driver: '화물 기사',
-  admin: '관리자',
+  CARRIER: '운송사 담당자',
+  DRIVER: '화물 기사',
+  ADMIN: '관리자',
 }
 
-const activeRole = computed(() => route.meta.role || route.path.split('/')[1] || 'admin')
-const activeMenus = computed(() => menus[activeRole.value] || menus.admin)
+const currentUser = computed(() => JSON.parse(localStorage.getItem('portGateUser') || 'null'))
+const pathRole = computed(() => (route.path.split('/')[1] || 'admin').toUpperCase())
+const activeRole = computed(() => String(route.meta.role || currentUser.value?.roleCode || pathRole.value).toUpperCase())
+const activeMenus = computed(() => menus[activeRole.value] || menus.ADMIN)
 const pageTitle = computed(() => route.meta.title || '항만 게이트 시스템')
+
+const menuLabelOverrides = {
+  '/admin/main': '상황 관제판',
+  '/admin/dashboard': '데이터 현황',
+  '/admin/yard-map': '야드 맵',
+  '/admin/plate-recognition': 'AI 번호판 인식',
+  '/admin/members': '회원 관리',
+  '/admin/work-orders': '작업 관리',
+  '/admin/events': '알림/이벤트',
+  '/carrier/dashboard': '대시보드',
+  '/carrier/driver-approval': '기사 승인/회원 관리',
+  '/carrier/input': '트레일러 배정 및 작업지시',
+  '/carrier/inquiry': '작업정보 조회',
+  '/driver/dashboard': '작업 홈',
+  '/driver/work-status': '작업 현황',
+  '/driver/vehicles': '내 차량',
+}
+
+const roleLabelOverrides = {
+  CARRIER: '운송사 담당자',
+  DRIVER: '화물 기사',
+  ADMIN: '관리자',
+}
+
+const getMenuLabel = (item) => menuLabelOverrides[item.path] || item.label
+const activeRoleLabel = computed(() => roleLabelOverrides[activeRole.value] || '관리자')
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
@@ -178,28 +211,23 @@ const logout = () => {
 
       <div class="role-badge">
         <small>현재 화면</small>
-        <strong>{{ roleLabels[activeRole] }}</strong>
+        <strong>{{ activeRoleLabel }}</strong>
       </div>
 
       <nav class="side-nav">
-        <RouterLink
-          v-for="item in activeMenus"
-          :key="item.path"
-          :to="item.path"
-          class="side-link"
-          :title="item.label"
-        >
-          <span class="side-icon"><MenuIcon :name="item.icon" /></span>
-          <span class="side-label">{{ item.label }}</span>
-        </RouterLink>
+        <template v-for="item in activeMenus" :key="item.path">
+          <RouterLink
+            :to="item.path"
+            class="side-link"
+            :title="getMenuLabel(item)"
+          >
+            <span class="side-icon"><MenuIcon :name="item.icon" /></span>
+            <span class="side-label">{{ getMenuLabel(item) }}</span>
+          </RouterLink>
+        </template>
       </nav>
 
       <div class="side-footer">
-        <div class="side-note">
-          <b>실시간 운영 현황</b>
-          <span>센터 현황 메뉴에서</span>
-          <span>DB 연동 데이터를 확인하세요.</span>
-        </div>
         <button class="logout-button" type="button" title="로그아웃" @click="logout">
           <MenuIcon name="logout" />
           <span class="logout-label">로그아웃</span>
@@ -225,8 +253,11 @@ const logout = () => {
 <style scoped>
 .app-shell {
   display: grid;
+  width: 100%;
+  max-width: 100vw;
   min-height: 100vh;
   grid-template-columns: 230px minmax(0, 1fr);
+  overflow-x: clip;
   transition: grid-template-columns 0.16s ease;
 }
 
@@ -235,10 +266,14 @@ const logout = () => {
 }
 
 .sidebar {
+  position: sticky;
+  top: 0;
   display: flex;
+  height: 100vh;
   min-width: 0;
   flex-direction: column;
   gap: 10px;
+  overflow-y: auto;
   padding: 12px;
   color: #ffffff;
   background: #26384d;
@@ -427,6 +462,8 @@ const logout = () => {
 
 .main-area {
   min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .topbar {
@@ -453,7 +490,65 @@ const logout = () => {
 }
 
 .content {
+  min-width: 0;
+  max-width: 100%;
   padding: 10px;
+  overflow-x: hidden;
+}
+
+@media (min-width: 1100px) and (max-width: 1320px) and (max-height: 760px) {
+  .app-shell,
+  .app-shell.collapsed {
+    grid-template-columns: 54px minmax(0, 1fr);
+  }
+
+  .sidebar,
+  .app-shell.collapsed .sidebar {
+    align-items: center;
+    padding: 10px 8px;
+  }
+
+  .brand-toggle {
+    justify-content: center;
+    padding-bottom: 10px;
+  }
+
+  .brand-text,
+  .role-badge,
+  .side-note,
+  .side-label,
+  .logout-label {
+    display: none;
+  }
+
+  .side-link {
+    justify-content: center;
+    width: 34px;
+    padding: 0;
+  }
+
+  .logout-button {
+    width: 34px;
+    padding: 0;
+  }
+
+  .topbar {
+    min-height: 46px;
+    padding: 6px 12px;
+  }
+
+  .topbar small {
+    display: none;
+  }
+
+  .topbar h1 {
+    margin: 0;
+    font-size: 19px;
+  }
+
+  .content {
+    padding: 8px;
+  }
 }
 
 @media (max-width: 900px) {
@@ -466,6 +561,10 @@ const logout = () => {
   .app-shell.collapsed .sidebar {
     align-items: stretch;
     position: static;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .side-nav {
@@ -475,6 +574,10 @@ const logout = () => {
   .app-shell.collapsed .side-nav,
   .app-shell.collapsed .side-footer {
     display: none;
+  }
+
+  .side-footer {
+    margin-top: 8px;
   }
 
   .topbar {

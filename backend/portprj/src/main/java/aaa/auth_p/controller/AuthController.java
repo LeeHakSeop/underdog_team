@@ -6,13 +6,28 @@ import aaa.auth_p.model.RegisterDTO;
 import aaa.auth_p.service.AuthService;
 import aaa.user_p.model.UserDTO;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = {
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://200.200.200.26:5173",
+        "http://200.200.200.66:5173"
+})
 public class AuthController {
 
     private final AuthService authService;
@@ -31,7 +46,26 @@ public class AuthController {
     public Map<String, String> register(@RequestBody RegisterDTO dto) {
         authService.register(dto);
 
-        return Map.of("message", "회원가입이 완료되었습니다.");
+        return Map.of(
+                "message",
+                "회원가입이 완료되었습니다."
+        );
+    }
+
+    @GetMapping("/login-id/check")
+    public Map<String, Object> checkLoginId(@RequestParam String loginId) {
+        boolean available = authService.isLoginIdAvailable(loginId);
+
+        return Map.of(
+                "loginId",
+                loginId.trim(),
+                "available",
+                available,
+                "message",
+                available
+                        ? "사용 가능한 아이디입니다."
+                        : "이미 사용 중인 아이디입니다."
+        );
     }
 
     @PostMapping("/admin-init")
@@ -45,7 +79,10 @@ public class AuthController {
 
         authService.register(dto);
 
-        return Map.of("message", "관리자 계정 생성 완료");
+        return Map.of(
+                "message",
+                "관리자 계정 생성 완료"
+        );
     }
 
     @GetMapping("/users")
@@ -58,6 +95,12 @@ public class AuthController {
             @PathVariable Long userId,
             @RequestBody Map<String, String> body
     ) {
-        return authService.updateStatus(userId, body.get("status"));
+        String status = body.get("status");
+
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException("변경할 상태값은 필수입니다.");
+        }
+
+        return authService.updateStatus(userId, status);
     }
 }

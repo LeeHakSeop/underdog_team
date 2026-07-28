@@ -1,8 +1,7 @@
-import { request } from "./apiClient"
+import { request } from './apiClient'
 
 export const fetchVehicles = () => {
-
-    return request('/api/vehicle/list')
+  return request('/api/vehicle/list')
 }
 
 export const fetchVehicleById = (vehicleId) => {
@@ -45,4 +44,3 @@ export const deleteVehicle = (vehicleId) => {
     method: 'DELETE',
   })
 }
-

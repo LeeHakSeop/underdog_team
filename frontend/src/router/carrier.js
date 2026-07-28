@@ -1,59 +1,85 @@
-/*
-=========================================
-운송사(Carrier) Router
-=========================================
-
-역할
-- 운송사 메인
-- 운송 요청
-- 승인 현황
-
-접근 권한
-CARRIER
-=========================================
-*/
-
 import CarrierDashboardView from '@/views/carrier/CarrierDashboardView.vue'
 import CarrierApprovalDriverView from '@/views/carrier/CarrierApprovalDriverView.vue'
-import CarrierVehicleRegisterView from '@/views/carrier/CarrierVehicleRegisterView.vue'
-import CarrierRequestsView from '@/views/carrier/CarrierRequestsView.vue'
-import CarrierApprovalsView from '@/views/carrier/CarrierApprovalsView.vue'
+import CarrierInquiryView from '@/views/carrier/CarrierInquiryView.vue'
+import CarrierInputView from '@/views/carrier/CarrierInputView.vue'
 
 export default [
   {
     path: '/carrier',
     redirect: '/carrier/dashboard',
-    meta: { role: 'CARRIER' },
+    meta: {
+      role: 'CARRIER',
+    },
+
     children: [
       {
         path: 'dashboard',
         name: 'carrier-dashboard',
         component: CarrierDashboardView,
-        meta: { role: 'CARRIER', title: '운송사 업무' },
+        meta: {
+          role: 'CARRIER',
+          title: '운송사 업무',
+        },
       },
+
       {
         path: 'driver-approval',
         name: 'carrier-driver-approval',
         component: CarrierApprovalDriverView,
-        meta: { role: 'CARRIER', title: '기사 가입 승인' },
+        meta: {
+          role: 'CARRIER',
+          title: '승인·회원 관리',
+        },
       },
+
       {
         path: 'vehicle-register',
         name: 'carrier-vehicle-register',
-        component: CarrierVehicleRegisterView,
-        meta: { role: 'CARRIER', title: '트레일러 배정' },
+        component: CarrierInputView,
+        meta: {
+          role: 'CARRIER',
+          title: '배정·작업 입력 및 수정',
+        },
       },
+
       {
-        path: 'requests',
-        name: 'carrier-requests',
-        component: CarrierRequestsView,
-        meta: { role: 'CARRIER', title: '운송 요청' },
+        path: 'work-orders',
+        name: 'carrier-work-orders',
+        component: CarrierInquiryView,
+        meta: {
+          role: 'CARRIER',
+          title: '배정·작업 조회',
+        },
       },
+
+      {
+        path: 'input',
+        name: 'carrier-input',
+        component: CarrierInputView,
+        meta: {
+          role: 'CARRIER',
+          title: '배정·작업 입력 및 수정',
+        },
+      },
+
+      {
+        path: 'inquiry',
+        name: 'carrier-inquiry',
+        component: CarrierInquiryView,
+        meta: {
+          role: 'CARRIER',
+          title: '배정·작업 조회',
+        },
+      },
+
       {
         path: 'approvals',
         name: 'carrier-approvals',
-        component: CarrierApprovalsView,
-        meta: { role: 'CARRIER', title: '승인 현황' },
+        redirect: '/carrier/driver-approval',
+        meta: {
+          role: 'CARRIER',
+          title: '승인·회원 관리',
+        },
       },
     ],
   },

@@ -1,6 +1,15 @@
 // stores/driverStore.js
 import { defineStore } from 'pinia'
-import { approveDriverByCarrier, createDriver, deleteDriver, fetchDrivers, fetchMyWorkOrders, fetchMyWorkOrdersByUserId, updateDriver } from '@/api/driverApi'
+import {
+  approveDriverByCarrier,
+  createDriver,
+  reactivateDriver as reactivateDriverApi,
+  fetchDrivers,
+  fetchMyWorkOrders,
+  fetchMyWorkOrdersByUserId,
+  withdrawDriver as withdrawDriverApi,
+  updateDriver,
+} from '@/api/driverApi'
 
 export const useDriverStore = defineStore('driver', {
   state: () => ({
@@ -17,9 +26,9 @@ export const useDriverStore = defineStore('driver', {
       this.error = ''
 
       try {
-        this.drivers = await fetchDrivers()
+        this.drivers = (await fetchDrivers()) || []
       } catch (error) {
-        this.error = '기사 목록을 불러오지 못했습니다.'
+        this.error = error.message || '기사 목록을 불러오지 못했습니다.'
         throw error
       } finally {
         this.loading = false
@@ -33,10 +42,10 @@ export const useDriverStore = defineStore('driver', {
       this.error = ''
 
       try {
-        this.myWorkOrders = await fetchMyWorkOrders(userName)
+        this.myWorkOrders = (await fetchMyWorkOrders(userName)) || []
         this.workOrdersLoaded = true
       } catch (error) {
-        this.error = '작업정보를 불러오지 못했습니다.'
+        this.error = error.message || '작업정보를 불러오지 못했습니다.'
         throw error
       } finally {
         this.loading = false
@@ -50,10 +59,10 @@ export const useDriverStore = defineStore('driver', {
       this.error = ''
 
       try {
-        this.myWorkOrders = await fetchMyWorkOrdersByUserId(userId)
+        this.myWorkOrders = (await fetchMyWorkOrdersByUserId(userId)) || []
         this.workOrdersLoaded = true
       } catch (error) {
-        this.error = '작업정보를 불러오지 못했습니다.'
+        this.error = error.message || '작업정보를 불러오지 못했습니다.'
         throw error
       } finally {
         this.loading = false
@@ -68,7 +77,7 @@ export const useDriverStore = defineStore('driver', {
         await createDriver(driver)
         await this.loadDrivers()
       } catch (error) {
-        this.error = '기사 등록에 실패했습니다.'
+        this.error = error.message || '기사 등록에 실패했습니다.'
         throw error
       } finally {
         this.loading = false
@@ -83,7 +92,7 @@ export const useDriverStore = defineStore('driver', {
         await updateDriver(driverId, driver)
         await this.loadDrivers()
       } catch (error) {
-        this.error = '기사 수정에 실패했습니다.'
+        this.error = error.message || '기사 수정에 실패했습니다.'
         throw error
       } finally {
         this.loading = false
@@ -98,22 +107,37 @@ export const useDriverStore = defineStore('driver', {
         await approveDriverByCarrier(userId)
         await this.loadDrivers()
       } catch (error) {
-        this.error = '기사 승인에 실패했습니다.'
+        this.error = error.message || '기사 승인에 실패했습니다.'
         throw error
       } finally {
         this.loading = false
       }
     },
 
-    async removeDriver(driverId) {
+    async withdrawDriver(driverId) {
       this.loading = true
       this.error = ''
 
       try {
-        await deleteDriver(driverId)
+        await withdrawDriverApi(driverId)
         await this.loadDrivers()
       } catch (error) {
-        this.error = '기사 삭제에 실패했습니다.'
+        this.error = error.message || '기사 탈퇴 처리에 실패했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async reactivateDriver(driverId) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        await reactivateDriverApi(driverId)
+        await this.loadDrivers()
+      } catch (error) {
+        this.error = error.message || '기사 재활성화에 실패했습니다.'
         throw error
       } finally {
         this.loading = false

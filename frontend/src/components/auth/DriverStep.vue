@@ -47,7 +47,7 @@ onMounted(loadCarriers)
     <div class="section-head">
       <p class="section-label">STEP 2</p>
       <h3>기사 정보</h3>
-      <p>기사 정보와 가입을 신청할 운송사를 선택하세요.</p>
+      <p>기사 정보와 가입을 요청할 운송사를 선택하세요.</p>
     </div>
 
     <div class="form-grid">
@@ -69,14 +69,14 @@ onMounted(loadCarriers)
       </div>
 
       <div class="field field-full">
-        <label>가입 신청 운송사</label>
+        <label>가입 요청 운송사</label>
 
         <select
           :value="modelValue.carrierId || ''"
           @change="updateField('carrierId', Number($event.target.value))"
         >
           <option disabled value="">
-            운송사를 선택하세요
+            운송사를 선택하세요.
           </option>
 
           <option
@@ -88,6 +88,16 @@ onMounted(loadCarriers)
           </option>
         </select>
       </div>
+
+      <div class="field field-full">
+        <label>트랙터 차량번호</label>
+        <input
+          placeholder="예) 부산80바1234"
+          :value="modelValue.plateNumber"
+          @input="updateField('plateNumber', $event.target.value)"
+        />
+      </div>
+
     </div>
 
     <div v-if="loading" class="loading">
@@ -174,5 +184,6 @@ onMounted(loadCarriers)
   .field-full {
     grid-column: auto;
   }
+
 }
 </style>

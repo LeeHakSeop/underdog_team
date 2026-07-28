@@ -7,7 +7,7 @@ from ocr_postprocess import (
 )
 
 
-ocr = PaddleOCR(lang="korean", use_angle_cls=True, show_log=False)
+ocr = PaddleOCR(lang="korean", use_angle_cls=True)
 
 
 def predict_paddle_ocr(crop_path):

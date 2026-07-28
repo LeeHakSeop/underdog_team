@@ -12,7 +12,10 @@ defineProps({
 </script>
 
 <template>
-  <div class="progress-wrap">
+  <div
+    class="progress-wrap"
+    :style="{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }"
+  >
     <div
       v-for="(step, index) in steps"
       :key="step.key"
@@ -43,9 +46,8 @@ defineProps({
 <style scoped>
 .progress-wrap {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
   gap: 0;
-  margin: 12px 0 18px;
+  margin: 10px 0 16px;
 }
 
 .progress-item {
@@ -53,20 +55,20 @@ defineProps({
   display: grid;
   justify-items: center;
   gap: 6px;
-  color: #8796a7;
-  font-size: 12px;
-  font-weight: 700;
+  color: #6f8194;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .circle {
   z-index: 2;
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   place-items: center;
-  color: #6b7c8f;
+  color: #5e7185;
   background: #eef3f8;
-  border: 1px solid #cbd6e2;
+  border: 1px solid #c4d1de;
   border-radius: 50%;
 }
 
@@ -97,16 +99,22 @@ defineProps({
 
 .line {
   position: absolute;
-  top: 14px;
+  top: 15px;
   left: 50%;
   width: 100%;
   height: 2px;
-  background: #cbd6e2;
-  transform: translateX(14px);
+  background: #c4d1de;
+  transform: translateX(15px);
 }
 
 .line.done {
   background: #1f7a4d;
+}
+
+@media (max-height: 760px) and (min-width: 1100px) {
+  .progress-wrap {
+    margin: 8px 0 12px;
+  }
 }
 
 @media (max-width: 620px) {
@@ -121,6 +129,7 @@ defineProps({
 
   .line {
     top: 12px;
+    transform: translateX(12px);
   }
 }
 </style>

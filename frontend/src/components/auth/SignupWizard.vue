@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import ProgressBar from './ProgressBar.vue'
 import AccountStep from './AccountStep.vue'
@@ -9,6 +9,7 @@ import ConfirmStep from './ConfirmStep.vue'
 import SummaryCard from './SummaryCard.vue'
 
 import { registerAccount } from '@/stores/authStore'
+import { checkLoginId } from '@/api/authApi'
 
 const emit = defineEmits(['completed'])
 
@@ -16,6 +17,7 @@ const currentStep = ref(1)
 const submitMessage = ref('')
 const errorMessage = ref('')
 const loading = ref(false)
+const checkingLoginId = ref(false)
 
 const signupRole = ref('CARRIER')
 
@@ -23,6 +25,12 @@ const accountForm = ref({
   username: '',
   password: '',
   passwordConfirm: '',
+})
+
+const loginIdCheck = ref({
+  username: '',
+  available: null,
+  message: '',
 })
 
 const carrierForm = ref({
@@ -35,14 +43,12 @@ const driverForm = ref({
   driverName: '',
   driverContact: '',
   carrierId: '',
+  plateNumber: '',
 })
 
 const emptyVehicleForm = {
   plateNumber: '',
   vehicleType: '',
-  tonnage: '',
-  tractorNo: '',
-  chassisNo: '',
 }
 
 const steps = computed(() => [
@@ -61,6 +67,21 @@ const clearMessage = () => {
   errorMessage.value = ''
 }
 
+const resetLoginIdCheck = () => {
+  loginIdCheck.value = {
+    username: '',
+    available: null,
+    message: '',
+  }
+}
+
+watch(
+  () => accountForm.value.username,
+  () => {
+    resetLoginIdCheck()
+  }
+)
+
 const resetForm = () => {
   currentStep.value = 1
   signupRole.value = 'CARRIER'
@@ -70,6 +91,8 @@ const resetForm = () => {
     password: '',
     passwordConfirm: '',
   }
+
+  resetLoginIdCheck()
 
   carrierForm.value = {
     carrierName: '',
@@ -81,10 +104,16 @@ const resetForm = () => {
     driverName: '',
     driverContact: '',
     carrierId: '',
+    plateNumber: '',
   }
 }
 
-const validateAccount = () => {
+const driverVehicleForm = computed(() => ({
+  plateNumber: driverForm.value.plateNumber,
+  vehicleType: '트랙터',
+}))
+
+const validateAccountFields = () => {
   if (!accountForm.value.username.trim()) {
     throw new Error('아이디를 입력하세요.')
   }
@@ -100,6 +129,57 @@ const validateAccount = () => {
   if (accountForm.value.password !== accountForm.value.passwordConfirm) {
     throw new Error('비밀번호 확인이 일치하지 않습니다.')
   }
+}
+
+const checkUsernameAvailability = async () => {
+  const username = accountForm.value.username.trim()
+
+  if (!username) {
+    resetLoginIdCheck()
+    throw new Error('아이디를 입력하세요.')
+  }
+
+  checkingLoginId.value = true
+
+  try {
+    const result = await checkLoginId(username)
+
+    loginIdCheck.value = {
+      username,
+      available: result.available,
+      message: result.message || (
+        result.available
+          ? '사용 가능한 아이디입니다.'
+          : '이미 사용 중인 아이디입니다.'
+      ),
+    }
+
+    if (!result.available) {
+      throw new Error(loginIdCheck.value.message)
+    }
+
+    return result
+  } finally {
+    checkingLoginId.value = false
+  }
+}
+
+const ensureLoginIdAvailable = async () => {
+  const username = accountForm.value.username.trim()
+
+  if (
+    loginIdCheck.value.username === username &&
+    loginIdCheck.value.available === true
+  ) {
+    return
+  }
+
+  await checkUsernameAvailability()
+}
+
+const validateAccount = async () => {
+  validateAccountFields()
+  await ensureLoginIdAvailable()
 }
 
 const validateCarrier = () => {
@@ -128,11 +208,16 @@ const validateDriver = () => {
   if (!driverForm.value.carrierId) {
     throw new Error('소속 운송사를 선택하세요.')
   }
+
+  if (!driverForm.value.plateNumber.trim()) {
+    throw new Error('트랙터 차량번호를 입력하세요.')
+  }
+
 }
 
-const validateCurrentStep = () => {
+const validateCurrentStep = async () => {
   if (currentStep.value === 1) {
-    validateAccount()
+    await validateAccount()
     return
   }
 
@@ -146,16 +231,24 @@ const validateCurrentStep = () => {
   }
 }
 
-const nextStep = () => {
+const nextStep = async () => {
   clearMessage()
 
   try {
-    validateCurrentStep()
+    await validateCurrentStep()
 
     if (currentStep.value < maxStep.value) {
       currentStep.value += 1
     }
   } catch (error) {
+    if (
+      currentStep.value === 1 &&
+      loginIdCheck.value.available === false &&
+      error.message === loginIdCheck.value.message
+    ) {
+      return
+    }
+
     errorMessage.value = error.message
   }
 }
@@ -170,7 +263,7 @@ const prevStep = () => {
 
 const buildPayload = () => {
   const base = {
-    username: accountForm.value.username,
+    username: accountForm.value.username.trim(),
     password: accountForm.value.password,
     roleCode: signupRole.value,
     displayName:
@@ -193,6 +286,8 @@ const buildPayload = () => {
     driverName: driverForm.value.driverName,
     driverContact: driverForm.value.driverContact,
     carrierId: Number(driverForm.value.carrierId),
+    plateNumber: driverForm.value.plateNumber,
+    vehicleType: 'TRACTOR',
   }
 }
 
@@ -200,7 +295,7 @@ const submitSignup = async () => {
   clearMessage()
 
   try {
-    validateAccount()
+    await validateAccount()
 
     if (signupRole.value === 'CARRIER') {
       validateCarrier()
@@ -224,6 +319,23 @@ const submitSignup = async () => {
     loading.value = false
   }
 }
+
+const handleCheckLoginId = async () => {
+  clearMessage()
+
+  try {
+    await checkUsernameAvailability()
+  } catch (error) {
+    if (
+      loginIdCheck.value.available === false &&
+      error.message === loginIdCheck.value.message
+    ) {
+      return
+    }
+
+    errorMessage.value = error.message
+  }
+}
 </script>
 
 <template>
@@ -239,6 +351,9 @@ const submitSignup = async () => {
           v-if="currentStep === 1"
           v-model="accountForm"
           v-model:signupRole="signupRole"
+          :login-id-check="loginIdCheck"
+          :checking-login-id="checkingLoginId"
+          @check-login-id="handleCheckLoginId"
         />
 
         <CarrierStep
@@ -257,7 +372,7 @@ const submitSignup = async () => {
           :account-form="accountForm"
           :carrier-form="carrierForm"
           :driver-form="driverForm"
-          :vehicle-form="emptyVehicleForm"
+          :vehicle-form="signupRole === 'DRIVER' ? driverVehicleForm : emptyVehicleForm"
         />
       </div>
 
@@ -282,7 +397,7 @@ const submitSignup = async () => {
           class="secondary-button"
           @click="prevStep"
         >
-          ← 이전
+          이전
         </button>
 
         <div class="spacer" />
@@ -291,16 +406,17 @@ const submitSignup = async () => {
           v-if="currentStep < maxStep"
           type="button"
           class="primary-button"
+          :disabled="checkingLoginId"
           @click="nextStep"
         >
-          다음 →
+          {{ checkingLoginId ? '확인 중...' : '다음 단계' }}
         </button>
 
         <button
           v-else
           type="button"
           class="primary-button"
-          :disabled="loading"
+          :disabled="loading || checkingLoginId"
           @click="submitSignup"
         >
           {{ loading ? '가입 중...' : '회원가입' }}
@@ -313,7 +429,7 @@ const submitSignup = async () => {
       :account-form="accountForm"
       :carrier-form="carrierForm"
       :driver-form="driverForm"
-      :vehicle-form="emptyVehicleForm"
+      :vehicle-form="signupRole === 'DRIVER' ? driverVehicleForm : emptyVehicleForm"
       :current-step="currentStep"
     />
   </div>
@@ -407,6 +523,26 @@ const submitSignup = async () => {
 
 .secondary-button:hover {
   background: #f1f5f9;
+}
+
+@media (max-height: 760px) and (min-width: 1100px) {
+  .signup-layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 16px;
+  }
+
+  .wizard-panel {
+    padding: 14px;
+  }
+
+  .wizard-body {
+    min-height: 300px;
+    padding: 12px;
+  }
+
+  .message {
+    padding: 8px 10px;
+  }
 }
 
 @media (max-width: 960px) {

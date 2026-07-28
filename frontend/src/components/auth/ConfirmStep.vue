@@ -1,4 +1,5 @@
 <script setup>
+import { vehicleTypeLabel } from '@/config/vehicleType'
 const props = defineProps({
   signupRole: {
     type: String,
@@ -130,22 +131,7 @@ const props = defineProps({
 
       <div class="summary-row">
         <span>차량종류</span>
-        <strong>{{ vehicleForm.vehicleType }}</strong>
-      </div>
-
-      <div class="summary-row">
-        <span>톤수</span>
-        <strong>{{ vehicleForm.tonnage }}</strong>
-      </div>
-
-      <div class="summary-row">
-        <span>트랙터번호</span>
-        <strong>{{ vehicleForm.tractorNo }}</strong>
-      </div>
-
-      <div class="summary-row">
-        <span>샤시번호</span>
-        <strong>{{ vehicleForm.chassisNo }}</strong>
+        <strong>{{ vehicleTypeLabel(vehicleForm.vehicleType) }}</strong>
       </div>
 
     </div>

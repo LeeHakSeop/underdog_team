@@ -1,7 +1,9 @@
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useDashboardStore } from '@/stores/adminStore/dashboardStore'
+import { displayTone, workStatusLabel } from '@/config/displayLabels'
 
 const dashboardStore = useDashboardStore()
 const { dashboard, loading, error } = storeToRefs(dashboardStore)
@@ -15,13 +17,12 @@ let refreshTimer = null
 const recognitionRate = computed(() => {
   const total = summary.value.recognitionTotal || 0
   const success = summary.value.recognitionSuccess || 0
-
-  if (total === 0) {
-    return 0
-  }
-
-  return Math.round((success / total) * 100)
+  return total === 0 ? 0 : Math.round((success / total) * 100)
 })
+
+const getStatusText = (workStatus) => workStatusLabel(workStatus)
+
+const getStatusClass = (workStatus) => displayTone('work', workStatus)
 
 const metricCards = computed(() => [
   {
@@ -32,25 +33,25 @@ const metricCards = computed(() => [
   {
     label: '오늘 게이트 처리',
     value: (summary.value.todayGateIn || 0) + (summary.value.todayGateOut || 0),
-    hint: `입차 ${summary.value.todayGateIn || 0} / 출차 ${summary.value.todayGateOut || 0}`,
+    hint: `입차 ${summary.value.todayGateIn || 0}건 / 출차 ${summary.value.todayGateOut || 0}건`,
   },
   {
     label: '번호판 인식 성공률',
     value: `${recognitionRate.value}%`,
-    hint: `성공 ${summary.value.recognitionSuccess || 0} / 실패 ${summary.value.recognitionFail || 0}`,
+    hint: `성공 ${summary.value.recognitionSuccess || 0}건 / 실패 ${summary.value.recognitionFail || 0}건`,
   },
   {
     label: '미처리 예외',
     value: summary.value.exceptionOpen || 0,
-    hint: 'exception_log 기준',
+    hint: '미처리 예외 로그 기준',
   },
 ])
 
 const workCards = computed(() => [
   { label: '전체 작업', value: summary.value.workTotal || 0 },
-  { label: '대기', value: summary.value.workReady || 0 },
-  { label: '진행', value: summary.value.workInProgress || 0 },
-  { label: '완료', value: summary.value.workDone || 0 },
+  { label: '대기 작업', value: summary.value.workReady || 0 },
+  { label: '진행 작업', value: summary.value.workInProgress || 0 },
+  { label: '완료 작업', value: summary.value.workDone || 0 },
 ])
 
 const getWorkCount = (workStatus) => {
@@ -67,8 +68,6 @@ const workFlowCards = computed(() => [
   { label: '출차 완료', status: 'GATE_OUT', count: getWorkCount('GATE_OUT') },
 ])
 
-
-/* CODEX ADMIN DASHBOARD START */
 const priorityCards = computed(() => [
   {
     label: '승인 처리',
@@ -95,7 +94,6 @@ const priorityCards = computed(() => [
     tone: 'blue',
   },
 ])
-/* CODEX ADMIN DASHBOARD END */
 
 onMounted(() => {
   dashboardStore.loadDashboard()
@@ -116,14 +114,14 @@ onUnmounted(() => {
   <div class="page-stack">
     <section class="panel">
       <div class="section-title">
-        <h2>관리자 대시보드</h2>
+        <h2>운영 통계 요약</h2>
         <button class="ghost-button" type="button" @click="dashboardStore.loadDashboard">
-          새로고침
+          통계 새로고침
         </button>
       </div>
 
       <div v-if="loading" class="empty-box">
-        대시보드 현황을 불러오는 중입니다.
+        통계 데이터를 불러오는 중입니다.
       </div>
 
       <div v-else-if="error" class="empty-box warning">
@@ -141,8 +139,8 @@ onUnmounted(() => {
 
     <section v-if="!loading && !error" class="panel">
       <div class="section-title">
-        <h2>전체 작업 흐름</h2>
-        <span class="status-pill">5초마다 갱신</span>
+        <h2>작업 흐름 통계</h2>
+        <span class="status-pill">5초 갱신</span>
       </div>
 
       <div class="work-flow-grid">
@@ -150,15 +148,13 @@ onUnmounted(() => {
           <article class="flow-card">
             <span>{{ card.label }}</span>
             <strong>{{ card.count }}건</strong>
-            <small>{{ card.status }}</small>
+            <small>{{ getStatusText(card.status) }}</small>
           </article>
           <span v-if="index < workFlowCards.length - 1" class="flow-arrow">→</span>
         </template>
       </div>
     </section>
 
-
-    <!-- CODEX ADMIN DASHBOARD START -->
     <section v-if="!loading && !error" class="grid-4 priority-grid">
       <article v-for="card in priorityCards" :key="card.label" class="priority-card" :class="card.tone">
         <span>{{ card.label }}</span>
@@ -166,12 +162,11 @@ onUnmounted(() => {
         <p>{{ card.text }}</p>
       </article>
     </section>
-    <!-- CODEX ADMIN DASHBOARD END -->
 
     <section class="grid-2 dashboard-grid">
       <article class="panel">
         <div class="section-title">
-          <h2>작업 진행 현황</h2>
+          <h2>작업 상태별 집계</h2>
           <span class="status-pill">{{ summary.workTotal || 0 }}건</span>
         </div>
 
@@ -192,7 +187,11 @@ onUnmounted(() => {
             </thead>
             <tbody>
               <tr v-for="status in workStatusList" :key="status.workStatus">
-                <td>{{ status.workStatus }}</td>
+                <td>
+                  <span class="status-pill" :class="getStatusClass(status.workStatus)">
+                    {{ getStatusText(status.workStatus) }}
+                  </span>
+                </td>
                 <td>{{ status.workCount }}</td>
               </tr>
               <tr v-if="workStatusList.length === 0">
@@ -205,11 +204,11 @@ onUnmounted(() => {
 
       <article class="panel">
         <div class="section-title">
-          <h2>야드 섹터 현황</h2>
+          <h2>야드 섹터 요약</h2>
           <span class="status-pill">{{ sectorList.length }}개</span>
         </div>
 
-        <div class="sector-list">
+        <div v-if="sectorList.length" class="sector-list">
           <article v-for="sector in sectorList" :key="sector.sectorId" class="sector-card">
             <div>
               <strong>{{ sector.sectorName || '-' }}</strong>
@@ -217,27 +216,22 @@ onUnmounted(() => {
             </div>
             <p>{{ sector.guideMessage || '안내 메시지가 없습니다.' }}</p>
             <dl>
-              <div>
-                <dt>상태</dt>
-                <dd>{{ sector.sectorStatus || '-' }}</dd>
-              </div>
-              <div>
-                <dt>대기 차량</dt>
-                <dd>{{ sector.waitingVehicleCount || 0 }}대</dd>
-              </div>
-              <div>
-                <dt>대체 장소</dt>
-                <dd>{{ sector.altWaitingArea || '-' }}</dd>
-              </div>
+              <div><dt>상태</dt><dd>{{ sector.sectorStatus || '-' }}</dd></div>
+              <div><dt>대기 차량</dt><dd>{{ sector.waitingVehicleCount || 0 }}대</dd></div>
+              <div><dt>대체 장소</dt><dd>{{ sector.altWaitingArea || '-' }}</dd></div>
             </dl>
           </article>
+        </div>
+
+        <div v-else class="empty-box">
+          야드 섹터 정보가 없습니다.
         </div>
       </article>
     </section>
 
     <section class="panel">
       <div class="section-title">
-        <h2>최근 작업정보</h2>
+          <h2>최근 작업 요약</h2>
         <RouterLink class="ghost-button" to="/admin/work-orders">상세 보기</RouterLink>
       </div>
 
@@ -265,11 +259,15 @@ onUnmounted(() => {
               <td>{{ order.containerNumber || '-' }}</td>
               <td>{{ order.sectorName || '-' }}</td>
               <td>{{ order.workType || '-' }}</td>
-              <td><span class="status-pill">{{ order.workStatus || '-' }}</span></td>
+              <td>
+                <span class="status-pill" :class="getStatusClass(order.workStatus)">
+                  {{ getStatusText(order.workStatus) }}
+                </span>
+              </td>
               <td>{{ order.reservedTime || '-' }}</td>
             </tr>
             <tr v-if="recentWorkOrders.length === 0">
-              <td colspan="9">최근 작업정보가 없습니다.</td>
+              <td colspan="9">최근 작업 정보가 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -419,8 +417,6 @@ onUnmounted(() => {
   font-weight: 800;
 }
 
-
-/* CODEX ADMIN DASHBOARD START */
 .priority-card {
   display: grid;
   gap: 6px;
@@ -462,8 +458,6 @@ onUnmounted(() => {
 .priority-card.red {
   border-left-color: var(--red-500);
 }
-
-/* CODEX ADMIN DASHBOARD END */
 
 @media (max-width: 1100px) {
   .dashboard-grid,

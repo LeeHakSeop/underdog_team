@@ -1,13 +1,7 @@
 package aaa.carrier_p.model;
 
 import aaa.auth_p.model.RegisterDTO;
-import org.apache.ibatis.annotations.Delete;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Options;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.*;
 
 import java.util.List;
 
@@ -16,12 +10,12 @@ public interface CarrierMapper {
 
     @Select("""
             SELECT
-                carrier_id,
-                carrier_name,
-                carrier_contact,
-                manager_name,
-                carrier_status,
-                user_id
+                carrier_id AS carrierId,
+                carrier_name AS carrierName,
+                carrier_contact AS carrierContact,
+                manager_name AS managerName,
+                carrier_status AS carrierStatus,
+                user_id AS userId
             FROM carrier
             ORDER BY carrier_id DESC
             """)
@@ -29,12 +23,12 @@ public interface CarrierMapper {
 
     @Select("""
             SELECT
-                carrier_id,
-                carrier_name,
-                carrier_contact,
-                manager_name,
-                carrier_status,
-                user_id
+                carrier_id AS carrierId,
+                carrier_name AS carrierName,
+                carrier_contact AS carrierContact,
+                manager_name AS managerName,
+                carrier_status AS carrierStatus,
+                user_id AS userId
             FROM carrier
             WHERE carrier_id = #{carrierId}
             """)
@@ -55,7 +49,11 @@ public interface CarrierMapper {
                 #{userId}
             )
             """)
-    @Options(useGeneratedKeys = true, keyProperty = "carrierId", keyColumn = "carrier_id")
+    @Options(
+            useGeneratedKeys = true,
+            keyProperty = "carrierId",
+            keyColumn = "carrier_id"
+    )
     int insert(CarrierDTO dto);
 
     @Update("""
@@ -71,10 +69,39 @@ public interface CarrierMapper {
     int update(CarrierDTO dto);
 
     @Delete("""
-            DELETE FROM carrier
-            WHERE carrier_id = #{carrierId}
-            """)
+        DELETE FROM carrier
+        WHERE carrier_id = #{carrierId}
+        """)
     int delete(Long carrierId);
+
+    @Update("""
+        UPDATE work_order
+        SET driver_id = NULL
+        WHERE driver_id IN (
+            SELECT driver_id
+            FROM driver
+            WHERE carrier_id = #{carrierId}
+        )
+        """)
+    int clearWorkOrderDriverReferences(@Param("carrierId") Long carrierId);
+
+    @Update("""
+        UPDATE vehicle
+        SET carrier_id = NULL,
+            driver_id = NULL,
+            user_id = NULL
+        WHERE carrier_id = #{carrierId}
+        """)
+    int detachVehicles(@Param("carrierId") Long carrierId);
+
+    @Update("""
+        UPDATE driver
+        SET carrier_id = NULL,
+            is_registered = FALSE,
+            can_enter = FALSE
+        WHERE carrier_id = #{carrierId}
+        """)
+    int detachDrivers(@Param("carrierId") Long carrierId);
 
     @Insert("""
             INSERT INTO carrier (

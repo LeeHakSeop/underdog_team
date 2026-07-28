@@ -1,7 +1,13 @@
 package aaa.user_p.model;
 
 import aaa.auth_p.model.RegisterDTO;
-import org.apache.ibatis.annotations.*;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -16,7 +22,9 @@ public interface UserMapper {
             user_name AS userName,
             role_code AS roleCode,
             status,
-            created_at AS createdAt
+            created_at AS createdAt,
+            NULL::timestamp AS updatedAt,
+            NULL::timestamp AS lastLoginAt
         FROM users
         WHERE login_id = #{loginId}
     """)
@@ -30,7 +38,9 @@ public interface UserMapper {
             user_name AS userName,
             role_code AS roleCode,
             status,
-            created_at AS createdAt
+            created_at AS createdAt,
+            NULL::timestamp AS updatedAt,
+            NULL::timestamp AS lastLoginAt
         FROM users
         WHERE user_id = #{userId}
     """)
@@ -44,7 +54,9 @@ public interface UserMapper {
             user_name AS userName,
             role_code AS roleCode,
             status,
-            created_at AS createdAt
+            created_at AS createdAt,
+            NULL::timestamp AS updatedAt,
+            NULL::timestamp AS lastLoginAt
         FROM users
         ORDER BY user_id DESC
     """)
@@ -58,8 +70,8 @@ public interface UserMapper {
     int countByLoginId(@Param("loginId") String loginId);
 
     /**
-     * 회원가입
-     * 생성된 user_id를 RegisterDTO.userId에 자동 저장
+     * 회원가입.
+     * 생성된 user_id를 RegisterDTO.userId에 자동 저장한다.
      */
     @Insert("""
         INSERT INTO users
@@ -90,7 +102,8 @@ public interface UserMapper {
 
     @Update("""
         UPDATE users
-        SET status = #{status}
+        SET
+            status = #{status}
         WHERE user_id = #{userId}
     """)
     int updateStatus(
@@ -98,4 +111,17 @@ public interface UserMapper {
             @Param("status") String status
     );
 
+    @Update("""
+        UPDATE users
+        SET
+            created_at = created_at
+        WHERE user_id = #{userId}
+    """)
+    int updateLastLogin(@Param("userId") Long userId);
+
+    @Delete("""
+        DELETE FROM users
+        WHERE user_id = #{userId}
+    """)
+    int delete(@Param("userId") Long userId);
 }

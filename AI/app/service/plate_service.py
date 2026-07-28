@@ -1,25 +1,83 @@
 import sys
-from pathlib import Path
 
 from fastapi import UploadFile
 
 from app.config.path_config import BASE_DIR, UPLOAD_DIR
 
 SCRIPTS_DIR = BASE_DIR / "scripts"
-sys.path.append(str(SCRIPTS_DIR))
 
-from predict_plate import predict_plate
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from unified_plate_pipeline import UnifiedPlatePipeline
 
 
-async def predict_upload_file(file: UploadFile, ocr_type: str = "paddle"):
+pipeline = UnifiedPlatePipeline()
+
+
+def normalize_candidate(candidate):
+    return {
+        "plateNumber": candidate.get("plate_number", ""),
+        "ocrRaw": candidate.get("ocr_raw", ""),
+        "confidence": float(candidate.get("final_confidence", 0.0) or 0.0),
+        "detectionConfidence": float(
+            candidate.get("detection_confidence", 0.0) or 0.0
+        ),
+        "ocrConfidence": float(candidate.get("ocr_confidence", 0.0) or 0.0),
+        "needReview": not candidate.get("grammar_valid", False),
+        "reviewReasons": [],
+        "cropPath": candidate.get("crop_path", ""),
+        "ocrType": "unified",
+    }
+
+
+def normalize_result(result):
+    """단일 모델 출력을 Spring FastApiPlateResponseDTO 형식으로 고정한다."""
+    plate_number = result.get("plateNumber", "")
+
+    return {
+        "detected": bool(result.get("detected", False)),
+        "plateNumber": plate_number,
+        "ocrRaw": result.get("ocrRaw", plate_number),
+        "confidence": float(result.get("confidence", 0.0) or 0.0),
+        "detectionConfidence": float(
+            result.get("detectionConfidence", 0.0) or 0.0
+        ),
+        "ocrConfidence": float(result.get("ocrConfidence", 0.0) or 0.0),
+        "needReview": bool(result.get("needReview", False)),
+        "reviewReasons": result.get("reviewReasons", []) or [],
+        "cropPath": result.get("cropPath", ""),
+        "candidates": [
+            normalize_candidate(candidate)
+            for candidate in result.get("candidates", [])
+        ],
+        "ocrType": "unified",
+    }
+
+
+async def predict_upload_file(file: UploadFile):
     file_name = file.filename or "upload.jpg"
     save_path = UPLOAD_DIR / file_name
 
     contents = await file.read()
 
+    if not contents:
+        return normalize_result({
+            "detected": False,
+            "needReview": True,
+            "reviewReasons": ["EMPTY_FILE"],
+        })
+
     with open(save_path, "wb") as buffer:
         buffer.write(contents)
 
-    result = predict_plate(save_path, ocr_type)
+    try:
+        result = pipeline.predict(save_path)
+    except Exception:
+        return normalize_result({
+            "detected": False,
+            "needReview": True,
+            "reviewReasons": ["AI_PROCESS_FAILED"],
+        })
 
-    return result
+    return normalize_result(result)

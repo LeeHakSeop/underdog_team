@@ -49,9 +49,11 @@ public interface PlateRecognitionMapper {
                 work_status,
                 is_approved
             FROM work_order
-            WHERE tractor_vehicle_id = #{vehicleId}
-               OR vehicle_id = #{vehicleId}
-            ORDER BY work_order_id DESC
+            WHERE (tractor_vehicle_id = #{vehicleId}
+               OR vehicle_id = #{vehicleId})
+              AND COALESCE(is_approved, FALSE) = TRUE
+              AND work_status IN ('APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+            ORDER BY reserved_time DESC NULLS LAST, work_order_id DESC
             LIMIT 1
             """)
     WorkOrderDTO findLatestWorkOrderByTractor(Long vehicleId);
@@ -69,9 +71,11 @@ public interface PlateRecognitionMapper {
                 work_status,
                 is_approved
             FROM work_order
-            WHERE trailer_vehicle_id = #{vehicleId}
-               OR vehicle_id = #{vehicleId}
-            ORDER BY work_order_id DESC
+            WHERE (trailer_vehicle_id = #{vehicleId}
+               OR vehicle_id = #{vehicleId})
+              AND COALESCE(is_approved, FALSE) = TRUE
+              AND work_status IN ('APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+            ORDER BY reserved_time DESC NULLS LAST, work_order_id DESC
             LIMIT 1
             """)
     WorkOrderDTO findLatestWorkOrderByTrailer(Long vehicleId);
@@ -161,4 +165,34 @@ public interface PlateRecognitionMapper {
             """)
     @Options(useGeneratedKeys = true, keyProperty = "plateRecognitionId", keyColumn = "plate_recognition_id")
     int insertPlateRecognition(PlateRecognitionDTO dto);
+
+    @Select("""
+            SELECT
+                plate_recognition_id AS plateRecognitionId,
+                gate_log_id AS gateLogId,
+                vehicle_image AS vehicleImage,
+                recognized_plate AS recognizedPlate,
+                plate_type AS plateType,
+                is_success AS isSuccess,
+                confidence,
+                manual_correction AS manualCorrection,
+                error_message AS errorMessage,
+                recognition_time AS recognitionTime
+            FROM plate_recognition
+            WHERE plate_recognition_id = #{plateRecognitionId}
+            """)
+    PlateRecognitionDTO detail(Long plateRecognitionId);
+
+    @Update("""
+            UPDATE plate_recognition
+            SET
+                manual_correction = #{manualCorrection},
+                is_success = TRUE,
+                error_message = NULL
+            WHERE plate_recognition_id = #{plateRecognitionId}
+            """)
+    int updateManualCorrection(
+            @Param("plateRecognitionId") Long plateRecognitionId,
+            @Param("manualCorrection") String manualCorrection
+    );
 }

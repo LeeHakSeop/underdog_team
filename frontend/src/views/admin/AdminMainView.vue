@@ -1,212 +1,743 @@
-<script setup>
-import { computed, ref, watch } from 'vue'
-import { useLogisticsData } from '@/composables/useLogisticsData'
+﻿<script setup>
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useContainerStore } from '@/stores/adminStore/containerStore'
+import { useGateLogStore } from '@/stores/adminStore/gateLogStore'
+import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
+import { useDriverStore } from '@/stores/driverStore'
+import { useVehicleStore } from '@/stores/vehicleStore'
+import { useCarrierStore } from '@/stores/carrierStore'
+import { usePlateRecognitionStore } from '@/stores/adminStore/plateRecognitionStore'
+import { vehicleTypeLabel } from '@/config/vehicleType'
+import {
+  displayTone,
+  inOutTypeLabel,
+  processResultLabel,
+  workStatusLabel,
+} from '@/config/displayLabels'
 
-const {
-  gateLogs,
-  getCarrierName,
-  getContainer,
-  getContainerNumber,
-  getDriverName,
-  getPlateNumber,
-  getSectorByContainerId,
-  workOrders,
-} = useLogisticsData()
+const gateLogStore = useGateLogStore()
+const workOrderStore = useWorkOrderStore()
+const containerStore = useContainerStore()
+const vehicleStore = useVehicleStore()
+const driverStore = useDriverStore()
+const carrierStore = useCarrierStore()
+const plateRecognitionStore = usePlateRecognitionStore()
 
 const selectedGateId = ref('G-01')
 const processType = ref('IN')
+const gatePreviewUrls = reactive({})
+const gateRecognitionResults = reactive({})
+const draggingUploadKey = ref('')
+const gateProcessFeedback = reactive({
+  status: '',
+  message: '',
+})
+const isGateProcessing = ref(false)
+let refreshTimer = null
+let refreshInFlight = false
 
-const gateCameras = computed(() => {
-  const rows = gateLogs.value.slice(0, 9).map((log, index) => ({
-    id: log.gate_number || `G-${String(index + 1).padStart(2, '0')}`,
-    name: log.gate_name || `게이트 ${String(index + 1).padStart(2, '0')}`,
-    gateType: log.in_out_type || 'IN',
-    status: log.process_result || '대기',
-    vehicleId: log.vehicle_id,
-    recognizedVehicleNo: getPlateNumber(log.vehicle_id),
-    matchedOrderId: workOrders.value.find((order) => order.vehicle_id === log.vehicle_id)?.work_order_id || '',
-  }))
+const gateSlots = [
+  { id: 'G-01', gateNumber: 'G01', gateName: '입차 게이트 1', inOutType: 'IN' },
+  { id: 'G-02', gateNumber: 'G02', gateName: '입차 게이트 2', inOutType: 'IN' },
+  { id: 'G-03', gateNumber: 'G03', gateName: '출차 게이트 1', inOutType: 'OUT' },
+  { id: 'G-04', gateNumber: 'G04', gateName: '출차 게이트 2', inOutType: 'OUT' },
+]
 
-  while (rows.length < 9) {
-    const next = rows.length + 1
-    rows.push({
-      id: `G-${String(next).padStart(2, '0')}`,
-      name: `게이트 ${String(next).padStart(2, '0')}`,
-      gateType: next % 2 === 0 ? 'OUT' : 'IN',
-      status: '대기',
-      vehicleId: null,
-      recognizedVehicleNo: '',
-      matchedOrderId: '',
-    })
+const getId = (row, key) => row?.[key] ?? row?.[key.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)]
+const getValue = (row, camelKey, snakeKey) => row?.[camelKey] ?? row?.[snakeKey] ?? ''
+
+const getPlateNumber = (vehicleId) => {
+  const vehicle = vehicleStore.vehicles.find((item) => getId(item, 'vehicleId') === vehicleId)
+  return getValue(vehicle, 'plateNumber', 'plate_number') || vehicleId || '-'
+}
+
+const getLogVehiclePair = (log) => {
+  const tractorVehicleId = getId(log, 'tractorVehicleId')
+  const trailerVehicleId = getId(log, 'trailerVehicleId')
+  const fallbackVehicleId = getId(log, 'vehicleId')
+
+  return {
+    tractor: getPlateNumber(tractorVehicleId || fallbackVehicleId),
+    trailer: getPlateNumber(trailerVehicleId || fallbackVehicleId),
+  }
+}
+
+const getVehicle = (vehicleId) => {
+  return vehicleStore.vehicles.find((item) => getId(item, 'vehicleId') === vehicleId) || null
+}
+
+const getDriverName = (driverId) => {
+  const driver = driverStore.drivers.find((item) => getId(item, 'driverId') === driverId)
+  return getValue(driver, 'driverName', 'driver_name') || '-'
+}
+
+const getCarrierName = (carrierId) => {
+  const carrier = carrierStore.carriers.find((item) => getId(item, 'carrierId') === carrierId)
+  return getValue(carrier, 'carrierName', 'carrier_name') || '-'
+}
+
+const getContainer = (containerId) => {
+  return containerStore.containers.find((item) => getId(item, 'containerId') === containerId) || null
+}
+
+const getContainerNumber = (containerId) => {
+  const container = getContainer(containerId)
+  return getValue(container, 'containerNumber', 'container_number') || '-'
+}
+
+const getWorkStatus = (order) => getValue(order, 'workStatus', 'work_status')
+
+const statusText = (status) => workStatusLabel(status)
+
+const gateText = (type) => inOutTypeLabel(type || 'IN')
+
+const processResultText = (result) => processResultLabel(result)
+
+const processResultClass = (result) => displayTone('process', result)
+
+const latestGateLogs = computed(() => gateLogStore.gateLogs.slice(0, 8))
+
+const todayGateIn = computed(() => gateLogStore.gateLogs.filter((log) => getValue(log, 'inOutType', 'in_out_type') === 'IN').length)
+const todayGateOut = computed(() => gateLogStore.gateLogs.filter((log) => getValue(log, 'inOutType', 'in_out_type') === 'OUT').length)
+const activeWorkCount = computed(() =>
+  workOrderStore.workOrders.filter((order) => ['GATE_IN', 'IN_PROGRESS'].includes(getWorkStatus(order))).length,
+)
+const readyOutCount = computed(() =>
+  workOrderStore.workOrders.filter((order) => getWorkStatus(order) === 'COMPLETED').length,
+)
+
+const statusCards = computed(() => [
+  { label: '출차 대기', value: readyOutCount.value, detail: '작업 완료 차량', tone: 'amber' },
+  { label: '작업 진행', value: activeWorkCount.value, detail: '입차 완료/작업 중', tone: 'green' },
+  { label: '현재 출차', value: todayGateOut.value, detail: '게이트 OUT 로그', tone: 'red' },
+  { label: '현재 입차', value: todayGateIn.value, detail: '게이트 IN 로그', tone: 'blue' },
+])
+
+const gateCells = computed(() => {
+  const logsByType = {
+    IN: [],
+    OUT: [],
   }
 
-  return rows
+  gateLogStore.gateLogs.forEach((log) => {
+    const inOutType = getValue(log, 'inOutType', 'in_out_type') === 'OUT' ? 'OUT' : 'IN'
+    logsByType[inOutType].push(log)
+  })
+
+  const usedLogs = new Set()
+
+  return gateSlots.map((slot) => {
+    const log =
+      gateLogStore.gateLogs.find((item) => {
+        const gateNumber = getValue(item, 'gateNumber', 'gate_number')
+        return gateNumber === slot.gateNumber && !usedLogs.has(item)
+      }) ||
+      logsByType[slot.inOutType].find((item) => !usedLogs.has(item)) ||
+      null
+
+    if (log) {
+      usedLogs.add(log)
+    }
+
+    const vehicleId = log ? getId(log, 'vehicleId') : null
+
+    return {
+      ...slot,
+      processResult: log ? getValue(log, 'processResult', 'process_result') || '대기' : '대기',
+      vehicleId,
+      recognizedVehicleNo: vehicleId ? getPlateNumber(vehicleId) : '',
+      entryTime: log ? getValue(log, 'entryTime', 'entry_time') : '',
+      exitTime: log ? getValue(log, 'exitTime', 'exit_time') : '',
+    }
+  })
 })
 
-const selectedGate = computed(() => {
-  return gateCameras.value.find((camera) => camera.id === selectedGateId.value) || gateCameras.value[0]
-})
+const selectedGate = computed(() => gateCells.value.find((gate) => gate.id === selectedGateId.value) || gateCells.value[0])
 
 const matchedOrder = computed(() => {
-  if (!selectedGate.value?.matchedOrderId) return null
-  return workOrders.value.find((order) => order.work_order_id === selectedGate.value.matchedOrderId) || null
+  const vehicleId = selectedGate.value?.vehicleId
+  if (!vehicleId) return null
+
+  return (
+    workOrderStore.workOrders.find((order) =>
+      [getId(order, 'vehicleId'), getId(order, 'tractorVehicleId'), getId(order, 'trailerVehicleId')].includes(vehicleId),
+    ) || null
+  )
 })
 
-const matchedContainer = computed(() => {
-  if (!matchedOrder.value) return null
-  return getContainer(matchedOrder.value.container_id)
+const matchedVehicle = computed(() => getVehicle(selectedGate.value?.vehicleId))
+const matchedContainer = computed(() => (matchedOrder.value ? getContainer(getId(matchedOrder.value, 'containerId')) : null))
+
+const selectedDriverName = computed(() => {
+  if (matchedOrder.value) return getDriverName(getId(matchedOrder.value, 'driverId'))
+  const driverId = getId(matchedVehicle.value, 'driverId')
+  return driverId ? getDriverName(driverId) : '-'
 })
 
-const processLabel = computed(() => (processType.value === 'IN' ? '입차 처리' : '출차 처리'))
+const selectedCarrierName = computed(() => {
+  const orderCarrierId = getId(matchedOrder.value, 'carrierId')
+  if (orderCarrierId) return getCarrierName(orderCarrierId)
+
+  const vehicleCarrierId = getId(matchedVehicle.value, 'carrierId')
+  return vehicleCarrierId ? getCarrierName(vehicleCarrierId) : '-'
+})
+
+const activeOrders = computed(() =>
+  workOrderStore.workOrders
+    .filter((order) => ['APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED'].includes(getWorkStatus(order)))
+    .slice(0, 6),
+)
+
+const yardSectors = computed(() => {
+  const sectorMap = new Map()
+
+  containerStore.containers.forEach((container) => {
+    const sectorId = getId(container, 'sectorId') || `${container.block || '미지정'}-${container.bay || '-'}`
+    const current = sectorMap.get(sectorId) || {
+      id: sectorId,
+      name: getValue(container, 'sectorName', 'sector_name') || container.block || '미지정',
+      total: 0,
+      canExit: 0,
+      hold: 0,
+    }
+
+    current.total += 1
+    if (container.canExit ?? container.can_exit) {
+      current.canExit += 1
+    } else {
+      current.hold += 1
+    }
+
+    sectorMap.set(sectorId, current)
+  })
+
+  return Array.from(sectorMap.values()).slice(0, 8)
+})
+
+const tractorResult = computed(() => gateRecognitionResults[selectedGateId.value]?.tractor || null)
+const trailerResult = computed(() => gateRecognitionResults[selectedGateId.value]?.trailer || null)
+
+const normalizeVehicleType = (vehicleType) => {
+  const normalizedType = String(vehicleType || '').trim().toUpperCase()
+
+  if (normalizedType === 'TRACTOR' || vehicleType === '트랙터') return 'TRACTOR'
+  if (normalizedType === 'TRAILER' || vehicleType === '트레일러') return 'TRAILER'
+
+  return normalizedType
+}
+
+const getVehicleType = (result) => normalizeVehicleType(result?.vehicle?.vehicleType)
+const getBooleanText = (value) => (value === true ? '가능' : value === false ? '불가' : '-')
+
+const getPassText = (result, expectedType) => {
+  if (!result?.matched || !result?.aiResult?.detected) return '불가'
+  if (getVehicleType(result) !== normalizeVehicleType(expectedType)) return '불가'
+  if (result.needReview) return '불가'
+  return '가능'
+}
+
+const tractorPassText = computed(() => getPassText(tractorResult.value, 'TRACTOR'))
+const trailerPassText = computed(() => getPassText(trailerResult.value, 'TRAILER'))
+
+const getWorkOrder = (result) => result?.workOrder || result?.trailerWorkInfo || null
+
+const tractorWorkOrder = computed(() => getWorkOrder(tractorResult.value))
+const trailerWorkOrder = computed(() => getWorkOrder(trailerResult.value))
+const matchedWorkOrder = computed(() => trailerWorkOrder.value || tractorWorkOrder.value || null)
+
+const workOrderMatch = computed(() => {
+  const tractorWorkOrderId = getId(tractorWorkOrder.value, 'workOrderId')
+  const trailerWorkOrderId = getId(trailerWorkOrder.value, 'workOrderId')
+
+  return Boolean(
+    tractorWorkOrderId &&
+    trailerWorkOrderId &&
+    tractorWorkOrderId === trailerWorkOrderId,
+  )
+})
+
+const getContainerExitAllowed = () => {
+  const container = trailerResult.value?.container
+  const trailerWorkInfo = trailerResult.value?.trailerWorkInfo
+
+  return Boolean(
+    container?.canExit ??
+    container?.can_exit ??
+    trailerWorkInfo?.canExit ??
+    trailerWorkInfo?.can_exit,
+  )
+}
+
+const isWorkOrderGateStatusAllowed = (type) => {
+  const workStatus = getValue(matchedWorkOrder.value, 'workStatus', 'work_status')
+
+  if (type === 'OUT') {
+    return workStatus === 'COMPLETED' && getContainerExitAllowed()
+  }
+
+  return workStatus === 'APPROVED'
+}
+
+const selectedGateType = computed(() => selectedGate.value?.inOutType || 'IN')
+
+const buildGateProcessPayload = (type) => ({
+  tractorVehicleId: tractorResult.value?.vehicle?.vehicleId || null,
+  trailerVehicleId: trailerResult.value?.vehicle?.vehicleId || null,
+  workOrderId: getId(matchedWorkOrder.value, 'workOrderId'),
+  containerId: getId(matchedWorkOrder.value, 'containerId'),
+  sectorId: trailerResult.value?.container?.sectorId || trailerResult.value?.trailerWorkInfo?.sectorId || null,
+  gateNumber: selectedGate.value?.gateNumber || 'G01',
+  gateName: selectedGate.value?.gateName || 'AI_GATE',
+  inOutType: type,
+})
+
+const gateProcessPayload = computed(() => buildGateProcessPayload(processType.value))
+
+const getGateProcessMissingItems = (type) => {
+  const payload = buildGateProcessPayload(type)
+  const missingItems = [
+    [payload.tractorVehicleId, '트랙터 차량'],
+    [payload.trailerVehicleId, '트레일러 차량'],
+    [payload.workOrderId, '작업 정보'],
+    [payload.containerId, '컨테이너'],
+    [payload.sectorId, '야드 섹터'],
+  ].filter(([value]) => !value).map(([, label]) => label)
+
+  if (tractorPassText.value !== '가능') missingItems.push('트랙터 번호판 검증')
+  if (trailerPassText.value !== '가능') missingItems.push('트레일러 번호판 검증')
+  if (!workOrderMatch.value) missingItems.push('트랙터·트레일러 공통 WorkOrder')
+  if (selectedGateType.value !== type) missingItems.push(`${type === 'OUT' ? '출차' : '입차'} 게이트 선택`)
+  if (!isWorkOrderGateStatusAllowed(type)) {
+    missingItems.push(type === 'OUT' ? '출차 가능한 작업 상태' : '입차 가능한 작업 상태')
+  }
+
+  return missingItems
+}
+
+const gateProcessMissingItems = computed(() => getGateProcessMissingItems(processType.value))
+const canProcessGateFor = (type) => getGateProcessMissingItems(type).length === 0
+const canProcessGate = computed(() => canProcessGateFor(processType.value))
+
+const gateProcessSummary = computed(() => {
+  if (canProcessGate.value) {
+    return `${processType.value === 'OUT' ? '출차' : '입차'} 가능한 정보가 확인되었습니다.`
+  }
+
+  const missingItems = gateProcessMissingItems.value
+  if (missingItems.length === 0) return '번호판 인식 결과를 확인하세요.'
+
+  const visibleItems = missingItems.slice(0, 3).join(', ')
+  const remainingCount = missingItems.length - 3
+  return `확인 필요: ${visibleItems}${remainingCount > 0 ? ` 외 ${remainingCount}건` : ''}`
+})
+
+const processTypeLabel = computed(() => (processType.value === 'OUT' ? '출차' : '입차'))
+
+const isReadyForGateProcess = computed(() => canProcessGate.value)
+
+const recognitionStatus = (result, expectedType) => {
+  if (!result) return '인식 대기'
+  if (!result.aiResult?.detected) return '인식 실패'
+  if (!result.matched) return '등록 차량 아님'
+  if (getVehicleType(result) !== normalizeVehicleType(expectedType)) return '차량 유형 불일치'
+  if (result.needReview) return '관리자 확인 필요'
+  return getPassText(result, expectedType) === '가능' ? '정상' : '인식 불가'
+}
+
+const isRecognitionWarning = (result, expectedType) => {
+  const status = recognitionStatus(result, expectedType)
+  return status !== '인식 대기' && status !== '정상'
+}
+
+const getGateRecognition = (gate, targetType) => gateRecognitionResults[gate.id]?.[targetType] || null
+
+const getGateOcrStatus = (gate) => {
+  const tractor = getGateRecognition(gate, 'tractor')
+  const trailer = getGateRecognition(gate, 'trailer')
+
+  if (!tractor && !trailer) return { text: 'OCR 대기', tone: 'idle' }
+  if (tractor?.needReview || trailer?.needReview) return { text: '확인 필요', tone: 'warning' }
+  if (
+    getPassText(tractor, 'TRACTOR') === '가능' &&
+    getPassText(trailer, 'TRAILER') === '가능'
+  ) {
+    return { text: 'OCR 성공', tone: 'success' }
+  }
+  return { text: 'OCR 실패', tone: 'danger' }
+}
+
+const getGateDbStatus = (gate) => {
+  const tractor = getGateRecognition(gate, 'tractor')
+  const trailer = getGateRecognition(gate, 'trailer')
+
+  if (!tractor && !trailer) return { text: 'DB 대기', tone: 'idle' }
+  if (tractor?.matched && trailer?.matched) return { text: 'DB 매칭', tone: 'success' }
+  return { text: '미등록/불일치', tone: 'danger' }
+}
+
+const isImageFile = (file) => {
+  if (!file) return false
+  return file.type.startsWith('image/') || /\.(jpe?g|png|webp|bmp)$/i.test(file.name)
+}
+
+const processGateImage = async (file, gate, targetType) => {
+  if (!file) return
+
+  if (!isImageFile(file)) {
+    gateLogStore.error = '이미지 파일(JPG, PNG, WEBP, BMP)만 업로드할 수 있습니다.'
+    return
+  }
+
+  selectedGateId.value = gate.id
+  gateProcessFeedback.status = ''
+  gateProcessFeedback.message = ''
+  gateLogStore.processResult = null
+  gateLogStore.error = ''
+  const key = `${gate.id}-${targetType}`
+  const oldPreviewUrl = gatePreviewUrls[key]
+  if (oldPreviewUrl) URL.revokeObjectURL(oldPreviewUrl)
+  gatePreviewUrls[key] = URL.createObjectURL(file)
+
+  await plateRecognitionStore.recognize(file, targetType)
+  gateRecognitionResults[gate.id] = {
+    ...(gateRecognitionResults[gate.id] || {}),
+    [targetType]: targetType === 'tractor'
+      ? plateRecognitionStore.tractorResult
+      : plateRecognitionStore.trailerResult,
+  }
+}
+
+const selectGateImage = async (event, gate, targetType) => {
+  const file = event.target.files?.[0] || null
+  await processGateImage(file, gate, targetType)
+  event.target.value = ''
+}
+
+const setGateImageDrag = (gate, targetType, active) => {
+  draggingUploadKey.value = active ? `${gate.id}-${targetType}` : ''
+}
+
+const dropGateImage = async (event, gate, targetType) => {
+  draggingUploadKey.value = ''
+  const file = event.dataTransfer?.files?.[0] || null
+  await processGateImage(file, gate, targetType)
+}
+
+const clearGateRecognition = (gateId) => {
+  for (const targetType of ['tractor', 'trailer']) {
+    const key = `${gateId}-${targetType}`
+    if (gatePreviewUrls[key]) {
+      URL.revokeObjectURL(gatePreviewUrls[key])
+      delete gatePreviewUrls[key]
+    }
+  }
+
+  delete gateRecognitionResults[gateId]
+  plateRecognitionStore.reset()
+}
+
+const submitGateProcess = async (type) => {
+  processType.value = type
+
+  if (!canProcessGateFor(type) || isGateProcessing.value) return
+
+  isGateProcessing.value = true
+  gateProcessFeedback.status = 'processing'
+  gateProcessFeedback.message = `${type === 'OUT' ? '출차' : '입차'} 처리를 진행하고 있습니다.`
+
+  try {
+    await gateLogStore.processGate(buildGateProcessPayload(type))
+    if (gateLogStore.processResult?.success) {
+      gateProcessFeedback.status = 'success'
+      gateProcessFeedback.message = type === 'OUT'
+        ? '출차 처리가 완료되었습니다.'
+        : '입차 처리가 완료되었습니다. 기사 작업 상태가 입차 완료로 변경되었습니다.'
+      clearGateRecognition(selectedGateId.value)
+      await loadData({ duringProcess: true })
+    } else {
+      gateProcessFeedback.status = 'warning'
+      gateProcessFeedback.message =
+        gateLogStore.processResult?.message || `${type === 'OUT' ? '출차' : '입차'} 처리에 실패했습니다.`
+    }
+  } catch (error) {
+    gateProcessFeedback.status = 'warning'
+    gateProcessFeedback.message =
+      gateLogStore.error || error.message || `${type === 'OUT' ? '출차' : '입차'} 처리에 실패했습니다.`
+  } finally {
+    isGateProcessing.value = false
+  }
+}
+
+const loadData = async ({ duringProcess = false } = {}) => {
+  if (refreshInFlight || (isGateProcessing.value && !duringProcess)) return
+
+  refreshInFlight = true
+  try {
+    await Promise.all([
+      gateLogStore.loadGateLogs(),
+      workOrderStore.loadWorkOrders(),
+      containerStore.loadContainers(),
+      vehicleStore.loadVehicles(),
+      driverStore.loadDrivers(),
+      carrierStore.loadCarriers(),
+    ].map((request) => request.catch(() => {})))
+  } finally {
+    refreshInFlight = false
+  }
+}
 
 watch(selectedGate, (gate) => {
-  processType.value = gate?.gateType || 'IN'
+  processType.value = gate?.inOutType || 'IN'
+}, { immediate: true })
+
+watch(selectedGateId, () => {
+  gateProcessFeedback.status = ''
+  gateProcessFeedback.message = ''
+})
+
+onMounted(() => {
+  plateRecognitionStore.reset()
+  loadData()
+  refreshTimer = setInterval(loadData, 5000)
+})
+
+onUnmounted(() => {
+  clearInterval(refreshTimer)
+  Object.values(gatePreviewUrls).forEach((url) => URL.revokeObjectURL(url))
 })
 </script>
 
 <template>
   <div class="control-room">
     <section class="control-layout">
-      <article class="cctv-wall">
-        <button
-          v-for="gate in gateCameras"
+      <article class="cctv-wall" aria-label="4개 게이트 관제 현황">
+        <article
+          v-for="gate in gateCells"
           :key="gate.id"
           class="cctv-cell"
-          :class="{ active: gate.id === selectedGateId, empty: !gate.recognizedVehicleNo }"
-          type="button"
+          :class="{ active: gate.id === selectedGateId, empty: !gate.vehicleId, out: gate.inOutType === 'OUT' }"
           @click="selectedGateId = gate.id"
         >
-          <span class="gate-label">{{ gate.name }}</span>
-          <strong v-if="gate.recognizedVehicleNo" class="detected-number">
-            {{ gate.recognizedVehicleNo }}
-          </strong>
-          <em v-else>CCTV 대기</em>
-        </button>
+          <span class="gate-head">
+            <b>{{ gate.gateName }}</b>
+            <i>{{ gateText(gate.inOutType) }}</i>
+          </span>
+          <span class="gate-body">
+            <label
+              class="camera-upload"
+              :class="{ 'drag-active': draggingUploadKey === `${gate.id}-tractor` }"
+              :for="`tractorImage-${gate.id}`"
+              @click.stop
+              @dragenter.prevent.stop="setGateImageDrag(gate, 'tractor', true)"
+              @dragover.prevent.stop="setGateImageDrag(gate, 'tractor', true)"
+              @dragleave.prevent.stop="setGateImageDrag(gate, 'tractor', false)"
+              @drop.prevent.stop="dropGateImage($event, gate, 'tractor')"
+            >
+              <span>트랙터 인식</span>
+              <img v-if="gatePreviewUrls[`${gate.id}-tractor`]" :src="gatePreviewUrls[`${gate.id}-tractor`]" alt="선택한 트랙터 이미지" />
+              <b v-else>클릭하거나 이미지를<br />끌어다 놓으세요</b>
+              <small :class="{ review: isRecognitionWarning(gateRecognitionResults[gate.id]?.tractor, 'TRACTOR') }">
+                {{ recognitionStatus(gateRecognitionResults[gate.id]?.tractor, 'TRACTOR') }}
+              </small>
+              <input :id="`tractorImage-${gate.id}`" accept="image/*" type="file" @change="selectGateImage($event, gate, 'tractor')" />
+            </label>
+            <label
+              class="camera-upload"
+              :class="{ 'drag-active': draggingUploadKey === `${gate.id}-trailer` }"
+              :for="`trailerImage-${gate.id}`"
+              @click.stop
+              @dragenter.prevent.stop="setGateImageDrag(gate, 'trailer', true)"
+              @dragover.prevent.stop="setGateImageDrag(gate, 'trailer', true)"
+              @dragleave.prevent.stop="setGateImageDrag(gate, 'trailer', false)"
+              @drop.prevent.stop="dropGateImage($event, gate, 'trailer')"
+            >
+              <span>트레일러 인식</span>
+              <img v-if="gatePreviewUrls[`${gate.id}-trailer`]" :src="gatePreviewUrls[`${gate.id}-trailer`]" alt="선택한 트레일러 이미지" />
+              <b v-else>클릭하거나 이미지를<br />끌어다 놓으세요</b>
+              <small :class="{ review: isRecognitionWarning(gateRecognitionResults[gate.id]?.trailer, 'TRAILER') }">
+                {{ recognitionStatus(gateRecognitionResults[gate.id]?.trailer, 'TRAILER') }}
+              </small>
+              <input :id="`trailerImage-${gate.id}`" accept="image/*" type="file" @change="selectGateImage($event, gate, 'trailer')" />
+            </label>
+          </span>
+        </article>
       </article>
 
       <aside class="recognition-panel">
-        <div class="result-card">
-          <small>선택 게이트</small>
-          <strong>{{ selectedGate.recognizedVehicleNo || '미확인' }}</strong>
-          <span>{{ selectedGate.name }}</span>
-        </div>
-
-        <div class="decision-box">
-          <button
-            class="decision-button in"
-            :class="{ selected: processType === 'IN' }"
-            type="button"
-            @click="processType = 'IN'"
-          >
-            입차
-          </button>
-          <button
-            class="decision-button out"
-            :class="{ selected: processType === 'OUT' }"
-            type="button"
-            @click="processType = 'OUT'"
-          >
-            출차
-          </button>
-        </div>
-
         <div class="info-stack">
-          <section>
-            <h3>작업 정보</h3>
+          <section class="gate-summary">
+            <h3>선택 게이트 핵심 정보</h3>
             <dl>
-              <div>
-                <dt>작업번호</dt>
-                <dd>{{ matchedOrder?.work_order_id || '-' }}</dd>
-              </div>
-              <div>
-                <dt>작업유형</dt>
-                <dd>{{ matchedOrder?.work_type || '-' }}</dd>
-              </div>
-              <div>
-                <dt>예약시간</dt>
-                <dd>{{ matchedOrder?.reserved_time || '-' }}</dd>
-              </div>
-              <div>
-                <dt>작업상태</dt>
-                <dd>{{ matchedOrder?.work_status || '-' }}</dd>
-              </div>
+              <div><dt>게이트</dt><dd>{{ selectedGate?.gateName || '-' }} / {{ gateText(selectedGate?.inOutType) }}</dd></div>
+              <div><dt>트랙터 인식</dt><dd>{{ tractorResult?.aiResult?.plateNumber || '-' }} / {{ tractorPassText }}</dd></div>
+              <div><dt>트레일러 인식</dt><dd>{{ trailerResult?.aiResult?.plateNumber || '-' }} / {{ trailerPassText }}</dd></div>
+              <div><dt>WorkOrder 일치</dt><dd>{{ workOrderMatch ? '일치' : '확인 필요' }}</dd></div>
+              <div><dt>출입 가능 상태</dt><dd>{{ isWorkOrderGateStatusAllowed(selectedGateType) ? '가능' : '확인 필요' }}</dd></div>
             </dl>
           </section>
 
-          <section>
-            <h3>차량 · 기사 · 운송사</h3>
+          <details class="detail-section">
+            <summary>트랙터 상세 정보</summary>
             <dl>
-              <div>
-                <dt>차량번호</dt>
-                <dd>{{ matchedOrder ? getPlateNumber(matchedOrder.vehicle_id) : '-' }}</dd>
-              </div>
-              <div>
-                <dt>기사명</dt>
-                <dd>{{ matchedOrder ? getDriverName(matchedOrder.driver_id) : '-' }}</dd>
-              </div>
-              <div>
-                <dt>운송사</dt>
-                <dd>{{ matchedOrder ? getCarrierName(matchedOrder.carrier_id) : '-' }}</dd>
-              </div>
+              <div><dt>차량 번호 / 유형</dt><dd>{{ tractorResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(tractorResult?.vehicle?.vehicleType) }}</dd></div>
+              <div><dt>기사</dt><dd>{{ tractorResult?.driver?.driverName || '-' }} / {{ tractorResult?.driver?.driverContact || '-' }}</dd></div>
+              <div><dt>운송사</dt><dd>{{ tractorResult?.carrier?.carrierName || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>차량 승인 / 상태</dt><dd>{{ getBooleanText(tractorResult?.vehicle?.isRegistered) }} / {{ tractorResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>기사 출입</dt><dd>{{ getBooleanText(tractorResult?.driver?.canEnter) }}</dd></div>
             </dl>
-          </section>
+          </details>
 
-          <section>
-            <h3>컨테이너 · 섹터</h3>
+          <details class="detail-section">
+            <summary>{{ processType === 'OUT' ? '트레일러·작업 확인' : '트레일러·작업 상세 정보' }}</summary>
             <dl>
-              <div>
-                <dt>컨테이너</dt>
-                <dd>{{ matchedOrder ? getContainerNumber(matchedOrder.container_id) : '-' }}</dd>
-              </div>
-              <div>
-                <dt>규격/유형</dt>
-                <dd>{{ matchedContainer ? `${matchedContainer.container_size} / ${matchedContainer.shipping_line}` : '-' }}</dd>
-              </div>
-              <div>
-                <dt>배정 섹터</dt>
-                <dd>{{ matchedOrder ? getSectorByContainerId(matchedOrder.container_id)?.sector_name || '-' : '-' }}</dd>
-              </div>
+              <div><dt>차량 번호 / 유형</dt><dd>{{ trailerResult?.vehicle?.plateNumber || '-' }} / {{ vehicleTypeLabel(trailerResult?.vehicle?.vehicleType) }}</dd></div>
+              <div><dt>작업 유형 / 상태</dt><dd>{{ trailerResult?.workOrder?.workType || '-' }} / {{ trailerResult?.workOrder?.workStatus || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>차량 승인 / 상태</dt><dd>{{ getBooleanText(trailerResult?.vehicle?.isRegistered) }} / {{ trailerResult?.vehicle?.vehicleStatus || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>작업 승인 / 예약</dt><dd>{{ getBooleanText(trailerResult?.workOrder?.isApproved) }} / {{ trailerResult?.workOrder?.reservedTime || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>컨테이너 번호 / 크기</dt><dd>{{ trailerResult?.container?.containerNumber || '-' }} / {{ trailerResult?.container?.containerSize || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>위치 / 블록-베이-로우</dt><dd>{{ trailerResult?.container?.containerLocation || '-' }} / {{ trailerResult?.container?.block || '-' }}-{{ trailerResult?.container?.bay || '-' }}-{{ trailerResult?.container?.rowNo || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>야드 섹터 / 상태</dt><dd>{{ trailerResult?.yardSector?.sectorName || '-' }} / {{ trailerResult?.yardSector?.sectorStatus || '-' }}</dd></div>
+              <div v-if="processType === 'IN'"><dt>대체 대기 / 안내</dt><dd>{{ trailerResult?.yardSector?.altWaitingArea || '-' }} / {{ trailerResult?.trailerWorkInfo?.guideMessage || trailerResult?.yardSector?.guideMessage || '-' }}</dd></div>
             </dl>
-          </section>
+          </details>
         </div>
-
-        <div class="process-footer">
-          <button
-            class="primary-button process-button"
-            :class="{ out: processType === 'OUT' }"
-            type="button"
-            disabled
-            title="트랙터와 트레일러 검증이 필요한 기능입니다. AI 번호판 인식 메뉴를 이용하세요."
+        <div class="process-actions side-process-actions single-process-action">
+          <p
+            v-if="gateProcessFeedback.message"
+            :class="['process-result', gateProcessFeedback.status === 'success' ? 'success' : gateProcessFeedback.status === 'warning' ? 'warning' : 'processing']"
+            role="status"
           >
-            AI 인식 메뉴에서 {{ processLabel }}
-          </button>
+            {{ gateProcessFeedback.message }}
+          </p>
+          <p class="process-mode-indicator">선택 게이트 기준 자동 판단: {{ processTypeLabel }}</p>
+          <button
+            v-if="processType === 'IN'"
+            class="primary-button process-button"
+            type="button"
+            :disabled="!canProcessGateFor('IN') || isGateProcessing"
+            @click="submitGateProcess('IN')"
+          >{{
+            isGateProcessing
+              ? '입차 처리 중...'
+              : gateProcessFeedback.status === 'success'
+                ? '입차 처리 완료'
+                : '입차 처리'
+          }}</button>
+          <button
+            v-else
+            class="primary-button process-button out"
+            type="button"
+            :disabled="!canProcessGateFor('OUT') || isGateProcessing"
+            @click="submitGateProcess('OUT')"
+          >{{
+            isGateProcessing
+              ? '출차 처리 중...'
+              : gateProcessFeedback.status === 'success'
+                ? '출차 처리 완료'
+                : '출차 처리'
+          }}</button>
         </div>
       </aside>
     </section>
 
+    <section class="ai-process-zone">
+      <div class="decision-stack">
+        <div :class="['final-decision', canProcessGate ? 'success' : 'warning']">
+          <span>최종 출입 판단</span>
+          <strong>{{ canProcessGate ? '통과' : '불가' }}</strong>
+          <p>{{ gateProcessSummary }}</p>
+        </div>
+      </div>
+      <ol class="process-steps" aria-label="번호판 출입 처리 단계">
+        <li :class="{ complete: tractorResult }"><b>1</b><span>트랙터 인식</span></li>
+        <li :class="{ complete: trailerResult }"><b>2</b><span>트레일러 인식</span></li>
+        <li :class="{ complete: canProcessGate }"><b>3</b><span>정보 검증</span></li>
+        <li :class="{ complete: gateLogStore.processResult?.success }"><b>4</b><span>출입 처리</span></li>
+      </ol>
+      <p v-if="gateLogStore.processResult" :class="['process-result', gateLogStore.processResult.success ? 'success' : 'warning']">{{ gateLogStore.processResult.message }}</p>
+      <p v-if="plateRecognitionStore.error || gateLogStore.error" class="process-result warning">{{ plateRecognitionStore.error || gateLogStore.error }}</p>
+    </section>
+
+    <section class="ops-strip">
+      <article v-for="card in statusCards" :key="card.label" class="ops-card" :class="card.tone">
+        <span>{{ card.label }}</span>
+        <strong>{{ card.value }}건</strong>
+        <small>{{ card.detail }}</small>
+      </article>
+    </section>
+
+    <section class="monitor-grid">
+      <article class="panel dark-panel">
+        <div class="section-title dark-title">
+          <h2>작업 진행 요약</h2>
+          <span class="status-pill">{{ activeOrders.length }}건</span>
+        </div>
+        <div class="work-lane">
+          <div v-for="order in activeOrders" :key="getId(order, 'workOrderId')" class="work-row">
+            <b>{{ getPlateNumber(getId(order, 'vehicleId') || getId(order, 'trailerVehicleId')) }}</b>
+            <span>{{ getContainerNumber(getId(order, 'containerId')) }}</span>
+            <small>{{ statusText(getWorkStatus(order)) }}</small>
+          </div>
+          <div v-if="activeOrders.length === 0" class="empty-dark">진행 중인 작업이 없습니다.</div>
+        </div>
+      </article>
+
+      <article class="panel dark-panel">
+        <div class="section-title dark-title">
+          <h2>야드 섹터 요약</h2>
+          <span class="status-pill">{{ yardSectors.length }}개</span>
+        </div>
+        <div class="yard-grid">
+          <div v-for="sector in yardSectors" :key="sector.id" class="yard-node">
+            <b>{{ sector.name }}</b>
+            <strong>{{ sector.total }}</strong>
+            <span>반출 가능 {{ sector.canExit }} / 보류 {{ sector.hold }}</span>
+          </div>
+          <div v-if="yardSectors.length === 0" class="empty-dark">야드 섹터 데이터가 없습니다.</div>
+        </div>
+      </article>
+    </section>
+
     <section class="panel log-panel">
-      <div class="section-title">
-        <h2>최근 게이트 기록</h2>
-        <span class="status-pill">DB gate_log</span>
+      <div class="section-title dark-title">
+        <h2>최근 게이트 입출차 기록</h2>
+        <span class="status-pill">5초 갱신</span>
       </div>
       <div class="compact-table">
         <div class="compact-row head">
           <span>시간</span>
-          <span>차량번호</span>
+          <span>트랙터</span>
+          <span>트레일러</span>
           <span>게이트</span>
           <span>구분</span>
           <span>처리 결과</span>
         </div>
-        <div v-for="log in gateLogs" :key="log.gate_log_id" class="compact-row">
-          <span>{{ log.entry_time || log.exit_time || '-' }}</span>
-          <span>{{ getPlateNumber(log.vehicle_id) }}</span>
-          <span>{{ log.gate_name }}</span>
-          <span>{{ log.in_out_type }}</span>
-          <span>{{ log.process_result }}</span>
+        <div v-for="log in latestGateLogs" :key="log.gateLogId || log.gate_log_id" class="compact-row">
+          <span>{{ log.entryTime || log.entry_time || log.exitTime || log.exit_time || '-' }}</span>
+          <span>{{ getLogVehiclePair(log).tractor }}</span>
+          <span>{{ getLogVehiclePair(log).trailer }}</span>
+          <span>{{ log.gateName || log.gate_name || '-' }}</span>
+          <span>
+            <span
+              class="status-pill"
+              :class="(log.inOutType || log.in_out_type) === 'OUT' ? 'red' : 'blue'"
+            >
+              {{ gateText(log.inOutType || log.in_out_type) }}
+            </span>
+          </span>
+          <span>
+            <span
+              class="status-pill"
+              :class="processResultClass(log.processResult || log.process_result)"
+            >
+              {{ processResultText(log.processResult || log.process_result) }}
+            </span>
+          </span>
         </div>
-        <div v-if="gateLogs.length === 0" class="compact-row">
+        <div v-if="latestGateLogs.length === 0" class="compact-row">
           <span>-</span>
           <span>게이트 로그 데이터가 없습니다.</span>
+          <span>-</span>
           <span>-</span>
           <span>-</span>
           <span>-</span>
@@ -220,96 +751,336 @@ watch(selectedGate, (gate) => {
 .control-room {
   display: grid;
   gap: 10px;
-  color: #dceaff;
+  color: #16202a;
 }
 
-.cctv-wall,
+.ops-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ops-card,
 .recognition-panel,
-.log-panel {
-  background: #101624;
-  border: 1px solid #263353;
+.log-panel,
+.dark-panel {
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
   border-radius: 2px;
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(23, 43, 64, 0.08);
+}
+
+.cctv-wall {
+  background: #132238;
+  border: 1px solid #637b95;
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(23, 43, 64, 0.16);
+}
+
+.ops-card {
+  display: grid;
+  min-height: 86px;
+  gap: 2px;
+  padding: 12px 14px;
+}
+
+.ops-card span,
+.ops-card small {
+  color: #536579;
+  font-weight: 700;
+}
+
+.ops-card strong {
+  color: #16202a;
+  font-size: 28px;
+}
+
+.ops-card.blue {
+  border-left: 4px solid #2d75ae;
+}
+
+.ops-card.red {
+  border-left: 4px solid #b8403a;
+}
+
+.ops-card.green {
+  border-left: 4px solid #2f7d57;
+}
+
+.ops-card.amber {
+  border-left: 4px solid #b47c1c;
 }
 
 .control-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(360px, 0.9fr);
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 0.65fr);
   gap: 10px;
 }
 
 .cctv-wall {
   display: grid;
-  min-height: 650px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-rows: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  padding: 6px;
-}
-
-.cctv-cell {
-  position: relative;
-  min-width: 0;
-  overflow: hidden;
-  color: #dceaff;
-  background: #000000;
-  border: 1px solid #303b5c;
-  border-radius: 1px;
-}
-
-.cctv-cell.active {
-  border-color: #d93a32;
-  box-shadow: inset 0 0 0 2px #d93a32;
-}
-
-.cctv-cell.empty {
-  background: #05070b;
-}
-
-.gate-label {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  z-index: 2;
-  padding: 3px 6px;
-  color: #ffffff;
-  background: #23639c;
-  border: 1px solid #6e94b7;
-  border-radius: 1px;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.detected-number {
-  position: absolute;
-  left: 50%;
-  top: 52%;
-  transform: translate(-50%, -50%);
-  color: #f6c34a;
-  font-size: clamp(16px, 2vw, 24px);
-  font-weight: 700;
-}
-
-.cctv-cell em {
-  position: absolute;
-  left: 50%;
-  top: 52%;
-  transform: translate(-50%, -50%);
-  color: #57627b;
-  font-style: normal;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.recognition-panel {
-  display: grid;
-  align-content: start;
-  gap: 8px;
+  min-height: 686px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(308px, 1fr));
+  gap: 6px;
   padding: 8px;
 }
 
-.log-panel .section-title h2 {
+.cctv-cell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 8px;
+  color: #edf5ff;
+  background: #0d192a;
+  border: 1px solid #6783a5;
+  border-radius: 1px;
+  text-align: left;
+}
+
+.cctv-cell.active {
+  border-color: #f6c34a;
+  box-shadow: inset 0 0 0 2px #f6c34a;
+}
+
+.cctv-cell.empty {
+  background: #13243a;
+}
+
+.cctv-cell.out .gate-type {
+  background: #b8403a;
+}
+
+.gate-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gate-head b,
+.gate-head i {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 4px 9px;
   color: #ffffff;
+  border-radius: 1px;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.gate-head b {
+  min-width: 0;
+  overflow: hidden;
+  background: #2b70a8;
+  border: 1px solid #90b4d6;
+  text-overflow: ellipsis;
+}
+
+.gate-head i {
+  flex: 0 0 auto;
+  background: #2e815b;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.gate-head em {
+  color: #a6e6c3;
+  background: #123b2a;
+  border: 1px solid #2f7d57;
+}
+
+.gate-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-height: 0;
+  gap: 6px;
+  padding: 2px;
+}
+
+.camera-upload {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 4px;
+  overflow: hidden;
+  padding: 6px;
+  color: #c4d6ea;
+  background: #13243a;
+  border: 1px dashed #7896b8;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.camera-upload.drag-active {
+  background: #1c3c5d;
+  border-color: #f6c34a;
+  box-shadow: inset 0 0 0 2px #f6c34a;
+}
+
+.camera-upload.drag-active > b {
+  color: #fff1b8;
+}
+
+.camera-upload > span {
+  color: #f1f7ff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.camera-upload > b {
+  display: grid;
+  min-height: 0;
+  place-items: center;
+  color: #a9c0da;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.camera-upload img {
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  object-fit: cover;
+  background: #020407;
+}
+
+.camera-upload > small {
+  overflow: hidden;
+  padding: 5px 7px;
+  color: #a6e6c3;
+  background: #155538;
+  border: 1px solid #54aa7d;
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.camera-upload > small.review {
+  color: #ffd0ce;
+  background: #612a30;
+  border-color: #e06b68;
+}
+
+.camera-upload input { display: none; }
+
+.recognition-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 10px;
+}
+
+.ai-process-zone {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr) 250px;
+  gap: 10px;
+  align-items: stretch;
+  padding: 8px;
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
+}
+
+.final-decision {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid #6b89ab;
+}
+
+.final-decision span { font-size: 14px; font-weight: 700; }
+.final-decision strong { font-size: 34px; }
+.final-decision p { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.4; }
+.final-decision.success { color: #12643a; background: #eaf7ef; border-color: #78c69a; }
+.final-decision.warning { color: #a42626; background: #fff1f1; border-color: #e19a9a; }
+
+.decision-stack {
+  display: grid;
+  align-self: start;
+  gap: 6px;
+}
+
+.process-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: start;
+  align-self: start;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.process-steps li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 52px;
+  padding: 8px;
+  color: #27364b;
+  background: #f5f8fb;
+  border: 1px solid #b8c5d2;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.process-steps b {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #172033;
+  background: #91a0c0;
+  border-radius: 999px;
+}
+
+.process-steps li.complete { color: #12643a; background: #eef9f2; border-color: #78c69a; }
+.process-steps li.complete b { color: #ffffff; background: #2f8a5d; }
+
+.process-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.process-button { min-height: 32px; padding-block: 5px; }
+.side-process-actions { margin-top: auto; }
+.single-process-action { grid-template-columns: 1fr; }
+.process-mode-indicator {
+  margin: 0;
+  padding: 6px 8px;
+  color: #34465b;
+  background: #eef4f9;
+  border: 1px solid #b8c5d2;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+.process-result { grid-column: 1 / -1; margin: 0; padding: 10px 12px; font-size: 15px; font-weight: 700; }
+.process-result.success { color: #12643a; background: #eaf7ef; border: 1px solid #78c69a; }
+.process-result.warning { color: #a42626; background: #fff1f1; border: 1px solid #e19a9a; }
+.process-result.processing { color: #174f7d; background: #edf6ff; border: 1px solid #8bb8dc; }
+
+.dark-title {
+  background: #edf3f8;
+  border-color: #b8c5d2;
+}
+
+.dark-title h2 {
+  color: #16202a;
+  font-size: 18px;
+}
+
+.control-room .status-pill {
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: 13px;
 }
 
 .result-card {
@@ -349,9 +1120,9 @@ watch(selectedGate, (gate) => {
 
 .decision-button {
   min-height: 34px;
-  color: #dceaff;
-  background: #1a233a;
-  border: 1px solid #303b5c;
+  color: #27364b;
+  background: #f5f8fb;
+  border: 1px solid #b8c5d2;
   border-radius: 2px;
   font-weight: 700;
 }
@@ -362,33 +1133,91 @@ watch(selectedGate, (gate) => {
   border-color: #3f8beb;
 }
 
-.decision-button.out.selected {
-  color: #ffffff;
-  background: #d93a32;
-  border-color: #f08b85;
-}
-
+.decision-button.out.selected,
 .process-button.out {
-  background: #d93a32;
-  border-color: #d93a32;
+  color: #ffffff;
+  background: #b8403a;
+  border-color: #b8403a;
 }
 
 .info-stack {
   display: grid;
+  grid-template-rows: auto auto auto;
+  align-content: start;
   gap: 6px;
+  min-height: 0;
 }
 
 .info-stack section {
+  min-height: 0;
+  overflow: auto;
   padding: 8px;
-  background: #151d31;
-  border: 1px solid #263353;
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
   border-radius: 2px;
+}
+
+.info-stack .gate-summary {
+  background: #eef6fd;
+  border-color: #80a4c4;
+}
+
+.info-stack .gate-summary dd {
+  color: #16202a;
+}
+
+.info-stack details {
+  min-height: 0;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 1px solid #b8c5d2;
+  border-radius: 2px;
+}
+
+.info-stack details[open] {
+  overflow: auto;
+}
+
+.info-stack summary {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  color: #16202a;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  list-style: none;
+}
+
+.info-stack summary::-webkit-details-marker {
+  display: none;
+}
+
+.info-stack summary::after {
+  color: #536579;
+  content: '상세 보기 ▸';
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.info-stack details[open] summary {
+  border-bottom: 1px solid #b8c5d2;
+}
+
+.info-stack details[open] summary::after {
+  content: '접기 ▾';
+}
+
+.info-stack details dl {
+  padding: 8px;
 }
 
 .info-stack h3 {
   margin: 0 0 6px;
-  color: #ffffff;
-  font-size: 13px;
+  color: #16202a;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -400,19 +1229,86 @@ watch(selectedGate, (gate) => {
 
 .info-stack dl div {
   display: grid;
-  grid-template-columns: 88px 1fr;
+  grid-template-columns: 116px 1fr;
   gap: 10px;
 }
 
 .info-stack dt {
-  color: #91a0c0;
-  font-size: 12px;
+  color: #536579;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .info-stack dd {
   margin: 0;
-  color: #dceaff;
+  color: #16202a;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.monitor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.work-lane,
+.yard-grid {
+  display: grid;
+  gap: 6px;
+}
+
+.work-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(110px, 1fr) 96px;
+  gap: 8px;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
+  font-size: 14px;
+}
+
+.work-row b {
+  color: #1565a8;
+}
+
+.work-row span,
+.work-row small {
+  color: #34465b;
+  font-weight: 700;
+}
+
+.yard-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.yard-node {
+  display: grid;
+  gap: 3px;
+  min-height: 86px;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
+  font-size: 14px;
+}
+
+.yard-node b,
+.yard-node span {
+  color: #536579;
+}
+
+.yard-node strong {
+  color: #16202a;
+  font-size: 28px;
+}
+
+.empty-dark {
+  padding: 14px;
+  color: #536579;
+  background: #f8fafc;
+  border: 1px solid #b8c5d2;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -428,38 +1324,120 @@ watch(selectedGate, (gate) => {
 
 .compact-row {
   display: grid;
-  min-width: 760px;
-  grid-template-columns: 80px 1fr 100px 90px 130px;
-  gap: 6px;
-  padding: 6px 8px;
-  color: #dceaff;
-  background: #151d31;
-  border: 1px solid #263353;
+  min-width: 0;
+  grid-template-columns: minmax(145px, 1.15fr) minmax(100px, 0.85fr) minmax(100px, 0.85fr) 86px 74px minmax(130px, 1fr);
+  gap: 8px;
+  padding: 10px 12px;
+  color: #16202a;
+  background: #ffffff;
+  border: 1px solid #b8c5d2;
   border-radius: 1px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
 }
 
+.compact-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
 .compact-row.head {
-  color: #91a0c0;
-  background: #0c1220;
+  color: #34465b;
+  background: #edf3f8;
 }
 
 @media (max-width: 1180px) {
-  .control-layout {
+  .control-layout,
+  .monitor-grid,
+  .ai-process-zone {
     grid-template-columns: 1fr;
   }
 
   .cctv-wall {
-    min-height: 560px;
+    min-height: 520px;
   }
+}
+
+@media (min-width: 1100px) and (max-height: 760px) {
+  .cctv-wall {
+    min-height: 440px;
+  }
+
+  .dark-title {
+    min-height: 36px;
+  }
+
+  .dark-title h2 {
+    font-size: 17px;
+  }
+
+  .compact-table {
+    gap: 4px;
+    overflow-x: hidden;
+  }
+
+  .compact-row {
+    grid-template-columns: minmax(140px, 1.15fr) minmax(92px, 0.8fr) minmax(92px, 0.8fr) 80px 68px minmax(118px, 0.95fr);
+    min-height: 38px;
+    padding: 7px 9px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 900px) {
+  .ops-strip,
+  .yard-grid,
+  .process-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
 }
 
 @media (max-width: 760px) {
-  .cctv-wall {
-    min-height: 720px;
+  .ops-strip,
+  .yard-grid,
+  .process-steps,
+  .process-actions {
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(9, 180px);
+  }
+
+  .cctv-wall {
+    min-height: 920px;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, 230px);
   }
 }
+
+.recognition-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #16202a;
+  font-size: 11px;
+}
+
+.recognition-info-table th,
+.recognition-info-table td {
+  padding: 5px 6px;
+  border: 1px solid #b8c5d2;
+  line-height: 1.2;
+  text-align: left;
+  vertical-align: middle;
+  word-break: break-word;
+}
+
+.recognition-info-table th {
+  width: 42%;
+  color: #536579;
+  background: #edf3f8;
+  font-weight: 800;
+}
+
+.recognition-info-table td {
+  color: #16202a;
+  background: #ffffff;
+  font-weight: 700;
+}
 </style>
+

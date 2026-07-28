@@ -80,19 +80,6 @@ const generateCode = (prefix) => {
         </div>
       </div>
 
-      <div class="field field-full">
-        <label>샤시 번호</label>
-        <div class="inline-field">
-          <input
-            placeholder="예: CH-202601"
-            :value="modelValue.chassisNo"
-            @input="updateField('chassisNo', $event.target.value)"
-          />
-          <button type="button" @click="updateField('chassisNo', generateCode('CH'))">
-            자동
-          </button>
-        </div>
-      </div>
     </div>
 
     <div class="notice-box">

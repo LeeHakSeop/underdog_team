@@ -10,7 +10,9 @@ const { containers, loading, error } = storeToRefs(containerStore)
 const visibleContainers = computed(() => {
   const query = containerQuery.value.trim().toLowerCase()
   if (!query) return containers.value
-  return containers.value.filter((container) => container.containerNumber.toLowerCase().includes(query))
+  return containers.value.filter((container) =>
+    String(container.containerNumber || container.container_number || '').toLowerCase().includes(query),
+  )
 })
 
 onMounted(() => {
@@ -22,37 +24,51 @@ onMounted(() => {
   <div class="page-stack">
     <section class="panel">
       <div class="section-title">
-        <h2>컨테이너 목록</h2>
+        <h2>컨테이너 조회</h2>
         <div class="table-tools">
-          <input v-model="containerQuery" type="search" placeholder="컨테이너 번호 검색" />
+          <input v-model="containerQuery" type="search" placeholder="컨테이너 번호" />
           <span class="status-pill">{{ visibleContainers.length }}건</span>
         </div>
       </div>
-      <div v-if="loading" class="empty-box">컨테이너 목록을 불러오는 중입니다.</div>
-      <div v-else-if="error" class="empty-box warning">{{ error }}</div>
+
+      <div v-if="loading" class="empty-box">
+        컨테이너 목록을 불러오는 중입니다.
+      </div>
+      <div v-else-if="error" class="empty-box warning">
+        {{ error }}
+      </div>
+
       <div class="table-wrap">
         <table v-if="!loading && !error" class="data-table">
           <thead>
             <tr>
+              <th>컨테이너 ID</th>
               <th>컨테이너 번호</th>
               <th>규격</th>
-              <th>유형</th>
+              <th>선사</th>
               <th>현재 위치</th>
-              <th>섹터</th>
-              <th>반출</th>
+              <th>야드 위치</th>
+              <th>반출 가능</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="container in visibleContainers" :key="container.containerId">
-              <td>{{ container.containerNumber }}</td>
-              <td>{{ container.containerSize }}</td>
-              <td>{{ container.shippingLine || '-' }}</td>
-              <td>{{ container.containerLocation }}</td>
-              <td>{{ container.block }}-{{ container.bay }}-{{ container.rowNo }}</td>
-              <td><span class="status-pill" :class="{ red: !container.canExit }">{{ container.canExit ? '가능' : '보류' }}</span></td>
+            <tr v-for="container in visibleContainers" :key="container.containerId || container.container_id">
+              <td>{{ container.containerId || container.container_id }}</td>
+              <td>{{ container.containerNumber || container.container_number }}</td>
+              <td>{{ container.containerSize || container.container_size || '-' }}</td>
+              <td>{{ container.shippingLine || container.shipping_line || '-' }}</td>
+              <td>{{ container.containerLocation || container.container_location || '-' }}</td>
+              <td>
+                {{ container.block || '-' }}-{{ container.bay || '-' }}-{{ container.rowNo || container.row_no || '-' }}
+              </td>
+              <td>
+                <span class="status-pill" :class="{ red: !(container.canExit ?? container.can_exit) }">
+                  {{ container.canExit ?? container.can_exit ? '가능' : '보류' }}
+                </span>
+              </td>
             </tr>
             <tr v-if="visibleContainers.length === 0">
-              <td colspan="6">컨테이너 데이터가 없습니다.</td>
+              <td colspan="7">컨테이너 데이터가 없습니다.</td>
             </tr>
           </tbody>
         </table>
