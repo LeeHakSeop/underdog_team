@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { readCurrentUser } from '@/stores/authStore'
 import { useCarrierStore } from '@/stores/carrierStore'
@@ -16,6 +16,7 @@ const { carriers } = storeToRefs(carrierStore)
 const { drivers, myWorkOrders, loading, error } = storeToRefs(driverStore)
 const { myVehicle } = storeToRefs(vehicleStore)
 let refreshTimer = null
+const selectedWorkStatus = ref('')
 
 const loginUser = computed(() => {
   return JSON.parse(localStorage.getItem('portGateUser') || 'null')
@@ -59,6 +60,25 @@ const currentWorkOrder = computed(() => {
   const activeStatuses = ['DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED']
   return myWorkOrders.value.find((order) => activeStatuses.includes(order.workStatus)) || null
 })
+
+const workStatusOptions = [
+  'DISPATCH_WAITING',
+  'APPROVED',
+  'GATE_IN',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'GATE_OUT',
+  'CANCELED',
+]
+
+const filteredWorkOrders = computed(() => {
+  if (!selectedWorkStatus.value) return myWorkOrders.value
+  return myWorkOrders.value.filter((order) => order.workStatus === selectedWorkStatus.value)
+})
+
+const completedWorkOrderCount = computed(() =>
+  myWorkOrders.value.filter((order) => ['COMPLETED', 'GATE_OUT'].includes(order.workStatus)).length,
+)
 
 const passStatus = computed(() => {
   const order = currentWorkOrder.value
@@ -168,7 +188,7 @@ onUnmounted(() => {
     <section class="panel">
       <div class="section-title">
         <h2>내 작업 안내</h2>
-        <span class="status-pill">{{ currentWorkOrder ? 1 : 0 }}건</span>
+        <span class="work-list-count">완료 건수 <strong>{{ completedWorkOrderCount }}건</strong></span>
       </div>
 
       <div v-if="loading" class="empty-panel">
@@ -180,6 +200,10 @@ onUnmounted(() => {
       </div>
 
       <div v-else-if="currentWorkOrder" class="work-summary">
+        <div>
+          <span>트랙터 번호</span>
+          <strong>{{ currentWorkOrder.plateNumber || '-' }}</strong>
+        </div>
         <div>
           <span>트레일러 번호</span>
           <strong>{{ currentWorkOrder.trailerPlateNumber || '-' }}</strong>
@@ -275,9 +299,17 @@ onUnmounted(() => {
     </section>
 
     <section class="panel">
-      <div class="section-title">
+      <div class="section-title work-list-title">
         <h2>작업 목록</h2>
-        <span class="status-pill">{{ myWorkOrders.length }}건</span>
+        <div class="work-list-tools">
+          <label for="driver-work-status">작업 상태</label>
+          <select id="driver-work-status" v-model="selectedWorkStatus">
+            <option value="">전체</option>
+            <option v-for="status in workStatusOptions" :key="status" :value="status">
+              {{ getWorkStatusText(status) }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <div class="table-wrap">
@@ -286,6 +318,7 @@ onUnmounted(() => {
             <tr>
               <th>작업 ID</th>
               <th>작업 유형</th>
+              <th>트랙터</th>
               <th>트레일러</th>
               <th>컨테이너</th>
               <th>야드 섹터</th>
@@ -295,9 +328,10 @@ onUnmounted(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in myWorkOrders" :key="order.workOrderId">
+            <tr v-for="order in filteredWorkOrders" :key="order.workOrderId">
               <td>{{ order.workOrderId }}</td>
               <td>{{ order.workType || '-' }}</td>
+              <td>{{ order.plateNumber || '-' }}</td>
               <td>{{ order.trailerPlateNumber || '-' }}</td>
               <td>{{ order.containerNumber || '-' }}</td>
               <td>{{ order.sectorName || '-' }}</td>
@@ -309,8 +343,10 @@ onUnmounted(() => {
               </td>
               <td>{{ getBooleanText(order.isApproved) }}</td>
             </tr>
-            <tr v-if="myWorkOrders.length === 0">
-              <td colspan="8">조회된 작업 정보가 없습니다.</td>
+            <tr v-if="filteredWorkOrders.length === 0">
+              <td colspan="9">
+                {{ myWorkOrders.length === 0 ? '조회된 작업 정보가 없습니다.' : '선택한 상태의 작업이 없습니다.' }}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -380,10 +416,62 @@ onUnmounted(() => {
 
 .work-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
   gap: 12px;
   min-width: 0;
   overflow-x: auto;
+}
+
+.work-list-title {
+  align-items: center;
+  gap: 12px;
+}
+
+.work-list-tools {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.work-list-tools label {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.work-list-tools select {
+  min-width: 150px;
+  min-height: 32px;
+  padding: 4px 8px;
+  color: var(--ink-900);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  font: inherit;
+}
+
+.work-list-count {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  color: var(--ink-500);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.work-list-count strong {
+  color: var(--ink-900);
+  font-size: 14px;
 }
 
 .work-summary div,
@@ -490,7 +578,7 @@ onUnmounted(() => {
 
 @media (min-width: 1100px) and (max-height: 760px) {
   .work-summary {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 10px;
   }
 
@@ -529,6 +617,16 @@ onUnmounted(() => {
   .identity-item + .identity-item {
     border-top: 1px solid var(--line);
     border-left: 0;
+  }
+
+  .work-list-title {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .work-list-tools {
+    justify-content: flex-start;
+    margin-left: 0;
   }
 }
 </style>

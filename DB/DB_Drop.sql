@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS plate_recognition;
+DROP TABLE IF EXISTS exception_log;
+DROP TABLE IF EXISTS gate_log;
+DROP TABLE IF EXISTS work_status_history;
+DROP TABLE IF EXISTS work_order;
+DROP TABLE IF EXISTS container;
+DROP TABLE IF EXISTS vehicle;
+DROP TABLE IF EXISTS driver;
+DROP TABLE IF EXISTS carrier;
+DROP TABLE IF EXISTS yard_sector;
+DROP TABLE IF EXISTS users;
