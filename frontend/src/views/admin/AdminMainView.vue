@@ -816,13 +816,13 @@ onUnmounted(() => {
 
 .control-layout {
   display: grid;
-<<<<<<< HEAD
+
   grid-template-columns: minmax(0, 1.45fr) minmax(420px, 0.9fr);
-=======
+
   height: 686px;
   min-height: 0;
   grid-template-columns: minmax(0, 2fr) minmax(300px, 0.65fr);
->>>>>>> origin/KSM
+
   gap: 10px;
 }
 
@@ -988,12 +988,12 @@ onUnmounted(() => {
   min-height: 0;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 10px;
-<<<<<<< HEAD
+
   padding: 12px;
-=======
+
   padding: 10px;
   overflow: hidden;
->>>>>>> origin/KSM
+
 }
 
 .ai-process-zone {

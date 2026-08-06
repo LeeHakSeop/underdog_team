@@ -1,0 +1,6 @@
+ALTER TABLE yard_sector
+ADD COLUMN IF NOT EXISTS capacity INTEGER NOT NULL DEFAULT 40;
+
+UPDATE yard_sector
+SET capacity = 40
+WHERE capacity IS NULL;

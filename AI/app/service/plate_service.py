@@ -32,7 +32,7 @@ def normalize_candidate(candidate):
 
 
 def normalize_result(result):
-    """단일 모델 출력을 Spring FastApiPlateResponseDTO 형식으로 고정한다."""
+    """Normalize pipeline output to the Spring FastApiPlateResponseDTO shape."""
     plate_number = result.get("plateNumber", "")
 
     return {
@@ -76,36 +76,6 @@ async def predict_upload_file(file: UploadFile):
     except Exception:
         return normalize_result({
             "detected": False,
-<<<<<<< HEAD
-            "plateNumber": "",
-            "ocrRaw": "",
-            "confidence": 0,
-            "detectionConfidence": 0,
-            "ocrConfidence": 0,
-            "needReview": True,
-            "reviewReasons": ["IMAGE_FILE_NOT_FOUND"],
-            "error": {
-                "code": "IMAGE_FILE_NOT_FOUND",
-                "message": "저장된 이미지 파일을 찾을 수 없습니다.",
-            },
-            "candidates": [],
-        }
-    except Exception as error:
-        if (ocr_type or "").lower() != "crnn":
-            try:
-                return predict_plate(save_path, "crnn")
-            except Exception:
-                pass
-
-        return {
-            "detected": False,
-            "plateNumber": "",
-            "ocrRaw": "",
-            "confidence": 0,
-            "detectionConfidence": 0,
-            "ocrConfidence": 0,
-=======
->>>>>>> 7fbd6506b96f09e1a4feffc970b50aafa75abb64
             "needReview": True,
             "reviewReasons": ["AI_PROCESS_FAILED"],
         })

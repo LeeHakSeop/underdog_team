@@ -59,11 +59,9 @@ public class PlateRecognitionService {
     ExceptionLogService exceptionLogService;
 
     public PlateRecognitionResultDTO recognize(MultipartFile file) throws IOException {
-<<<<<<< HEAD
+
         return recognize(file, DEFAULT_OCR_TYPE, "TRAILER");
-=======
-        return recognize(file, "unified", "TRAILER");
->>>>>>> 7fbd6506b96f09e1a4feffc970b50aafa75abb64
+
     }
 
     public PlateRecognitionResultDTO recognize(MultipartFile file, String ocrType, String plateType) throws IOException {
@@ -105,16 +103,14 @@ public class PlateRecognitionService {
             String gateName,
             String inOutType
     ) throws IOException {
-<<<<<<< HEAD
+
+        ocrType = normalizeOcrType(ocrType);
         FastApiPlateResponseDTO aiResult = requestPlateRecognition(file, ocrType);
 
         if (shouldRetryWithCrnn(aiResult, ocrType)) {
             aiResult = requestPlateRecognition(file, FALLBACK_OCR_TYPE);
         }
 
-=======
-        FastApiPlateResponseDTO aiResult = requestPlateRecognition(file);
->>>>>>> 7fbd6506b96f09e1a4feffc970b50aafa75abb64
         normalizePlateNumber(aiResult);
         plateType = normalizePlateType(plateType);
 
@@ -223,7 +219,7 @@ public class PlateRecognitionService {
         return result;
     }
 
-    private FastApiPlateResponseDTO requestPlateRecognition(MultipartFile file) throws IOException {
+    private FastApiPlateResponseDTO requestPlateRecognition(MultipartFile file, String ocrType) throws IOException {
         RestTemplate restTemplate = new RestTemplate();
 
         ByteArrayResource imageResource = new ByteArrayResource(file.getBytes()) {
@@ -235,6 +231,7 @@ public class PlateRecognitionService {
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", imageResource);
+        body.add("ocrType", normalizeOcrType(ocrType));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -263,6 +260,14 @@ public class PlateRecognitionService {
         return aiResult != null
                 && aiResult.getReviewReasons() != null
                 && aiResult.getReviewReasons().contains(AI_PROCESS_FAILED);
+    }
+
+    private String normalizeOcrType(String ocrType) {
+        if (ocrType == null || ocrType.isBlank()) {
+            return DEFAULT_OCR_TYPE;
+        }
+
+        return ocrType.trim().toLowerCase();
     }
 
     private GateLogDTO createGateLog(
