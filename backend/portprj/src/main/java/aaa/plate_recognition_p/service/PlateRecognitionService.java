@@ -39,6 +39,9 @@ public class PlateRecognitionService {
 
     private static final String RECOGNITION_SUCCESS = "RECOGNITION_SUCCESS";
     private static final String RECOGNITION_NEED_REVIEW = "RECOGNITION_NEED_REVIEW";
+    private static final String DEFAULT_OCR_TYPE = "crnn";
+    private static final String FALLBACK_OCR_TYPE = "crnn";
+    private static final String AI_PROCESS_FAILED = "AI_PROCESS_FAILED";
 
     @Value("${ai.plate.url:http://127.0.0.1:8000/api/plate-recognition}")
     String fastApiUrl;
@@ -56,7 +59,9 @@ public class PlateRecognitionService {
     ExceptionLogService exceptionLogService;
 
     public PlateRecognitionResultDTO recognize(MultipartFile file) throws IOException {
-        return recognize(file, "unified", "TRAILER");
+
+        return recognize(file, DEFAULT_OCR_TYPE, "TRAILER");
+
     }
 
     public PlateRecognitionResultDTO recognize(MultipartFile file, String ocrType, String plateType) throws IOException {
@@ -98,7 +103,14 @@ public class PlateRecognitionService {
             String gateName,
             String inOutType
     ) throws IOException {
-        FastApiPlateResponseDTO aiResult = requestPlateRecognition(file);
+
+        ocrType = normalizeOcrType(ocrType);
+        FastApiPlateResponseDTO aiResult = requestPlateRecognition(file, ocrType);
+
+        if (shouldRetryWithCrnn(aiResult, ocrType)) {
+            aiResult = requestPlateRecognition(file, FALLBACK_OCR_TYPE);
+        }
+
         normalizePlateNumber(aiResult);
         plateType = normalizePlateType(plateType);
 
@@ -207,7 +219,7 @@ public class PlateRecognitionService {
         return result;
     }
 
-    private FastApiPlateResponseDTO requestPlateRecognition(MultipartFile file) throws IOException {
+    private FastApiPlateResponseDTO requestPlateRecognition(MultipartFile file, String ocrType) throws IOException {
         RestTemplate restTemplate = new RestTemplate();
 
         ByteArrayResource imageResource = new ByteArrayResource(file.getBytes()) {
@@ -219,6 +231,7 @@ public class PlateRecognitionService {
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", imageResource);
+        body.add("ocrType", normalizeOcrType(ocrType));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -237,6 +250,24 @@ public class PlateRecognitionService {
         } catch (RestClientException e) {
             return null;
         }
+    }
+
+    private boolean shouldRetryWithCrnn(FastApiPlateResponseDTO aiResult, String requestedOcrType) {
+        if (FALLBACK_OCR_TYPE.equalsIgnoreCase(requestedOcrType)) {
+            return false;
+        }
+
+        return aiResult != null
+                && aiResult.getReviewReasons() != null
+                && aiResult.getReviewReasons().contains(AI_PROCESS_FAILED);
+    }
+
+    private String normalizeOcrType(String ocrType) {
+        if (ocrType == null || ocrType.isBlank()) {
+            return DEFAULT_OCR_TYPE;
+        }
+
+        return ocrType.trim().toLowerCase();
     }
 
     private GateLogDTO createGateLog(

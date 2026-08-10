@@ -1,10 +1,21 @@
-.venv/
+result/
+runs/
+output/
+outputs/
 __pycache__/
+*.pyc
+*.csv
+*.xlsx
+!dependencies.txt
+!models/crnn_summary.txt
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
 .tools/
+.codex_wbs_work/
+architecture-diagram-texts.json
+simple-architecture-texts.json
 .env
 .env.*
 !.env.example
@@ -48,4 +59,3 @@ AI/.paddlex/
 work/
 outputs/
 AI/Ultralytics/persistent_cache.json
-

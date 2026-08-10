@@ -6,6 +6,7 @@ export const useDashboardStore = defineStore('dashboard', {
     dashboard: null,
     loading: false,
     error: '',
+    lastUpdatedAt: null,
   }),
 
   actions: {
@@ -19,6 +20,7 @@ export const useDashboardStore = defineStore('dashboard', {
 
       try {
         this.dashboard = await fetchAdminDashboard()
+        this.lastUpdatedAt = new Date().toISOString()
       } catch (error) {
         this.error = '대시보드 현황을 불러오지 못했습니다.'
         throw error

@@ -2,20 +2,30 @@ import { defineStore } from 'pinia'
 import { yardMapLayout } from '@/config/yardMapLayout'
 import { fetchYardMapSnapshot } from '@/api/adminApi/yardMapApi'
 
-const sortNewestFirst = (left, right) => (right.gateLogId || 0) - (left.gateLogId || 0)
+const fallbackGateName = '위치 미설정 게이트'
 
 export const useYardMapStore = defineStore('yardMap', {
   state: () => ({
-    containers: [],
-    gateLogs: [],
+    gates: [],
+    vehicles: [],
     yardSectors: [],
     loading: false,
     error: '',
+    lastUpdatedAt: null,
+    failedAt: null,
+    failureCount: 0,
+    stale: false,
   }),
 
   getters: {
-    containerCountBySectorId: (state) => state.containers.reduce((counts, container) => {
-      counts.set(container.sectorId, (counts.get(container.sectorId) || 0) + 1)
+    containerCountBySectorId: (state) => state.yardSectors.reduce((counts, sector) => {
+      counts.set(sector.sectorId, sector.containerCount || 0)
+      return counts
+    }, new Map()),
+
+    vehicleCountBySectorId: (state) => state.vehicles.reduce((counts, vehicle) => {
+      if (!vehicle.sectorId) return counts
+      counts.set(vehicle.sectorId, (counts.get(vehicle.sectorId) || 0) + 1)
       return counts
     }, new Map()),
 
@@ -26,58 +36,60 @@ export const useYardMapStore = defineStore('yardMap', {
       return {
         ...block,
         sectorCount: sectors.length,
-        containerCount: state.containers.filter((container) => sectorIds.has(container.sectorId)).length,
+        containerCount: sectors.reduce((total, sector) => total + (sector.containerCount || 0), 0),
         waitingVehicleCount: sectors.reduce((total, sector) => total + (sector.waitingVehicleCount || 0), 0),
+        workOrderCount: sectors.reduce((total, sector) => total + (sector.workOrderCount || 0), 0),
+        vehicleCount: state.vehicles.filter((vehicle) => sectorIds.has(vehicle.sectorId)).length,
       }
     }),
 
     gateSummary: (state) => {
-      const configuredGates = new Map(yardMapLayout.gates.map((gate) => [gate.gateNumber, gate]))
-      const logsByGateNumber = new Map()
+      const gatesByNumber = new Map(state.gates.map((gate) => [gate.gateNumber, gate]))
+      const configuredNumbers = new Set(yardMapLayout.gates.map((gate) => gate.gateNumber))
 
-      state.gateLogs.forEach((log) => {
-        const gateNumber = log.gateNumber || 'UNASSIGNED'
-        logsByGateNumber.set(gateNumber, [...(logsByGateNumber.get(gateNumber) || []), log])
-      })
+      const configured = yardMapLayout.gates.map((gate) => ({
+        ...gate,
+        ...(gatesByNumber.get(gate.gateNumber) || {}),
+        gateName: gatesByNumber.get(gate.gateNumber)?.gateName || gate.gateName,
+        direction: gate.direction,
+        position: gate.position,
+      }))
 
-      const mapped = yardMapLayout.gates.map((gate) => {
-        const latestLog = [...(logsByGateNumber.get(gate.gateNumber) || [])].sort(sortNewestFirst)[0] || null
-        return { ...gate, latestLog }
-      })
-      const unmapped = [...logsByGateNumber.entries()]
-        .filter(([gateNumber]) => !configuredGates.has(gateNumber))
-        .map(([gateNumber, logs]) => {
-          const latestLog = [...logs].sort(sortNewestFirst)[0] || null
-          return {
-            gateNumber,
-            gateName: latestLog?.gateName || '위치 미설정 게이트',
-            direction: latestLog?.inOutType || '-',
-            position: null,
-            latestLog,
-          }
-        })
+      const unmapped = state.gates
+        .filter((gate) => !configuredNumbers.has(gate.gateNumber))
+        .map((gate) => ({
+          ...gate,
+          gateName: gate.gateName || fallbackGateName,
+          direction: gate.direction || '-',
+          position: null,
+        }))
 
-      return [...mapped, ...unmapped]
+      return [...configured, ...unmapped]
     },
-
   },
 
   actions: {
     async loadYardMap() {
       this.loading = true
-      this.error = ''
 
-      const snapshot = await fetchYardMapSnapshot()
-
-      if (snapshot.containers) this.containers = snapshot.containers
-      if (snapshot.gateLogs) this.gateLogs = snapshot.gateLogs
-      if (snapshot.yardSectors) this.yardSectors = snapshot.yardSectors
-
-      if (snapshot.hasError) {
-        this.error = '일부 현황 데이터를 불러오지 못했습니다. 기존 데이터가 있으면 계속 표시합니다.'
+      try {
+        const snapshot = await fetchYardMapSnapshot()
+        this.yardSectors = snapshot?.sectors || []
+        this.gates = snapshot?.gates || []
+        this.vehicles = snapshot?.vehicles || []
+        this.error = ''
+        this.lastUpdatedAt = new Date().toISOString()
+        this.failedAt = null
+        this.failureCount = 0
+        this.stale = false
+      } catch (loadError) {
+        this.error = loadError.message || '운영 맵 데이터를 불러오지 못했습니다.'
+        this.failedAt = new Date().toISOString()
+        this.failureCount += 1
+        this.stale = this.lastUpdatedAt !== null
+      } finally {
+        this.loading = false
       }
-
-      this.loading = false
     },
   },
 })

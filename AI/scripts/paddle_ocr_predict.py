@@ -11,7 +11,10 @@ ocr = PaddleOCR(lang="korean", use_angle_cls=True)
 
 
 def predict_paddle_ocr(crop_path):
-    result = ocr.ocr(str(crop_path), cls=True)
+    try:
+        result = ocr.ocr(str(crop_path), cls=True)
+    except TypeError:
+        result = ocr.ocr(str(crop_path))
 
     raw_texts = []
     confidence_list = []

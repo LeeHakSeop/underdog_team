@@ -18,4 +18,9 @@ public class DashboardSummaryDTO {
     private Integer workReady;
     private Integer workInProgress;
     private Integer workDone;
+    private Integer waitingVehicles;
+    private Integer congestedSectors;
+    private Integer warningSectors;
+    private Integer maintenanceVehicles;
+    private Integer exitHoldContainers;
 }

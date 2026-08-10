@@ -32,7 +32,7 @@ def normalize_candidate(candidate):
 
 
 def normalize_result(result):
-    """단일 모델 출력을 Spring FastApiPlateResponseDTO 형식으로 고정한다."""
+    """Normalize pipeline output to the Spring FastApiPlateResponseDTO shape."""
     plate_number = result.get("plateNumber", "")
 
     return {

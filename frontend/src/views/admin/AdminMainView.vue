@@ -816,9 +816,13 @@ onUnmounted(() => {
 
 .control-layout {
   display: grid;
+
+  grid-template-columns: minmax(0, 1.45fr) minmax(420px, 0.9fr);
+
   height: 686px;
   min-height: 0;
   grid-template-columns: minmax(0, 2fr) minmax(300px, 0.65fr);
+
   gap: 10px;
 }
 
@@ -984,8 +988,12 @@ onUnmounted(() => {
   min-height: 0;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 10px;
+
+  padding: 12px;
+
   padding: 10px;
   overflow: hidden;
+
 }
 
 .ai-process-zone {
@@ -1051,8 +1059,8 @@ onUnmounted(() => {
   height: 26px;
   flex: 0 0 auto;
   place-items: center;
-  color: #172033;
-  background: #91a0c0;
+  color: #ffffff;
+  background: var(--blue-700);
   border-radius: 999px;
 }
 
@@ -1251,14 +1259,18 @@ onUnmounted(() => {
   color: #536579;
   font-size: 14px;
   font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 .info-stack dd {
+  min-width: 0;
   margin: 0;
   color: #16202a;
   font-size: 14px;
   line-height: 1.4;
   font-weight: 700;
+  line-height: 1.35;
 }
 
 .monitor-grid {

@@ -7,6 +7,7 @@ import { vehicleTypeLabel } from '@/config/vehicleType'
 const plateRecognitionStore = usePlateRecognitionStore()
 const gateLogStore = useGateLogStore()
 
+const selectedOcrType = ref('crnn')
 const tractorFile = ref(null)
 const trailerFile = ref(null)
 const tractorPreviewUrl = ref('')
@@ -368,7 +369,7 @@ const submitTractorRecognize = async () => {
     return
   }
 
-  await plateRecognitionStore.recognize(tractorFile.value, 'tractor')
+  await plateRecognitionStore.recognize(tractorFile.value, selectedOcrType.value, 'tractor')
 }
 
 const submitTrailerRecognize = async () => {
@@ -376,7 +377,7 @@ const submitTrailerRecognize = async () => {
     return
   }
 
-  await plateRecognitionStore.recognize(trailerFile.value, 'trailer')
+  await plateRecognitionStore.recognize(trailerFile.value, selectedOcrType.value, 'trailer')
 }
 
 const submitGateProcess = async () => {
@@ -410,6 +411,14 @@ const submitGateProcess = async () => {
             <strong>AI 엔진 연결 완료</strong>
           </div>
         </div>
+
+        <label class="model-select">
+          <span>OCR 모델</span>
+          <select v-model="selectedOcrType">
+            <option value="crnn">CRNN</option>
+            <option value="paddle">PaddleOCR</option>
+          </select>
+        </label>
 
         <label class="model-select">
           <span>출입 구분 (자동)</span>
