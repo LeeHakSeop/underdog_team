@@ -3,9 +3,13 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useDashboardStore } from '@/stores/adminStore/dashboardStore'
+import { useWeatherStore } from '@/stores/weatherStore'
+import WeatherCard from '@/components/WeatherCard.vue'
 
 const dashboardStore = useDashboardStore()
+const weatherStore = useWeatherStore()
 const { dashboard, loading, error, lastUpdatedAt } = storeToRefs(dashboardStore)
+const { weatherInfo, loading: weatherLoading, errMsg: weatherError } = storeToRefs(weatherStore)
 
 const summary = computed(() => dashboard.value?.summary || {})
 const workStatusList = computed(() => dashboard.value?.workStatusList || [])
@@ -130,10 +134,14 @@ const workCards = computed(() => [
 
 onMounted(() => {
   dashboardStore.loadDashboard()
+  weatherStore.fetchWeather().catch(() => {})
 
   refreshTimer = setInterval(() => {
     if (!dashboardStore.loading) {
       dashboardStore.loadDashboard().catch(() => {})
+    }
+    if (!weatherStore.loading) {
+      weatherStore.fetchWeather().catch(() => {})
     }
   }, 5000)
 })
@@ -145,6 +153,13 @@ onUnmounted(() => {
 
 <template>
   <div class="page-stack admin-dashboard-page">
+    <WeatherCard
+      :weather="weatherInfo"
+      :loading="weatherLoading"
+      :error="weatherError"
+      title="부산항 현재 날씨"
+    />
+
     <section class="panel">
       <div class="section-title dashboard-title">
         <div>

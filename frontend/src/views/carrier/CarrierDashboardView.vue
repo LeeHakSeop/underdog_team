@@ -4,12 +4,16 @@ import { storeToRefs } from 'pinia'
 import { readCurrentUser } from '@/stores/authStore'
 import { useCarrierStore } from '@/stores/carrierStore'
 import { useDriverStore } from '@/stores/driverStore'
+import { useWeatherStore } from '@/stores/weatherStore'
+import WeatherCard from '@/components/WeatherCard.vue'
 
 const currentUser = readCurrentUser()
 const carrierStore = useCarrierStore()
 const driverStore = useDriverStore()
+const weatherStore = useWeatherStore()
 const { carriers } = storeToRefs(carrierStore)
 const { drivers } = storeToRefs(driverStore)
+const { weatherInfo, loading: weatherLoading, errMsg: weatherError } = storeToRefs(weatherStore)
 
 const getId = (row, key) => row?.[key] ?? row?.[key.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)]
 
@@ -66,6 +70,7 @@ const actionCards = computed(() => [
 const loadData = () => {
   carrierStore.loadCarriers().catch(() => {})
   driverStore.loadDrivers().catch(() => {})
+  weatherStore.fetchWeather().catch(() => {})
 }
 
 onMounted(loadData)
@@ -73,6 +78,13 @@ onMounted(loadData)
 
 <template>
   <div class="page-stack">
+    <WeatherCard
+      :weather="weatherInfo"
+      :loading="weatherLoading"
+      :error="weatherError"
+      title="배차 참고 날씨"
+    />
+
     <section v-if="carrierStore.error || driverStore.error" class="panel error-panel">
       {{ carrierStore.error || driverStore.error }}
     </section>

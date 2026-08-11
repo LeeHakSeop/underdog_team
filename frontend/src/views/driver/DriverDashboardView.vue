@@ -5,6 +5,8 @@ import { readCurrentUser } from '@/stores/authStore'
 import { useCarrierStore } from '@/stores/carrierStore'
 import { useDriverStore } from '@/stores/driverStore'
 import { useVehicleStore } from '@/stores/vehicleStore'
+import { useWeatherStore } from '@/stores/weatherStore'
+import WeatherCard from '@/components/WeatherCard.vue'
 import { vehicleTypeLabel } from '@/config/vehicleType'
 import { booleanLabel, displayTone, workStatusLabel } from '@/config/displayLabels'
 
@@ -12,9 +14,11 @@ const currentUser = readCurrentUser()
 const carrierStore = useCarrierStore()
 const driverStore = useDriverStore()
 const vehicleStore = useVehicleStore()
+const weatherStore = useWeatherStore()
 const { carriers } = storeToRefs(carrierStore)
 const { drivers, myWorkOrders, loading, error } = storeToRefs(driverStore)
 const { myVehicle } = storeToRefs(vehicleStore)
+const { weatherInfo, loading: weatherLoading, errMsg: weatherError } = storeToRefs(weatherStore)
 let refreshTimer = null
 const selectedWorkStatus = ref('')
 
@@ -120,6 +124,8 @@ const getWorkStatusText = (status) => workStatusLabel(status)
 const getEntryClass = (value) => (value ? 'green' : 'red')
 
 onMounted(async () => {
+  weatherStore.fetchWeather().catch(() => {})
+
   if (loginUser.value?.userId) {
     await Promise.allSettled([
       driverStore.loadDrivers(),
@@ -135,6 +141,9 @@ onMounted(async () => {
       if (!driverStore.loading) {
         driverStore.loadMyWorkOrdersByUserId(loginUser.value.userId).catch(() => {})
       }
+      if (!weatherStore.loading) {
+        weatherStore.fetchWeather().catch(() => {})
+      }
     }, 5000)
   }
 })
@@ -146,6 +155,13 @@ onUnmounted(() => {
 
 <template>
   <div class="page-stack driver-page">
+    <WeatherCard
+      :weather="weatherInfo"
+      :loading="weatherLoading"
+      :error="weatherError"
+      title="현재 작업지 날씨"
+    />
+
     <section class="driver-identity" aria-label="현재 로그인 기사">
       <div class="identity-item">
         <span>기사명</span>
