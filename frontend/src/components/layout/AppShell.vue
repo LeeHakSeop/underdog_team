@@ -90,6 +90,10 @@ const icons = {
     ['path', { d: 'M7 20H4v-3' }],
     ['path', { d: 'M7 12h10' }],
   ],
+  activity: [
+    ['path', { d: 'M3 12h4l2.5-6 4.5 12 2.5-6H21' }],
+    ['path', { d: 'M4 20h16' }],
+  ],
   menu: [
     ['path', { d: 'M4 7h16' }],
     ['path', { d: 'M4 12h16' }],
@@ -136,6 +140,7 @@ const menus = {
 
     { label: '운영 맵', path: '/admin/yard-map', icon: 'map' },
     { label: 'AI 인식 검증', path: '/admin/plate-recognition', icon: 'scan' },
+    { label: '예지보전', path: '/admin/predictive-maintenance', icon: 'activity' },
     { label: '가입 회원 관리', path: '/admin/members', icon: 'users' },
 
     { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
@@ -160,6 +165,7 @@ const menuLabelOverrides = {
   '/admin/dashboard': '데이터 현황',
   '/admin/yard-map': '야드 맵',
   '/admin/plate-recognition': 'AI 번호판 인식',
+  '/admin/predictive-maintenance': '예지보전',
   '/admin/members': '회원 관리',
   '/admin/work-orders': '작업 관리',
   '/admin/events': '알림/이벤트',
@@ -180,13 +186,6 @@ const roleLabelOverrides = {
 
 const getMenuLabel = (item) => menuLabelOverrides[item.path] || item.label
 const activeRoleLabel = computed(() => roleLabelOverrides[activeRole.value] || '관리자')
-const accountDisplayName = computed(() =>
-  currentUser.value?.displayName ||
-  currentUser.value?.userName ||
-  currentUser.value?.loginId ||
-  currentUser.value?.username ||
-  '-',
-)
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
@@ -218,7 +217,7 @@ const logout = () => {
 
       <div class="role-badge">
         <small>현재 화면</small>
-        <strong>{{ accountDisplayName }} / {{ activeRoleLabel }}</strong>
+        <strong>{{ activeRoleLabel }}</strong>
       </div>
 
       <nav class="side-nav">
