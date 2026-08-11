@@ -5,7 +5,6 @@ import { fetchCarriers } from '@/api/carrierApi'
 import { fetchDrivers } from '@/api/driverApi'
 import { createVehicle, fetchVehiclesByCarrier, updateVehicle } from '@/api/vehicleApi'
 import { fetchTrailerWorkInfo, fetchWorkOrders } from '@/api/adminApi/workOrderApi'
-import { vehicleTypeLabel } from '@/config/vehicleType'
 
 const props = defineProps({
   embedded: {
@@ -43,7 +42,6 @@ let refreshTimer = null
 
 const currentUser = readCurrentUser()
 
-const vehicleTypes = ['트레일러']
 const tonnageOptions = ['1톤', '2.5톤', '5톤', '8.5톤', '11톤', '18톤', '25톤']
 
 const form = ref({
@@ -465,9 +463,8 @@ onUnmounted(() => {
                     </button>
                   </div>
                 </div>
-                <template v-else>
+                <div v-else class="trailer-display-cell">
                   <strong>{{ summary.vehicle.plateNumber || '-' }}</strong>
-                  <small>{{ vehicleTypeLabel(summary.vehicle.vehicleType) }}</small>
                   <button
                     class="table-action-button"
                     type="button"
@@ -476,7 +473,7 @@ onUnmounted(() => {
                   >
                     수정
                   </button>
-                </template>
+                </div>
               </td>
               <td>{{ summary.vehicle.vehicleStatus || (summary.vehicle.isRegistered ? '승인' : '승인 대기') }}</td>
               <td>{{ summary.workOrder?.workOrderId ? `#${summary.workOrder.workOrderId}` : '-' }}</td>
@@ -552,15 +549,6 @@ onUnmounted(() => {
               v-model.trim="form.plateNumber"
               placeholder="예: 부산80바9999"
             />
-          </div>
-
-          <div class="field">
-            <label for="vehicleType">차량종류</label>
-            <select id="vehicleType" v-model="form.vehicleType">
-              <option v-for="type in vehicleTypes" :key="type" :value="type">
-                {{ type }}
-              </option>
-            </select>
           </div>
 
           <div class="field">
@@ -784,6 +772,17 @@ onUnmounted(() => {
 .trailer-edit-actions {
   display: flex;
   gap: 4px;
+}
+
+.trailer-display-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.trailer-display-cell .table-action-button {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .table-action-button {

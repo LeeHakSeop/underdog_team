@@ -178,7 +178,7 @@ onUnmounted(() => {
         </div>
 
         <div class="table-wrap">
-          <table class="data-table">
+          <table class="data-table work-status-table">
             <thead>
               <tr>
                 <th>작업 상태</th>
@@ -357,6 +357,18 @@ onUnmounted(() => {
   color: var(--ink-900);
   font-size: 22px;
   font-weight: 900;
+}
+
+.work-status-table {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  table-layout: fixed;
+}
+
+.work-status-table th,
+.work-status-table td {
+  width: 50%;
 }
 
 .sector-list {

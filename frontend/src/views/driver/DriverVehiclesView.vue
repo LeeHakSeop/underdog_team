@@ -254,6 +254,11 @@ onMounted(loadData)
   border: 1px solid var(--line);
 }
 
+.vehicle-grid > .info-card:first-child {
+  gap: 7px;
+  padding-block: 8px;
+}
+
 .info-card h3 {
   margin: 0;
   font-size: 16px;
@@ -264,6 +269,11 @@ onMounted(loadData)
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.card-heading .ghost-button {
+  min-height: 28px;
+  padding-inline: 9px;
 }
 
 .edit-form {
