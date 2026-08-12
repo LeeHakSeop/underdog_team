@@ -5,6 +5,7 @@ import { fetchCarriers } from '@/api/carrierApi'
 import { fetchDrivers } from '@/api/driverApi'
 import { fetchVehiclesByCarrier } from '@/api/vehicleApi'
 import { fetchContainers } from '@/api/adminApi/containerApi'
+import { fetchYardSectors } from '@/api/adminApi/yardSectorApi'
 import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
 import { vehicleTypeLabel } from '@/config/vehicleType'
 
@@ -36,6 +37,7 @@ const carriers = ref([])
 const drivers = ref([])
 const vehicles = ref([])
 const containers = ref([])
+const yardSectors = ref([])
 const workOrderPage = ref(1)
 const workOrderPageSize = 10
 let refreshTimer = null
@@ -139,6 +141,14 @@ const selectedTrailer = computed(() =>
   trailerVehicles.value.find((vehicle) => vehicle.vehicleId === form.value.trailerVehicleId),
 )
 
+const selectedContainer = computed(() =>
+  containers.value.find((container) => container.containerId === form.value.containerId) || null,
+)
+
+const selectedSector = computed(() =>
+  yardSectors.value.find((sector) => sector.sectorId === selectedContainer.value?.sectorId) || null,
+)
+
 const getOrderValue = (order, key) => order?.[key] ?? null
 
 const myWorkOrders = computed(() => {
@@ -187,6 +197,72 @@ const getVehiclePlate = (vehicleId) =>
 
 const getContainerNumber = (containerId) =>
   containers.value.find((container) => container.containerId === containerId)?.containerNumber || '-'
+
+const activeSectorAssignments = computed(() => myWorkOrders.value
+  .filter((order) => isActiveWorkOrder(order))
+  .reduce((acc, order) => {
+    const container = containers.value.find((item) => item.containerId === order.containerId)
+    const sectorId = container?.sectorId
+    if (!sectorId) return acc
+    acc[sectorId] = (acc[sectorId] || 0) + 1
+    return acc
+  }, {}))
+
+const assignmentWarnings = computed(() => {
+  const items = []
+
+  if (form.value.driverId && assignedDriverIds.value.has(form.value.driverId) && editingWorkOrderId.value === null) {
+    items.push({
+      tone: 'red',
+      title: '기사 중복 배정 위험',
+      text: '선택한 기사는 이미 다른 활성 작업에 배정되어 있습니다.',
+    })
+  }
+
+  if (form.value.trailerVehicleId && assignedTrailerVehicleIds.value.has(form.value.trailerVehicleId) && editingWorkOrderId.value === null) {
+    items.push({
+      tone: 'red',
+      title: '트레일러 중복 배정 위험',
+      text: '선택한 트레일러는 이미 다른 활성 작업에서 사용 중입니다.',
+    })
+  }
+
+  if (selectedTrailer.value && selectedTrailer.value.vehicleStatus && selectedTrailer.value.vehicleStatus !== '정상') {
+    items.push({
+      tone: 'amber',
+      title: '트레일러 상태 확인 필요',
+      text: `현재 상태: ${selectedTrailer.value.vehicleStatus}`,
+    })
+  }
+
+  if (selectedSector.value?.sectorStatus && !['정상', 'NORMAL', 'ACTIVE'].includes(selectedSector.value.sectorStatus)) {
+    items.push({
+      tone: 'amber',
+      title: '야드 섹터 상태 확인 필요',
+      text: `${selectedSector.value.sectorName || '선택 섹터'} 상태가 ${selectedSector.value.sectorStatus}입니다.`,
+    })
+  }
+
+  const capacity = Number(selectedSector.value?.capacity || 40)
+  const sectorLoad = selectedContainer.value?.sectorId ? (activeSectorAssignments.value[selectedContainer.value.sectorId] || 0) : 0
+  if (selectedContainer.value?.sectorId && sectorLoad >= capacity) {
+    items.push({
+      tone: 'red',
+      title: '야드 수용량 초과 위험',
+      text: `${selectedSector.value?.sectorName || '선택 섹터'} 배정 작업이 ${sectorLoad}건으로 수용량 기준에 도달했습니다.`,
+    })
+  }
+
+  if (items.length === 0) {
+    items.push({
+      tone: 'green',
+      title: '사전 확인 정상',
+      text: '현재 선택 기준으로 즉시 확인되는 배정 충돌은 없습니다.',
+    })
+  }
+
+  return items
+})
 
 const getStatusText = (status) => {
   const statusMap = {
@@ -263,15 +339,17 @@ const loadData = async () => {
   errorMessage.value = ''
 
   try {
-    const [carrierData, driverData, containerData] = await Promise.all([
+    const [carrierData, driverData, containerData, yardSectorData] = await Promise.all([
       fetchCarriers(),
       fetchDrivers(),
       fetchContainers(),
+      fetchYardSectors(),
     ])
 
     carriers.value = carrierData || []
     drivers.value = driverData || []
     containers.value = containerData || []
+    yardSectors.value = yardSectorData || []
 
     await loadCarrierVehicles()
 
@@ -458,6 +536,18 @@ onUnmounted(() => {
           <div><span>컨테이너</span><strong>{{ getContainerNumber(form.containerId) }}</strong></div>
           <div><span>작업 유형</span><strong>{{ form.workType || '-' }}</strong></div>
           <div><span>등록 상태</span><strong>관리자 승인 대기</strong></div>
+        </div>
+
+        <div class="assignment-warning-list">
+          <article
+            v-for="item in assignmentWarnings"
+            :key="item.title"
+            class="assignment-warning-card"
+            :class="item.tone"
+          >
+            <strong>{{ item.title }}</strong>
+            <p>{{ item.text }}</p>
+          </article>
         </div>
 
         <div class="notice-box">
@@ -661,6 +751,46 @@ onUnmounted(() => {
 .auto-vehicle-field small {
   display: block;
   margin-top: 6px;
+}
+
+.assignment-warning-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.assignment-warning-card {
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: #f8fbfe;
+}
+
+.assignment-warning-card strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.assignment-warning-card p {
+  margin: 0;
+  color: var(--ink-600);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.assignment-warning-card.red {
+  border-color: #fecaca;
+  background: #fff1f2;
+}
+
+.assignment-warning-card.amber {
+  border-color: #f5d38a;
+  background: #fff8e7;
+}
+
+.assignment-warning-card.green {
+  border-color: #b7ebc9;
+  background: #ecfdf3;
 }
 
 .notice-box {

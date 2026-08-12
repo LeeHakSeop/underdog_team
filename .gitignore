@@ -19,6 +19,8 @@ simple-architecture-texts.json
 .env
 .env.*
 !.env.example
+.weather-api-key
+backend/portprj/.weather-api-key
 
 frontend/dist/
 frontend/node_modules/

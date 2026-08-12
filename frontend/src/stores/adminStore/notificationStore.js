@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { fetchNotifications } from '@/api/adminApi/notificationApi'
+import { fetchNotifications, processNotification } from '@/api/adminApi/notificationApi'
 
 const toList = (data) => {
   if (Array.isArray(data)) return data
@@ -12,6 +12,7 @@ export const useNotificationStore = defineStore('notification', {
     notifications: [],
     loading: false,
     error: '',
+    processingId: null,
   }),
 
   actions: {
@@ -26,6 +27,24 @@ export const useNotificationStore = defineStore('notification', {
         throw error
       } finally {
         this.loading = false
+      }
+    },
+
+    async processNotification(exceptionLogId, managerAction) {
+      this.processingId = exceptionLogId
+      this.error = ''
+
+      try {
+        await processNotification(exceptionLogId, {
+          processStatus: 'PROCESSED',
+          managerAction: managerAction || '관리자 확인 완료',
+        })
+        this.notifications = toList(await fetchNotifications())
+      } catch (error) {
+        this.error = error.message || '예외 처리 상태를 저장하지 못했습니다.'
+        throw error
+      } finally {
+        this.processingId = null
       }
     },
   },

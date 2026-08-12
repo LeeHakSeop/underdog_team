@@ -5,10 +5,10 @@ export const yardMapLayout = {
   center: [35.10535, 129.0846],
   zoom: 16,
   gates: [
-    { gateNumber: 'G01', gateName: '감만부두 입차 게이트 1', position: [35.10766, 129.07897], direction: 'IN' },
-    { gateNumber: 'G03', gateName: '감만부두 입차 게이트 2', position: [35.10734, 129.07896], direction: 'IN' },
-    { gateNumber: 'G02', gateName: '감만부두 출차 게이트 1', position: [35.10766, 129.07858], direction: 'OUT' },
-    { gateNumber: 'G04', gateName: '감만부두 출차 게이트 2', position: [35.10734, 129.07857], direction: 'OUT' },
+    { gateNumber: 'G01', gateName: '감만부두 입차 게이트 1', position: [35.10829, 129.07897], direction: 'IN' },
+    { gateNumber: 'G03', gateName: '감만부두 입차 게이트 2', position: [35.10823, 129.07906], direction: 'IN' },
+    { gateNumber: 'G02', gateName: '감만부두 출차 게이트 1', position: [35.10829, 129.07858], direction: 'OUT' },
+    { gateNumber: 'G04', gateName: '감만부두 출차 게이트 2', position: [35.10823, 129.07867], direction: 'OUT' },
   ],
   sectorBlocks: [
     { sectorName: 'A', label: 'A 구역', center: [35.105358, 129.080955], widthMeters: 340, heightMeters: 290 },

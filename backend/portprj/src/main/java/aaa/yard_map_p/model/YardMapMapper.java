@@ -14,24 +14,24 @@ public interface YardMapMapper {
                 ys.sector_name AS sectorName,
                 ys.block_name AS blockName,
                 ys.sector_status AS sectorStatus,
-                COALESCE(ys.capacity, 40) AS capacity,
+                40 AS capacity,
                 COALESCE(ys.waiting_vehicle_count, 0) AS waitingVehicleCount,
                 ys.guide_message AS guideMessage,
                 ys.alt_waiting_area AS altWaitingArea,
                 COUNT(DISTINCT c.container_id) AS containerCount,
                 ROUND(
-                    (COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)) * 100,
+                    (COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)) * 100,
                     1
                 )::float AS usageRate,
                 COUNT(DISTINCT wo.work_order_id) AS workOrderCount,
                 CASE
                     WHEN (
-                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
                     ) >= 0.8
                       OR COALESCE(ys.waiting_vehicle_count, 0) >= 6
                       OR COUNT(DISTINCT wo.work_order_id) >= 3 THEN 'DANGER'
                     WHEN (
-                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
                     ) >= 0.5
                       OR COALESCE(ys.waiting_vehicle_count, 0) >= 3
                       OR COUNT(DISTINCT wo.work_order_id) >= 1 THEN 'WARNING'
@@ -47,7 +47,6 @@ public interface YardMapMapper {
                 ys.sector_name,
                 ys.block_name,
                 ys.sector_status,
-                ys.capacity,
                 ys.waiting_vehicle_count,
                 ys.guide_message,
                 ys.alt_waiting_area
@@ -169,3 +168,4 @@ public interface YardMapMapper {
             """)
     List<YardMapVehicleDTO> vehicles();
 }
+

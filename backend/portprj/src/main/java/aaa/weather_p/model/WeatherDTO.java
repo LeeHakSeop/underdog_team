@@ -1,10 +1,13 @@
 package aaa.weather_p.model;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public class WeatherDTO {
     private boolean available;
     private boolean stale;
+    private boolean fallbackUsed;
     private Double temperature;
     private Double rainfall;
     private Double windSpeed;
@@ -14,14 +17,28 @@ public class WeatherDTO {
     private String description;
     private WeatherRiskLevel riskLevel;
     private String message;
+    private String guideMessage;
+    private String sourceLabel;
+    private String errorCode;
+    private String errorMessage;
     private LocalDateTime updatedAt;
+    private List<WeatherForecastDTO> forecasts = new ArrayList<>();
 
     public static WeatherDTO unavailable(String message) {
+        return unavailable("WEATHER_UNAVAILABLE", message);
+    }
+
+    public static WeatherDTO unavailable(String errorCode, String message) {
         WeatherDTO dto = new WeatherDTO();
         dto.setAvailable(false);
         dto.setStale(false);
+        dto.setFallbackUsed(false);
         dto.setRiskLevel(WeatherRiskLevel.UNKNOWN);
         dto.setMessage(message);
+        dto.setGuideMessage("현장 공지와 관리자 안내를 먼저 확인하세요.");
+        dto.setSourceLabel("부산항 날씨");
+        dto.setErrorCode(errorCode);
+        dto.setErrorMessage(message);
         dto.setUpdatedAt(LocalDateTime.now());
         return dto;
     }
@@ -40,6 +57,14 @@ public class WeatherDTO {
 
     public void setStale(boolean stale) {
         this.stale = stale;
+    }
+
+    public boolean isFallbackUsed() {
+        return fallbackUsed;
+    }
+
+    public void setFallbackUsed(boolean fallbackUsed) {
+        this.fallbackUsed = fallbackUsed;
     }
 
     public Double getTemperature() {
@@ -114,11 +139,51 @@ public class WeatherDTO {
         this.message = message;
     }
 
+    public String getGuideMessage() {
+        return guideMessage;
+    }
+
+    public void setGuideMessage(String guideMessage) {
+        this.guideMessage = guideMessage;
+    }
+
+    public String getSourceLabel() {
+        return sourceLabel;
+    }
+
+    public void setSourceLabel(String sourceLabel) {
+        this.sourceLabel = sourceLabel;
+    }
+
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(String errorCode) {
+        this.errorCode = errorCode;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public List<WeatherForecastDTO> getForecasts() {
+        return forecasts;
+    }
+
+    public void setForecasts(List<WeatherForecastDTO> forecasts) {
+        this.forecasts = forecasts;
     }
 }

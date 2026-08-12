@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, ref } from 'vue'
 import { usePlateRecognitionStore } from '@/stores/adminStore/plateRecognitionStore'
 import { useGateLogStore } from '@/stores/adminStore/gateLogStore'

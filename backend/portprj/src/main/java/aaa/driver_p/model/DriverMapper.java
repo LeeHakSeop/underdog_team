@@ -10,46 +10,79 @@ public interface DriverMapper {
 
     @Select("""
             SELECT
-                driver_id AS driverId,
-                driver_name AS driverName,
-                driver_contact AS driverContact,
-                is_registered AS isRegistered,
-                carrier_id AS carrierId,
-                can_enter AS canEnter,
-                user_id AS userId,
-                (SELECT status FROM users u WHERE u.user_id = driver.user_id) AS userStatus
-            FROM driver
-            ORDER BY driver_id DESC
+                d.driver_id AS driverId,
+                d.driver_name AS driverName,
+                d.driver_contact AS driverContact,
+                d.is_registered AS isRegistered,
+                d.carrier_id AS carrierId,
+                d.can_enter AS canEnter,
+                d.user_id AS userId,
+                u.status AS userStatus,
+                v.vehicle_id AS tractorVehicleId,
+                v.plate_number AS tractorPlateNumber,
+                v.vehicle_type AS tractorVehicleType,
+                v.tonnage AS tractorTonnage,
+                v.tractor_no AS tractorNo,
+                v.chassis_no AS tractorChassisNo,
+                v.vehicle_status AS tractorVehicleStatus
+            FROM driver d
+            LEFT JOIN users u ON u.user_id = d.user_id
+            LEFT JOIN vehicle v
+                ON v.driver_id = d.driver_id
+               AND UPPER(v.vehicle_type) = 'TRACTOR'
+            ORDER BY d.driver_id DESC
             """)
     List<DriverDTO> list();
 
     @Select("""
             SELECT
-                driver_id AS driverId,
-                driver_name AS driverName,
-                driver_contact AS driverContact,
-                is_registered AS isRegistered,
-                carrier_id AS carrierId,
-                can_enter AS canEnter,
-                user_id AS userId,
-                (SELECT status FROM users u WHERE u.user_id = driver.user_id) AS userStatus
-            FROM driver
-            WHERE driver_id = #{driverId}
+                d.driver_id AS driverId,
+                d.driver_name AS driverName,
+                d.driver_contact AS driverContact,
+                d.is_registered AS isRegistered,
+                d.carrier_id AS carrierId,
+                d.can_enter AS canEnter,
+                d.user_id AS userId,
+                u.status AS userStatus,
+                v.vehicle_id AS tractorVehicleId,
+                v.plate_number AS tractorPlateNumber,
+                v.vehicle_type AS tractorVehicleType,
+                v.tonnage AS tractorTonnage,
+                v.tractor_no AS tractorNo,
+                v.chassis_no AS tractorChassisNo,
+                v.vehicle_status AS tractorVehicleStatus
+            FROM driver d
+            LEFT JOIN users u ON u.user_id = d.user_id
+            LEFT JOIN vehicle v
+                ON v.driver_id = d.driver_id
+               AND UPPER(v.vehicle_type) = 'TRACTOR'
+            WHERE d.driver_id = #{driverId}
             """)
     DriverDTO detail(@Param("driverId") Long driverId);
 
     @Select("""
             SELECT
-                driver_id AS driverId,
-                driver_name AS driverName,
-                driver_contact AS driverContact,
-                is_registered AS isRegistered,
-                carrier_id AS carrierId,
-                can_enter AS canEnter,
-                user_id AS userId,
-                (SELECT status FROM users u WHERE u.user_id = driver.user_id) AS userStatus
-            FROM driver
-            WHERE user_id = #{userId}
+                d.driver_id AS driverId,
+                d.driver_name AS driverName,
+                d.driver_contact AS driverContact,
+                d.is_registered AS isRegistered,
+                d.carrier_id AS carrierId,
+                d.can_enter AS canEnter,
+                d.user_id AS userId,
+                u.status AS userStatus,
+                v.vehicle_id AS tractorVehicleId,
+                v.plate_number AS tractorPlateNumber,
+                v.vehicle_type AS tractorVehicleType,
+                v.tonnage AS tractorTonnage,
+                v.tractor_no AS tractorNo,
+                v.chassis_no AS tractorChassisNo,
+                v.vehicle_status AS tractorVehicleStatus
+            FROM driver d
+            LEFT JOIN users u ON u.user_id = d.user_id
+            LEFT JOIN vehicle v
+                ON v.driver_id = d.driver_id
+               AND UPPER(v.vehicle_type) = 'TRACTOR'
+            WHERE d.user_id = #{userId}
             """)
     DriverDTO findByUserId(@Param("userId") Long userId);
 

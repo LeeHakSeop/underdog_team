@@ -35,4 +35,12 @@ public class DriverDTO {
      * users.status
      */
     private String userStatus;
+
+    private Long tractorVehicleId;
+    private String tractorPlateNumber;
+    private String tractorVehicleType;
+    private String tractorTonnage;
+    private String tractorNo;
+    private String tractorChassisNo;
+    private String tractorVehicleStatus;
 }

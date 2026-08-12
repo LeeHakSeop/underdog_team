@@ -12,18 +12,18 @@ public interface DashboardMapper {
             WITH sector_metrics AS (
                 SELECT
                     ys.sector_id,
-                    COALESCE(ys.capacity, 40) AS capacity,
+                    40 AS capacity,
                     COALESCE(ys.waiting_vehicle_count, 0) AS waiting_vehicle_count,
                     COUNT(DISTINCT c.container_id) AS container_count,
                     COUNT(DISTINCT wo.work_order_id) AS work_order_count,
                     CASE
                         WHEN (
-                            COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)
+                            COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
                         ) >= 0.8
                           OR COALESCE(ys.waiting_vehicle_count, 0) >= 6
                           OR COUNT(DISTINCT wo.work_order_id) >= 3 THEN 'DANGER'
                         WHEN (
-                            COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)
+                            COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
                         ) >= 0.5
                           OR COALESCE(ys.waiting_vehicle_count, 0) >= 3
                           OR COUNT(DISTINCT wo.work_order_id) >= 1 THEN 'WARNING'
@@ -34,7 +34,7 @@ public interface DashboardMapper {
                 LEFT JOIN work_order wo
                     ON wo.container_id = c.container_id
                    AND wo.work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS')
-                GROUP BY ys.sector_id, ys.capacity, ys.waiting_vehicle_count
+                GROUP BY ys.sector_id, ys.waiting_vehicle_count
             )
             SELECT
                 (SELECT COUNT(*) FROM vehicle) AS totalVehicles,
@@ -100,21 +100,21 @@ public interface DashboardMapper {
                 COALESCE(ys.waiting_vehicle_count, 0) AS waitingVehicleCount,
                 ys.guide_message AS guideMessage,
                 ys.alt_waiting_area AS altWaitingArea,
-                COALESCE(ys.capacity, 40) AS capacity,
+                40 AS capacity,
                 COUNT(DISTINCT c.container_id) AS containerCount,
                 ROUND(
-                    (COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)) * 100,
+                    (COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)) * 100,
                     1
                 )::float AS usageRate,
                 COUNT(DISTINCT wo.work_order_id) AS workOrderCount,
                 CASE
                     WHEN (
-                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
                     ) >= 0.8
                       OR COALESCE(ys.waiting_vehicle_count, 0) >= 6
                       OR COUNT(DISTINCT wo.work_order_id) >= 3 THEN 'DANGER'
                     WHEN (
-                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
                     ) >= 0.5
                       OR COALESCE(ys.waiting_vehicle_count, 0) >= 3
                       OR COUNT(DISTINCT wo.work_order_id) >= 1 THEN 'WARNING'
@@ -132,17 +132,16 @@ public interface DashboardMapper {
                 ys.sector_status,
                 ys.waiting_vehicle_count,
                 ys.guide_message,
-                ys.alt_waiting_area,
-                ys.capacity
+                ys.alt_waiting_area
             ORDER BY
                 CASE
                     WHEN (
-                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
                     ) >= 0.8
                       OR COALESCE(ys.waiting_vehicle_count, 0) >= 6
                       OR COUNT(DISTINCT wo.work_order_id) >= 3 THEN 1
                     WHEN (
-                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
                     ) >= 0.5
                       OR COALESCE(ys.waiting_vehicle_count, 0) >= 3
                       OR COUNT(DISTINCT wo.work_order_id) >= 1 THEN 2
@@ -155,3 +154,4 @@ public interface DashboardMapper {
             """)
     List<DashboardSectorDTO> sectorList();
 }
+

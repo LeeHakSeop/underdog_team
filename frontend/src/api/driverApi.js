@@ -62,3 +62,15 @@ export const fetchMyWorkOrdersByUserId = (userId) => {
 export const fetchMyWorkStatusHistory = (userId) => {
   return request(`/api/work-order/history/driver/${userId}`)
 }
+
+export const startMyWorkOrder = (workOrderId) => {
+  return request(`/api/work-order/${workOrderId}/start`, {
+    method: 'PATCH',
+  })
+}
+
+export const completeMyWorkOrder = (workOrderId) => {
+  return request(`/api/work-order/${workOrderId}/complete`, {
+    method: 'PATCH',
+  })
+}

@@ -27,7 +27,9 @@ public class WeatherProperties {
 
     public static class Api {
         private String url;
+        private String forecastUrl;
         private String key;
+        private String keyFile;
         private double latitude;
         private double longitude;
         private long cacheTtlSeconds = 300;
@@ -41,12 +43,28 @@ public class WeatherProperties {
             this.url = url;
         }
 
+        public String getForecastUrl() {
+            return forecastUrl;
+        }
+
+        public void setForecastUrl(String forecastUrl) {
+            this.forecastUrl = forecastUrl;
+        }
+
         public String getKey() {
             return key;
         }
 
         public void setKey(String key) {
             this.key = key;
+        }
+
+        public String getKeyFile() {
+            return keyFile;
+        }
+
+        public void setKeyFile(String keyFile) {
+            this.keyFile = keyFile;
         }
 
         public double getLatitude() {
