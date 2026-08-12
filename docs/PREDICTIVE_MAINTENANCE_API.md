@@ -1,135 +1,105 @@
-# 예지보전 REST API 계약 초안
+# 예지보전 DB·API 최소 구성
 
-Base URL은 `/api/predictive-maintenance`를 사용한다. 모든 목록 API는 `typeCode`를 받아 두 번째 설비 유형도 같은 화면과 호출 구조를 재사용한다.
+현재 단계에서는 예지보전 전용 테이블을 세 개만 사용한다.
 
-## 1. 설비 유형과 대시보드
+| 테이블 | 역할 |
+|---|---|
+| `pm_equipment` | 안테나 코드, 위치, 운영 여부 등 장비 기준정보 |
+| `pm_sensor_data` | CSV 센서값과 같은 시점의 모델 판정값 |
+| `pm_event` | 고장 예상, 실제 고장, 수리 완료 및 카카오 발송 결과 |
 
-| Method | URL | 설명 |
-|---|---|---|
-| GET | `/types` | 설비 유형 목록과 활성 여부 조회 |
-| GET | `/dashboard?typeCode=ANTENNA` | 위험 현황, 최근 경보, 위험 설비, 정비 일정 조회 |
-
-대시보드의 초기 응답 구조:
-
-```json
-{
-  "typeCode": "ANTENNA",
-  "typeName": "안테나 예지보전",
-  "dataAsOf": "2026-04-30T23:00:00",
-  "summary": {
-    "total": 24,
-    "normal": 20,
-    "caution": 3,
-    "danger": 1,
-    "openAlerts": 2
-  },
-  "riskDistribution": [],
-  "riskTrend": [],
-  "topRiskEquipment": [],
-  "recentAlerts": [],
-  "upcomingMaintenance": [],
-  "activeModel": null
-}
-```
-
-## 2. 설비 CRUD
-
-| Method | URL | 설명 |
-|---|---|---|
-| GET | `/equipment` | 검색·필터·페이징 목록 |
-| GET | `/equipment/{equipmentId}` | 설비 기본 정보와 최신 위험 조회 |
-| POST | `/equipment` | 설비 등록 |
-| PUT | `/equipment/{equipmentId}` | 설비 수정 |
-| DELETE | `/equipment/{equipmentId}` | 설비 논리 삭제 |
-
-목록 쿼리 예시:
+## 데이터 흐름
 
 ```text
-GET /api/predictive-maintenance/equipment
-    ?typeCode=ANTENNA
-    &keyword=ANT-001
-    &locationCode=TG-01
-    &riskLevel=DANGER
-    &page=0
-    &size=20
+CSV/기기 데이터
+  -> pm_sensor_data 적재
+  -> 예지보전 모델·운영정책 판정
+  -> pm_event 사건 생성
+  -> 카카오 알림 요청
+  -> pm_event.notification_status 갱신
 ```
 
-## 3. 센서 데이터 CRUD
+`pm_equipment`는 `pm_sensor_data`와 `pm_event`가 어느 안테나의 기록인지 연결한다.
+점검·정비 화면은 별도 저장소가 아니라 `pm_event`를 시간순으로 조회해 표시한다.
+
+## 1차 API 범위
+
+Base URL은 `/api/predictive-maintenance`를 사용한다.
 
 | Method | URL | 설명 |
 |---|---|---|
-| GET | `/readings` | 설비·기간별 센서 데이터 조회 |
-| GET | `/readings/{readingId}` | 센서 데이터 단건 조회 |
-| POST | `/readings` | 센서 데이터 등록 |
-| PUT | `/readings/{readingId}` | 센서 데이터 수정 |
-| DELETE | `/readings/{readingId}` | 센서 데이터 삭제 |
-| POST | `/readings/import` | CSV 가져오기(후속 단계) |
+| GET | `/equipment` | 안테나 목록 조회 |
+| GET | `/equipment/{equipmentCode}` | 안테나 기본정보 조회 |
+| GET | `/sensor-data?equipmentCode=&from=&to=` | 그래프용 센서 시계열 조회 |
+| POST | `/sensor-data/import` | CSV 적재 요청 |
+| GET | `/events?equipmentCode=&eventType=` | 전체 또는 안테나별 사건 이력 조회 |
+| POST | `/events` | 모델·관리자 사건 등록 |
+| PATCH | `/events/{eventId}/notification` | 카카오 발송 상태 갱신 |
 
-안테나 센서 데이터는 자주 사용하는 값을 명시적 필드로 보내고, 두 번째 유형의 미확정 값은 `extraMetrics`로 확장한다.
+## 사건과 카카오 알림
 
-## 4. 예측 결과
+- `FAILURE_EXPECTED`: 고장 예상 진입 사건
+- `FAILURE`: 실제 고장 확정 사건
+- `MAINTENANCE_COMPLETED`: 수리 완료 사건
+- `RECOVERY`: 고장 후 회복 판정 사건
 
-| Method | URL | 설명 |
-|---|---|---|
-| GET | `/predictions` | 설비·기간·위험 등급별 예측 목록 |
-| GET | `/predictions/latest/{equipmentId}` | 설비의 최신 예측과 근거 조회 |
-| POST | `/predictions` | AI 서비스의 예측 결과 저장 |
+현재 카카오 발송 대상은 `FAILURE_EXPECTED`, `FAILURE`로 제한한다.
+발송 전에는 `PENDING`, 성공하면 `SENT`, 실패하면 `FAILED`로 같은 `pm_event` 행을 갱신한다.
+동일 안테나·사건 유형·발생 시각은 유일 제약으로 중복 저장과 중복 알림을 막는다.
 
-예측 결과 예시:
+## CSV 필드 처리
+
+V3 원본 센서값은 `pm_sensor_data`의 명시적인 열에 저장한다. 모델 결과인
+`current_fault_probability`, `anomaly_count`, `abnormal_sensors`,
+`operational_state`도 같은 시각의 행에 함께 저장해 별도 예측 테이블을 만들지 않는다.
+
+원본 CSV의 `failure_within_7d`, `rul_hours`는 현재 운영 판정과 화면에서 사용하지 않으므로
+DB 적재 대상에서 제외한다. 고장 예상·실제 고장·정비 시점은 운영정책 판정 후 `pm_event`에 저장한다.
+
+## 직접 CSV 적재하기
+
+백엔드가 실행 중인 상태에서 프로젝트 루트의 PowerShell에 다음 명령을 입력한다.
+
+```powershell
+curl.exe -X POST `
+  -F "file=@DB\data\01_dashboard_timeseries.csv;type=text/csv" `
+  http://localhost/api/predictive-maintenance/sensor-data/import
+```
+
+프로젝트에 포함된 `DB/data/01_dashboard_timeseries.csv`는 센서 원본값과 모델 판정 결과가
+함께 들어 있다. 화면과 사건 기록을 동일하게 재현하려면 이 파일을 사용한다.
+
+정상 응답 예시:
 
 ```json
 {
-  "equipmentId": 1,
-  "predictedAt": "2026-04-30T23:00:00",
-  "targetName": "failure_within_7d",
-  "predictionHorizonHours": 168,
-  "failureProbability": 0.82,
-  "riskLevel": "DANGER",
-  "rulHours": 96,
-  "reasons": [
-    { "feature": "successRate", "message": "최근 정상 기준보다 낮습니다." },
-    { "feature": "responseTimeMs", "message": "응답시간이 증가했습니다." }
-  ]
+  "sourceFile": "01_dashboard_timeseries.csv",
+  "equipmentCount": 24,
+  "sensorRowsUpserted": 69120,
+  "eventRowsUpserted": 39,
+  "firstCollectedAt": "2026-01-01T00:00:00",
+  "lastCollectedAt": "2026-04-30T23:00:00"
 }
 ```
 
-## 5. 경보 CRUD와 상태 변경
+적재 결과는 브라우저 또는 PowerShell에서 다음 주소로 확인한다.
 
-| Method | URL | 설명 |
-|---|---|---|
-| GET | `/alerts` | 경보 목록 조회 |
-| GET | `/alerts/{alertId}` | 경보 상세 조회 |
-| POST | `/alerts` | 경보 등록 |
-| PUT | `/alerts/{alertId}` | 담당자·메모 등 수정 |
-| PATCH | `/alerts/{alertId}/status` | 경보 처리 상태 변경 |
-| DELETE | `/alerts/{alertId}` | 잘못 등록한 수동 경보 삭제(관리자) |
+```text
+GET http://localhost/api/predictive-maintenance/sensor-data/summary
+```
 
-## 6. 점검·정비 CRUD
+DB에서 직접 확인할 때는 다음 쿼리를 사용한다.
 
-| Method | URL | 설명 |
-|---|---|---|
-| GET | `/maintenance` | 점검·정비 목록 조회 |
-| GET | `/maintenance/{maintenanceId}` | 상세 조회 |
-| POST | `/maintenance` | 일정 또는 작업 등록 |
-| PUT | `/maintenance/{maintenanceId}` | 내용 수정 |
-| PATCH | `/maintenance/{maintenanceId}/status` | 진행 상태 변경 |
-| DELETE | `/maintenance/{maintenanceId}` | 예정 작업 취소 또는 삭제 |
+```sql
+SELECT COUNT(*) FROM pm_equipment;   -- 24
+SELECT COUNT(*) FROM pm_sensor_data; -- 69120
+SELECT event_type, COUNT(*)
+FROM pm_event
+GROUP BY event_type
+ORDER BY event_type;
+```
 
-## 7. 모델 정보
-
-| Method | URL | 설명 |
-|---|---|---|
-| GET | `/models?typeCode=ANTENNA` | 모델 버전과 평가 결과 목록 |
-| GET | `/models/active?typeCode=ANTENNA` | 현재 적용 모델 조회 |
-| POST | `/models` | 모델 버전 등록 |
-| PATCH | `/models/{modelVersionId}/activate` | 적용 모델 변경 |
-
-## 8. 공통 규칙
-
-- 사용자 표시명은 `안테나 예지보전`, 내부 코드는 `ANTENNA`로 유지한다.
-- 날짜와 시간은 ISO-8601 문자열로 전달한다.
-- 위험 등급은 `NORMAL`, `CAUTION`, `DANGER`를 사용한다.
-- 삭제 후 이력을 보존해야 하는 설비는 `isDeleted` 논리 삭제를 사용한다.
-- 목록 응답은 `{ content, page, size, totalElements, totalPages }` 구조로 통일한다.
-- 모델 결과가 확정되기 전까지 `failureProbability`, `reasons`, `activeModel`은 `null` 또는 빈 배열을 허용한다.
-
+가져오기는 `(equipment_id, collected_at)`을 기준으로 `ON CONFLICT ... DO UPDATE`를 사용한다.
+따라서 수정된 CSV를 다시 올리면 중복 행을 추가하지 않고 기존 시각의 값을 갱신한다.
+CSV에서 읽은 사건은 과거 기록이므로 `notification_status = 'DEMO_NOT_SENT'`로 저장하며
+카카오톡을 발송하지 않는다.

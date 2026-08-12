@@ -49,7 +49,7 @@ const sectionDescriptions = {
         </div>
         <div class="data-basis">
           <span>현재 데이터 기준</span>
-          <strong>합성 CSV 기록 재생</strong>
+          <strong>V3 운영 정책 기록 재생</strong>
         </div>
       </section>
 
