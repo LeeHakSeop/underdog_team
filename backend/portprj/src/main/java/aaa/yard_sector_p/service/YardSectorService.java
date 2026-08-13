@@ -16,4 +16,8 @@ public class YardSectorService {
     public List<YardSectorDTO> list() {
         return mapper.list();
     }
+
+    public YardSectorDTO detail(Long sectorId) {
+        return mapper.detail(sectorId);
+    }
 }

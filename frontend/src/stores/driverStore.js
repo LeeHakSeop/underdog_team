@@ -1,12 +1,15 @@
 // stores/driverStore.js
 import { defineStore } from 'pinia'
 import {
+  completeMyWorkOrder,
   approveDriverByCarrier,
   createDriver,
+  fetchMyWorkStatusHistory,
   reactivateDriver as reactivateDriverApi,
   fetchDrivers,
   fetchMyWorkOrders,
   fetchMyWorkOrdersByUserId,
+  startMyWorkOrder,
   withdrawDriver as withdrawDriverApi,
   updateDriver,
 } from '@/api/driverApi'
@@ -15,9 +18,13 @@ export const useDriverStore = defineStore('driver', {
   state: () => ({
     drivers: [],
     myWorkOrders: [],
+    workHistory: [],
     workOrdersLoaded: false,
+    historyLoaded: false,
     loading: false,
     error: '',
+    actionMessage: '',
+    actionResult: null,
   }),
 
   actions: {
@@ -63,6 +70,89 @@ export const useDriverStore = defineStore('driver', {
         this.workOrdersLoaded = true
       } catch (error) {
         this.error = error.message || '작업정보를 불러오지 못했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async loadMyWorkHistory(userId) {
+      if (!this.historyLoaded) {
+        this.loading = true
+      }
+      this.error = ''
+
+      try {
+        this.workHistory = (await fetchMyWorkStatusHistory(userId)) || []
+        this.historyLoaded = true
+      } catch (error) {
+        this.error = error.message || '작업 이력을 불러오지 못했습니다.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async startAssignedWork(workOrderId, userId) {
+      this.loading = true
+      this.error = ''
+      this.actionMessage = ''
+      this.actionResult = null
+
+      try {
+        const result = await startMyWorkOrder(workOrderId)
+        if (result?.success === false) {
+          this.actionResult = result
+          this.error = result.message || '작업 시작 처리에 실패했습니다.'
+          return result
+        }
+        this.actionResult = result
+        this.actionMessage = result?.message || '작업이 시작되었습니다.'
+        await Promise.all([
+          this.loadMyWorkOrdersByUserId(userId),
+          this.loadMyWorkHistory(userId),
+        ])
+        return result
+      } catch (error) {
+        this.error = error.message || '작업 시작 처리에 실패했습니다.'
+        this.actionResult = {
+          success: false,
+          exceptionType: 'WORK_ORDER_REQUEST_FAILED',
+          message: this.error,
+        }
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async completeAssignedWork(workOrderId, userId) {
+      this.loading = true
+      this.error = ''
+      this.actionMessage = ''
+      this.actionResult = null
+
+      try {
+        const result = await completeMyWorkOrder(workOrderId)
+        if (result?.success === false) {
+          this.actionResult = result
+          this.error = result.message || '작업 완료 처리에 실패했습니다.'
+          return result
+        }
+        this.actionResult = result
+        this.actionMessage = result?.message || '작업이 완료되었습니다.'
+        await Promise.all([
+          this.loadMyWorkOrdersByUserId(userId),
+          this.loadMyWorkHistory(userId),
+        ])
+        return result
+      } catch (error) {
+        this.error = error.message || '작업 완료 처리에 실패했습니다.'
+        this.actionResult = {
+          success: false,
+          exceptionType: 'WORK_ORDER_REQUEST_FAILED',
+          message: this.error,
+        }
         throw error
       } finally {
         this.loading = false

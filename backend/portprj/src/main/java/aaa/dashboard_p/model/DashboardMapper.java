@@ -9,6 +9,36 @@ import java.util.List;
 public interface DashboardMapper {
 
     @Select("""
+<<<<<<< HEAD
+=======
+            WITH sector_metrics AS (
+                SELECT
+                    ys.sector_id,
+                    40 AS capacity,
+                    COALESCE(ys.waiting_vehicle_count, 0) AS waiting_vehicle_count,
+                    COUNT(DISTINCT c.container_id) AS container_count,
+                    COUNT(DISTINCT wo.work_order_id) AS work_order_count,
+                    CASE
+                        WHEN (
+                            COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
+                        ) >= 0.8
+                          OR COALESCE(ys.waiting_vehicle_count, 0) >= 6
+                          OR COUNT(DISTINCT wo.work_order_id) >= 3 THEN 'DANGER'
+                        WHEN (
+                            COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
+                        ) >= 0.5
+                          OR COALESCE(ys.waiting_vehicle_count, 0) >= 3
+                          OR COUNT(DISTINCT wo.work_order_id) >= 1 THEN 'WARNING'
+                        ELSE 'NORMAL'
+                    END AS status_level
+                FROM yard_sector ys
+                LEFT JOIN container c ON c.sector_id = ys.sector_id
+                LEFT JOIN work_order wo
+                    ON wo.container_id = c.container_id
+                   AND wo.work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS')
+                GROUP BY ys.sector_id, ys.waiting_vehicle_count
+            )
+>>>>>>> origin/hakseop
             SELECT
                 (SELECT COUNT(*) FROM vehicle) AS totalVehicles,
                 (SELECT COUNT(*) FROM users WHERE status = 'PENDING') AS pendingUsers,
@@ -63,6 +93,7 @@ public interface DashboardMapper {
 
     @Select("""
             SELECT
+<<<<<<< HEAD
                 sector_id AS sectorId,
                 sector_name AS sectorName,
                 block_name AS blockName,
@@ -72,7 +103,67 @@ public interface DashboardMapper {
                 alt_waiting_area AS altWaitingArea
             FROM yard_sector
             ORDER BY COALESCE(waiting_vehicle_count, 0) DESC, sector_id ASC
+=======
+                ys.sector_id AS sectorId,
+                ys.sector_name AS sectorName,
+                ys.block_name AS blockName,
+                ys.sector_status AS sectorStatus,
+                COALESCE(ys.waiting_vehicle_count, 0) AS waitingVehicleCount,
+                ys.guide_message AS guideMessage,
+                ys.alt_waiting_area AS altWaitingArea,
+                40 AS capacity,
+                COUNT(DISTINCT c.container_id) AS containerCount,
+                ROUND(
+                    (COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)) * 100,
+                    1
+                )::float AS usageRate,
+                COUNT(DISTINCT wo.work_order_id) AS workOrderCount,
+                CASE
+                    WHEN (
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
+                    ) >= 0.8
+                      OR COALESCE(ys.waiting_vehicle_count, 0) >= 6
+                      OR COUNT(DISTINCT wo.work_order_id) >= 3 THEN 'DANGER'
+                    WHEN (
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
+                    ) >= 0.5
+                      OR COALESCE(ys.waiting_vehicle_count, 0) >= 3
+                      OR COUNT(DISTINCT wo.work_order_id) >= 1 THEN 'WARNING'
+                    ELSE 'NORMAL'
+                END AS statusLevel
+            FROM yard_sector ys
+            LEFT JOIN container c ON c.sector_id = ys.sector_id
+            LEFT JOIN work_order wo
+                ON wo.container_id = c.container_id
+               AND wo.work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS')
+            GROUP BY
+                ys.sector_id,
+                ys.sector_name,
+                ys.block_name,
+                ys.sector_status,
+                ys.waiting_vehicle_count,
+                ys.guide_message,
+                ys.alt_waiting_area
+            ORDER BY
+                CASE
+                    WHEN (
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
+                    ) >= 0.8
+                      OR COALESCE(ys.waiting_vehicle_count, 0) >= 6
+                      OR COUNT(DISTINCT wo.work_order_id) >= 3 THEN 1
+                    WHEN (
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
+                    ) >= 0.5
+                      OR COALESCE(ys.waiting_vehicle_count, 0) >= 3
+                      OR COUNT(DISTINCT wo.work_order_id) >= 1 THEN 2
+                    ELSE 3
+                END,
+                COALESCE(ys.waiting_vehicle_count, 0) DESC,
+                usageRate DESC,
+                ys.sector_id ASC
+>>>>>>> origin/hakseop
             LIMIT 8
             """)
     List<DashboardSectorDTO> sectorList();
 }
+

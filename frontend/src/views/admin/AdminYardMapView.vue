@@ -1,10 +1,13 @@
-<script setup>
+﻿<script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { yardMapLayout } from '@/config/yardMapLayout'
 import { useYardMapStore } from '@/stores/adminStore/yardMapStore'
+import { useNotificationStore } from '@/stores/adminStore/notificationStore'
+import { useWeatherStore } from '@/stores/weatherStore'
+import WeatherCard from '@/components/WeatherCard.vue'
 
 const mapElement = ref(null)
 const mapReady = ref(false)
@@ -13,11 +16,16 @@ const selectedSectorId = ref(null)
 const selectedWorkOrderId = ref(null)
 const searchQuery = ref('')
 const statusFilter = ref('ALL')
+const showAllPrioritySectors = ref(false)
+const showNormalGates = ref(false)
 let map
 let operationLayer
 let refreshTimer
+let sectorLayers = new Map()
 
 const yardMapStore = useYardMapStore()
+const notificationStore = useNotificationStore()
+const weatherStore = useWeatherStore()
 const {
   blockSummary,
   containerCountBySectorId,
@@ -32,12 +40,14 @@ const {
   vehicles,
   yardSectors,
 } = storeToRefs(yardMapStore)
+const { weatherInfo, loading: weatherLoading, errMsg: weatherError } = storeToRefs(weatherStore)
+const { notifications } = storeToRefs(notificationStore)
 
 const statusOptions = [
-  { value: 'ALL', label: '전체' },
-  { value: 'NORMAL', label: '정상' },
-  { value: 'WARNING', label: '주의' },
-  { value: 'DANGER', label: '혼잡' },
+  { value: 'ALL', label: '?꾩껜' },
+  { value: 'NORMAL', label: '?뺤긽' },
+  { value: 'WARNING', label: '二쇱쓽' },
+  { value: 'DANGER', label: '?쇱옟' },
 ]
 
 const error = computed(() => mapError.value || storeError.value)
@@ -48,6 +58,50 @@ const selectedWorkVehicle = computed(() => {
   const selectedFromId = vehicles.value.find((vehicle) => vehicle.workOrderId === selectedWorkOrderId.value)
   return selectedFromId || selectedSectorVehicles.value[0] || null
 })
+
+const getNotificationValue = (item, ...keys) => {
+  for (const key of keys) {
+    const value = item?.[key]
+    if (value !== undefined && value !== null && value !== '') return value
+  }
+  return ''
+}
+
+const openDispatchExceptions = computed(() => (notifications.value || []).filter((item) => {
+  const status = getNotificationValue(item, 'processStatus', 'process_status') || 'UNPROCESSED'
+  return status !== 'PROCESSED'
+}))
+
+const selectedSectorExceptions = computed(() => {
+  const plates = new Set(selectedSectorVehicles.value.flatMap((vehicle) => [
+    vehicle.tractorPlateNumber,
+    vehicle.trailerPlateNumber,
+  ]).filter(Boolean).map((value) => String(value).trim()))
+
+  return openDispatchExceptions.value.filter((item) => {
+    const plate = String(getNotificationValue(item, 'plateNumber', 'plate_number') || '').trim()
+    return plate && plates.has(plate)
+  })
+})
+
+const selectedSectorExceptionSummary = computed(() => {
+  if (!selectedSector.value) {
+    return { label: '선택 없음', tone: 'normal', message: '섹터를 선택하면 관련 차량 예외를 함께 확인할 수 있습니다.' }
+  }
+
+  if (selectedSectorExceptions.value.length === 0) {
+    return { label: '예외 없음', tone: 'normal', message: '선택 섹터 작업 차량 기준으로 미처리 배차 예외가 없습니다.' }
+  }
+
+  const first = selectedSectorExceptions.value[0]
+  const type = getNotificationValue(first, 'exceptionType', 'exception_type') || 'EXCEPTION'
+  return {
+    label: `예외 ${selectedSectorExceptions.value.length}건`,
+    tone: ['VEHICLE_NOT_REGISTERED', 'CARRIER_INACTIVE', 'YARD_SECTOR_CAPACITY_EXCEEDED'].includes(type) ? 'danger' : 'warning',
+    message: getNotificationValue(first, 'exceptionMessage', 'exception_message') || '선택 섹터 차량의 배차 예외를 확인하세요.',
+  }
+})
+
 const statusCounts = computed(() => yardSectors.value.reduce((counts, sector) => {
   const level = sector.statusLevel || 'NORMAL'
   counts[level] = (counts[level] || 0) + 1
@@ -59,7 +113,7 @@ const selectedSectorMetrics = computed(() => {
 
   return [
     { label: '컨테이너', value: formatCount(sector?.containerCount) },
-    { label: '작업 차량', value: `${selectedSectorVehicles.value.length}대` },
+    { label: '작업 차량', value: String(selectedSectorVehicles.value.length) + '대' },
     { label: '진행 작업', value: formatCount(sector?.workOrderCount) },
     { label: '사용률', value: formatPercent(sector?.usageRate) },
   ]
@@ -92,6 +146,101 @@ const matchesSectorFilter = (sector) => {
 }
 
 const visibleSectors = computed(() => yardSectors.value.filter(matchesSectorFilter))
+const prioritySectors = computed(() => [...yardSectors.value]
+  .filter((sector) => ['DANGER', 'WARNING'].includes(sector.statusLevel))
+  .sort((left, right) => {
+    const rank = { DANGER: 0, WARNING: 1, NORMAL: 2 }
+    return (rank[left.statusLevel] ?? 2) - (rank[right.statusLevel] ?? 2)
+      || Number(right.usageRate || 0) - Number(left.usageRate || 0)
+      || Number(right.waitingVehicleCount || 0) - Number(left.waitingVehicleCount || 0)
+  })
+)
+const visiblePrioritySectors = computed(() => (showAllPrioritySectors.value ? prioritySectors.value : prioritySectors.value.slice(0, 3)))
+const hiddenPriorityCount = computed(() => Math.max(prioritySectors.value.length - visiblePrioritySectors.value.length, 0))
+const sortedGates = computed(() => [...gateSummary.value].sort((left, right) => {
+  const rank = { warning: 0, normal: 1 }
+  return rank[gateTone(left)] - rank[gateTone(right)] || String(left.gateNumber).localeCompare(String(right.gateNumber))
+}))
+const warningGates = computed(() => sortedGates.value.filter((gate) => gateTone(gate) !== 'normal'))
+const normalGates = computed(() => sortedGates.value.filter((gate) => gateTone(gate) === 'normal'))
+const visibleGates = computed(() => {
+  if (showNormalGates.value || warningGates.value.length === 0) return sortedGates.value
+  return warningGates.value
+})
+const weatherRiskTone = computed(() => {
+  if (weatherInfo.value?.riskLevel === 'DANGER') return 'danger'
+  if (weatherInfo.value?.riskLevel === 'CAUTION') return 'warning'
+  if (weatherInfo.value?.riskLevel === 'NORMAL') return 'normal'
+  return 'info'
+})
+const yardRiskTone = computed(() => {
+  if ((statusCounts.value.DANGER || 0) > 0) return 'danger'
+  if ((statusCounts.value.WARNING || 0) > 0) return 'warning'
+  return 'normal'
+})
+const gateRiskTone = computed(() => gateSummary.value.some((gate) => gateTone(gate) !== 'normal') ? 'warning' : 'normal')
+const weatherReasonSummary = computed(() => {
+  if (weatherError.value || !weatherInfo.value?.available) return '기상 데이터 확인 필요'
+
+  const reasons = []
+  if (Number(weatherInfo.value.windSpeed || 0) >= 10) reasons.push('강풍')
+  if (Number(weatherInfo.value.rainfall || 0) >= 5) reasons.push('강수')
+  if (Number(weatherInfo.value.visibility || 0) <= 5000) reasons.push('저시정')
+  return reasons.join(' / ') || '영향 없음'
+})
+
+const gateIssueSummary = computed(() => {
+  if (warningGates.value.length === 0) return '특이 게이트 없음'
+  return warningGates.value.map((gate) => gate.gateNumber).join(', ')
+})
+
+const operationRisk = computed(() => {
+  const dangerSectors = statusCounts.value.DANGER || 0
+  const warningSectors = statusCounts.value.WARNING || 0
+  const weatherRisk = weatherInfo.value?.riskLevel
+
+  if (weatherError.value || !weatherInfo.value?.available) {
+    return {
+      tone: 'warning',
+      label: '확인 필요',
+      cause: '기상 데이터 미수신',
+      action: '현장 공지와 야드/게이트 상태를 우선 기준으로 판단하세요.',
+      message: '기상 정보가 없으므로 운영 맵 수치와 현장 연락을 함께 확인해야 합니다.',
+    }
+  }
+
+  if (weatherRisk === 'DANGER' || dangerSectors > 0) {
+    return {
+      tone: 'danger',
+      label: '운영 위험',
+      cause: dangerSectors > 0 ? ('위험 섹터 ' + dangerSectors + '개') : `기상 위험 (${weatherReasonSummary.value})`,
+      action: dangerSectors > 0 ? '위험 섹터와 대기 차량, 게이트 병목을 우선 확인하세요.' : '현장 통제 여부와 기사 대기 지시를 우선 확인하세요.',
+      message: weatherRisk === 'DANGER'
+        ? '기상으로 인한 작업 제한 가능성이 있습니다.'
+        : '기상보다는 야드 혼잡이 현재 주 위험 요인입니다.',
+    }
+  }
+
+  if (weatherRisk === 'CAUTION' || warningSectors > 0) {
+    return {
+      tone: 'warning',
+      label: '주의 운영',
+      cause: warningSectors > 0 ? ('주의 섹터 ' + warningSectors + '개') : `기상 주의 (${weatherReasonSummary.value})`,
+      action: '주의 섹터, 입출차 게이트, 배차 대기 흐름을 함께 확인하세요.',
+      message: weatherRisk === 'CAUTION'
+        ? '기상 주의가 있어 운영 여유 시간을 두고 확인하세요.'
+        : '현재 기상은 제한 요인이 아니며, 야드 흐름 점검이 우선입니다.',
+    }
+  }
+
+  return {
+    tone: 'normal',
+    label: '정상 운영',
+    cause: '특이 원인 없음',
+    action: '현재 운영 흐름을 유지하세요.',
+    message: '야드와 기상 상태가 모두 정상 범위입니다.',
+  }
+})
 
 function formatDateTime(value) {
   return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
@@ -116,7 +265,7 @@ function formatDirection(direction) {
 }
 
 function statusLabel(statusLevel) {
-  if (statusLevel === 'DANGER') return '혼잡'
+  if (statusLevel === 'DANGER') return '위험'
   if (statusLevel === 'WARNING') return '주의'
   return '정상'
 }
@@ -160,15 +309,70 @@ function statusClass(statusLevel) {
   return 'normal'
 }
 
+function gateTone(gate) {
+  const result = String(gate?.latestProcessResult || '').toUpperCase()
+  if (result.includes('FAIL') || result.includes('ERROR') || gate?.managerCheck === false) return 'warning'
+  return 'normal'
+}
+
+function getSectorCenterById(sectorId) {
+  for (const block of yardMapLayout.sectorBlocks) {
+    const sectors = getBlockSectors(block.sectorName).slice(0, 20)
+    const index = sectors.findIndex((sector) => sector.sectorId === sectorId)
+    if (index >= 0) {
+      return getCenter(getSectorCellBounds(block, Math.floor(index / 4), index % 4))
+    }
+  }
+  return null
+}
+
+function selectSector(sectorId, focusMap = true) {
+  selectedSectorId.value = sectorId
+  selectedWorkOrderId.value = null
+
+  if (!focusMap || !map) return
+  const layer = sectorLayers.get(sectorId)
+  if (layer?.getBounds) {
+    map.fitBounds(layer.getBounds(), { padding: [80, 80], maxZoom: 17 })
+    return
+  }
+  const center = getSectorCenterById(sectorId)
+  if (center) map.panTo(center, { animate: true, duration: 0.35 })
+}
+
+function highlightSector(sectorId) {
+  sectorLayers.forEach((layer, id) => {
+    const sector = yardSectors.value.find((item) => item.sectorId === id)
+    const style = getSectorStyle(sector, !sector || !matchesSectorFilter(sector))
+    layer.setStyle({
+      color: selectedSectorId.value === id ? '#174d7d' : style.color,
+      weight: selectedSectorId.value === id ? 3 : 1,
+      fillColor: style.fillColor,
+      fillOpacity: style.fillOpacity,
+    })
+  })
+
+  if (!sectorId || !sectorLayers.has(sectorId)) return
+  const layer = sectorLayers.get(sectorId)
+  const sector = yardSectors.value.find((item) => item.sectorId === sectorId)
+  const level = sector?.statusLevel || 'NORMAL'
+  layer.setStyle({
+    color: level === 'DANGER' ? '#8f1f1b' : level === 'WARNING' ? '#8d5b08' : '#174d7d',
+    weight: 4,
+    fillOpacity: Math.min((getSectorStyle(sector).fillOpacity || 0.7) + 0.08, 0.9),
+  })
+  layer.bringToFront()
+}
+
 function sectorAlertBadges(sector) {
   if (!sector) return []
   const badges = []
-  if ((sector.statusLevel || 'NORMAL') === 'DANGER') badges.push({ type: 'danger', label: '혼잡' })
+  if ((sector.statusLevel || 'NORMAL') === 'DANGER') badges.push({ type: 'danger', label: '위험' })
   if ((sector.statusLevel || 'NORMAL') === 'WARNING') badges.push({ type: 'warning', label: '주의' })
   if (Number(sector.usageRate || 0) >= 80) badges.push({ type: 'danger', label: '사용률 80%↑' })
   else if (Number(sector.usageRate || 0) >= 50) badges.push({ type: 'warning', label: '사용률 50%↑' })
-  if (Number(sector.waitingVehicleCount || 0) >= 6) badges.push({ type: 'danger', label: '대기차량 많음' })
-  else if (Number(sector.waitingVehicleCount || 0) >= 3) badges.push({ type: 'warning', label: '대기차량 증가' })
+  if (Number(sector.waitingVehicleCount || 0) >= 6) badges.push({ type: 'danger', label: '대기 차량 많음' })
+  else if (Number(sector.waitingVehicleCount || 0) >= 3) badges.push({ type: 'warning', label: '대기 차량 증가' })
   if (Number(sector.workOrderCount || 0) >= 3) badges.push({ type: 'danger', label: '작업 집중' })
   else if (Number(sector.workOrderCount || 0) >= 1) badges.push({ type: 'info', label: '작업 진행' })
   return badges
@@ -196,26 +400,26 @@ function getSectorStyle(sector, muted = false) {
 const gatePopupHtml = (gate) => `
   <div class="gate-popup">
     <b>${escapeHtml(gate.gateName || gate.gateNumber)}</b>
-    <div><span>게이트 번호</span><strong>${escapeHtml(gate.gateNumber)}</strong></div>
-    <div><span>구분</span><strong>${escapeHtml(formatDirection(gate.direction))}</strong></div>
-    <div><span>최근 처리</span><strong>${escapeHtml(gate.latestProcessResult)}</strong></div>
-    <div><span>최근 차량</span><strong>${escapeHtml(gate.latestVehicleId)}</strong></div>
-    <div><span>최근 시간</span><strong>${escapeHtml(formatDateTime(gate.latestExitTime || gate.latestEntryTime))}</strong></div>
-    <div><span>오늘 입차</span><strong>${escapeHtml(formatCount(gate.todayInCount))}</strong></div>
-    <div><span>오늘 출차</span><strong>${escapeHtml(formatCount(gate.todayOutCount))}</strong></div>
+    <div><span>寃뚯씠??踰덊샇</span><strong>${escapeHtml(gate.gateNumber)}</strong></div>
+    <div><span>援щ텇</span><strong>${escapeHtml(formatDirection(gate.direction))}</strong></div>
+    <div><span>理쒓렐 泥섎━</span><strong>${escapeHtml(gate.latestProcessResult)}</strong></div>
+    <div><span>理쒓렐 李⑤웾</span><strong>${escapeHtml(gate.latestVehicleId)}</strong></div>
+    <div><span>理쒓렐 ?쒓컙</span><strong>${escapeHtml(formatDateTime(gate.latestExitTime || gate.latestEntryTime))}</strong></div>
+    <div><span>?ㅻ뒛 ?낆감</span><strong>${escapeHtml(formatCount(gate.todayInCount))}</strong></div>
+    <div><span>?ㅻ뒛 異쒖감</span><strong>${escapeHtml(formatCount(gate.todayOutCount))}</strong></div>
   </div>
 `
 
 const sectorPopupHtml = (sector) => `
   <div class="sector-popup">
     <b>${escapeHtml(sector.sectorName)}</b>
-    <div><span>블록</span><strong>${escapeHtml(sector.blockName)}</strong></div>
-    <div><span>컨테이너</span><strong>${escapeHtml(formatCount(sector.containerCount))}</strong></div>
-    <div><span>수용량</span><strong>${escapeHtml(formatCount(sector.capacity))}</strong></div>
-    <div><span>사용률</span><strong>${escapeHtml(formatPercent(sector.usageRate))}</strong></div>
-    <div><span>작업 차량</span><strong>${escapeHtml(formatCount(vehicleCountBySectorId.value.get(sector.sectorId)))}</strong></div>
-    <div><span>진행 작업</span><strong>${escapeHtml(formatCount(sector.workOrderCount))}</strong></div>
-    <div><span>상태</span><strong>${escapeHtml(statusLabel(sector.statusLevel))}</strong></div>
+    <div><span>釉붾줉</span><strong>${escapeHtml(sector.blockName)}</strong></div>
+    <div><span>而⑦뀒?대꼫</span><strong>${escapeHtml(formatCount(sector.containerCount))}</strong></div>
+    <div><span>?섏슜??/span><strong>${escapeHtml(formatCount(sector.capacity))}</strong></div>
+    <div><span>?ъ슜瑜?/span><strong>${escapeHtml(formatPercent(sector.usageRate))}</strong></div>
+    <div><span>?묒뾽 李⑤웾</span><strong>${escapeHtml(formatCount(vehicleCountBySectorId.value.get(sector.sectorId)))}</strong></div>
+    <div><span>吏꾪뻾 ?묒뾽</span><strong>${escapeHtml(formatCount(sector.workOrderCount))}</strong></div>
+    <div><span>?곹깭</span><strong>${escapeHtml(statusLabel(sector.statusLevel))}</strong></div>
   </div>
 `
 
@@ -287,12 +491,13 @@ const vehiclePopupHtml = (sectorVehicles) => {
     </div>
   `).join('')
 
-  return `<div class="vehicle-popup"><b>작업 차량 ${sectorVehicles.length}대</b>${rows}</div>`
+  return `<div class="vehicle-popup"><b>?묒뾽 李⑤웾 ${sectorVehicles.length}?</b>${rows}</div>`
 }
 
 const renderOperations = () => {
   if (!mapReady.value) return
   operationLayer?.clearLayers()
+  sectorLayers = new Map()
 
   const sectorCenters = new Map()
   const vehiclesBySector = vehicles.value.reduce((groups, vehicle) => {
@@ -310,7 +515,7 @@ const renderOperations = () => {
       weight: 2,
       fillColor: style.fillColor,
       fillOpacity: 0.12,
-    }).bindPopup(`<b>${block.label}</b><br>컨테이너 ${summary?.containerCount || 0}건<br>작업 차량 ${summary?.vehicleCount || 0}대`))
+    }).bindPopup(`<b>${block.label}</b><br>而⑦뀒?대꼫 ${summary?.containerCount || 0}嫄?br>?묒뾽 李⑤웾 ${summary?.vehicleCount || 0}?`))
 
     getRoadLines(block).forEach((roadLine) => {
       operationLayer.addLayer(L.polyline(roadLine, { color: '#f8fafc', weight: 5, opacity: 0.95, dashArray: '8 5' }))
@@ -329,12 +534,18 @@ const renderOperations = () => {
         fillColor: sectorStyle.fillColor,
         fillOpacity: sectorStyle.fillOpacity,
       })
-        .bindTooltip(`${yardSector.sectorName} / ${statusLabel(yardSector.statusLevel)} / 사용률 ${formatPercent(yardSector.usageRate)}`, { sticky: true })
+        .bindTooltip(`${yardSector.sectorName} / ${statusLabel(yardSector.statusLevel)} / ?ъ슜瑜?${formatPercent(yardSector.usageRate)}`, { sticky: true })
         .bindPopup(sectorPopupHtml(yardSector))
         .on('click', () => {
-          selectedSectorId.value = yardSector.sectorId
-          selectedWorkOrderId.value = null
+          selectSector(yardSector.sectorId, false)
         })
+        .on('mouseover', () => {
+          highlightSector(yardSector.sectorId)
+        })
+        .on('mouseout', () => {
+          highlightSector(null)
+        })
+      sectorLayers.set(yardSector.sectorId, cell)
       operationLayer.addLayer(cell)
     })
 
@@ -359,18 +570,28 @@ const renderOperations = () => {
   })
 
   gateSummary.value.filter((gate) => gate.position).forEach((gate) => {
+    const laneClass = ['G03', 'G04'].includes(String(gate.gateNumber)) ? 'lane-secondary' : 'lane-primary'
     const icon = L.divIcon({
       className: 'yard-gate-icon',
-      html: `<span class="yard-gate ${gate.direction.toLowerCase()}"><b>${formatDirection(gate.direction)}</b><small>${gate.gateNumber}</small></span>`,
-      iconSize: [52, 42],
-      iconAnchor: [26, 21],
+      html: `
+        <span class="yard-gate ${gate.direction.toLowerCase()} ${laneClass}">
+          <small>${formatDirection(gate.direction)}</small>
+          <b>${gate.gateNumber}</b>
+          <i>${gate.direction === 'OUT' ? '↑' : '↓'}</i>
+        </span>
+      `,
+      iconSize: [60, 52],
+      iconAnchor: [30, 26],
     })
     operationLayer.addLayer(L.marker(gate.position, { icon }).bindPopup(gatePopupHtml(gate)))
   })
 }
 
 const refreshData = async () => {
-  await yardMapStore.loadYardMap()
+  await Promise.allSettled([
+    yardMapStore.loadYardMap(),
+    weatherStore.fetchWeather(),
+  ])
   await nextTick()
   renderOperations()
 }
@@ -394,7 +615,7 @@ onMounted(async () => {
     await refreshData()
     refreshTimer = window.setInterval(refreshData, 10000)
   } catch (loadError) {
-    mapError.value = loadError.message || '지도를 준비하지 못했습니다.'
+    mapError.value = loadError.message || '吏?꾨? 以鍮꾪븯吏 紐삵뻽?듬땲??'
   }
 })
 
@@ -410,16 +631,6 @@ onBeforeUnmount(() => {
       <article class="panel map-panel">
         <div v-if="error" class="map-notice">{{ error }}</div>
         <div v-if="loading" class="map-loading">운영 맵 갱신 중</div>
-        <div class="refresh-panel" :class="{ stale }">
-          <div>
-            <strong>{{ stale ? '이전 데이터 표시 중' : '실시간 갱신' }}</strong>
-            <small>최근 갱신 {{ formatDateTime(lastUpdatedAt) }}</small>
-            <small v-if="failedAt">최근 실패 {{ formatDateTime(failedAt) }} / {{ failureCount }}회</small>
-          </div>
-          <button type="button" :disabled="loading" @click="manualRefresh">
-            {{ loading ? '갱신 중' : '새로고침' }}
-          </button>
-        </div>
         <div class="map-toolbar">
           <label>
             <span>섹터 검색</span>
@@ -433,56 +644,114 @@ onBeforeUnmount(() => {
               </option>
             </select>
           </label>
+          <div class="toolbar-refresh" :class="{ stale }">
+            <strong>{{ stale ? '이전 데이터' : '실시간' }}</strong>
+            <small>갱신 {{ formatDateTime(lastUpdatedAt) }}</small>
+            <small v-if="failedAt">실패 {{ formatDateTime(failedAt) }} / {{ failureCount }}회</small>
+          </div>
+          <button class="toolbar-button" type="button" :disabled="loading" @click="manualRefresh">
+            {{ loading ? '갱신 중' : '새로고침' }}
+          </button>
         </div>
+        <WeatherCard
+          :weather="weatherInfo"
+          :loading="weatherLoading"
+          :error="weatherError"
+          title="부산항 날씨"
+          mode="map"
+        />
         <div ref="mapElement" class="yard-map" aria-label="감만부두 운영 지도"></div>
       </article>
-
       <aside class="panel summary-panel">
-        <section class="summary-group">
+        <section class="summary-group operation-brief" :class="operationRisk.tone">
           <div class="summary-heading">
-            <strong>게이트 현황</strong>
-            <small>입차 2개 / 출차 2개</small>
-          </div>
-          <div class="summary-content gate-list">
-            <div v-for="gate in gateSummary" :key="gate.gateNumber" class="gate-card">
-              <div>
-                <strong>{{ gate.gateName || gate.gateNumber }}</strong>
-                <small>{{ gate.gateNumber }} / {{ formatDirection(gate.direction) }}</small>
-              </div>
-              <dl>
-                <div><dt>최근 처리</dt><dd>{{ gate.latestProcessResult || '-' }}</dd></div>
-                <div><dt>최근 시간</dt><dd>{{ formatDateTime(gate.latestExitTime || gate.latestEntryTime) }}</dd></div>
-                <div><dt>오늘 입차</dt><dd>{{ formatCount(gate.todayInCount) }}</dd></div>
-                <div><dt>오늘 출차</dt><dd>{{ formatCount(gate.todayOutCount) }}</dd></div>
-              </dl>
-            </div>
-          </div>
-        </section>
-
-        <section class="summary-group">
-          <div class="summary-heading">
-            <strong>상태 범례</strong>
-            <small>검색 결과 {{ visibleSectors.length }}개</small>
+            <strong>운영 판단</strong>
+            <small>기상 위험도 + 야드 혼잡도</small>
           </div>
           <div class="summary-content">
-            <div class="legend">
-              <button type="button" class="legend-item normal" @click="statusFilter = 'NORMAL'">
-                <i></i><span>정상</span><b>{{ statusCounts.NORMAL }}</b>
-              </button>
-              <button type="button" class="legend-item warning" @click="statusFilter = 'WARNING'">
-                <i></i><span>주의</span><b>{{ statusCounts.WARNING }}</b>
-              </button>
-              <button type="button" class="legend-item danger" @click="statusFilter = 'DANGER'">
-                <i></i><span>혼잡</span><b>{{ statusCounts.DANGER }}</b>
-              </button>
+            <div class="operation-status">
+              <span>{{ operationRisk.label }}</span>
+              <p>{{ operationRisk.message }}</p>
+              <dl>
+                <div><dt>원인</dt><dd>{{ operationRisk.cause }}</dd></div>
+                <div><dt>조치</dt><dd>{{ operationRisk.action }}</dd></div>
+                <div><dt>기상 원인</dt><dd>{{ weatherReasonSummary }}</dd></div>
+                <div><dt>게이트 확인</dt><dd>{{ gateIssueSummary }}</dd></div>
+              </dl>
+            </div>
+            <div class="operation-metrics">
+              <div :class="weatherRiskTone"><span>날씨</span><strong>{{ weatherInfo?.riskLevel || '정보 없음' }}</strong></div>
+              <div :class="yardRiskTone"><span>야드</span><strong>위험 {{ statusCounts.DANGER || 0 }} · 주의 {{ statusCounts.WARNING || 0 }}</strong></div>
+              <div :class="gateRiskTone"><span>게이트</span><strong>{{ warningGates.length > 0 ? `확인 필요 ${warningGates.length}` : `정상 ${gateSummary.length}` }}</strong></div>
             </div>
           </div>
         </section>
 
         <section class="summary-group">
           <div class="summary-heading">
-            <strong>야드 섹터</strong>
-            <small>{{ yardSectors.length }}개 섹터</small>
+            <strong>위험/주의 섹터</strong>
+            <small>{{ prioritySectors.length ? '클릭/hover 시 지도 강조' : '현재 특이 섹터 없음' }}</small>
+          </div>
+          <div class="summary-content priority-list">
+            <button
+              v-for="sector in visiblePrioritySectors"
+              :key="`priority-${sector.sectorId}`"
+              type="button"
+              class="priority-row"
+              :class="statusClass(sector.statusLevel)"
+              @click="selectSector(sector.sectorId)"
+              @mouseenter="highlightSector(sector.sectorId)"
+              @mouseleave="highlightSector(null)"
+            >
+              <strong>{{ sector.sectorName }}</strong>
+              <span>{{ statusLabel(sector.statusLevel) }}</span>
+              <small>?ъ슜瑜?{{ formatPercent(sector.usageRate) }} 쨌 ?湲?{{ formatCount(sector.waitingVehicleCount) }} 쨌 ?묒뾽 {{ formatCount(sector.workOrderCount) }}</small>
+            </button>
+            <button
+              v-if="hiddenPriorityCount > 0 || showAllPrioritySectors"
+              type="button"
+              class="compact-more-button"
+              @click="showAllPrioritySectors = !showAllPrioritySectors"
+            >
+              {{ showAllPrioritySectors ? '?묎린' : `+ ${hiddenPriorityCount}媛???蹂닿린` }}
+            </button>
+            <p v-if="prioritySectors.length === 0" class="empty">?뺤긽 ?댁쁺 以묒엯?덈떎.</p>
+          </div>
+        </section>
+
+        <section class="summary-group">
+          <div class="summary-heading">
+            <strong>寃뚯씠???꾪솴</strong>
+            <small>?뺤씤 ?꾩슂 ?곗꽑 ?쒖떆</small>
+          </div>
+          <div class="summary-content gate-list">
+            <div v-for="gate in visibleGates" :key="gate.gateNumber" class="gate-card" :class="gateTone(gate)">
+              <div>
+                <strong>{{ gate.gateNumber }}</strong>
+                <small>{{ formatDirection(gate.direction) }} 쨌 {{ gateTone(gate) === 'normal' ? '?뺤긽' : '?뺤씤 ?꾩슂' }}</small>
+              </div>
+              <dl>
+                <div><dt>理쒓렐 泥섎━</dt><dd>{{ gate.latestProcessResult || '-' }}</dd></div>
+                <div><dt>理쒓렐 ?쒓컙</dt><dd>{{ formatDateTime(gate.latestExitTime || gate.latestEntryTime) }}</dd></div>
+                <div><dt>?ㅻ뒛 ?낆감</dt><dd>{{ formatCount(gate.todayInCount) }}</dd></div>
+                <div><dt>?ㅻ뒛 異쒖감</dt><dd>{{ formatCount(gate.todayOutCount) }}</dd></div>
+              </dl>
+            </div>
+            <button
+              v-if="normalGates.length > 0 && warningGates.length > 0"
+              type="button"
+              class="compact-more-button"
+              @click="showNormalGates = !showNormalGates"
+            >
+              {{ showNormalGates ? '?뺤긽 寃뚯씠???묎린' : `?뺤긽 寃뚯씠??${normalGates.length}媛?蹂닿린` }}
+            </button>
+          </div>
+        </section>
+
+        <section class="summary-group">
+          <div class="summary-heading">
+            <strong>?쇰뱶 ?뱁꽣</strong>
+            <small>{{ yardSectors.length }}媛??뱁꽣</small>
           </div>
           <div class="summary-content">
             <div class="sector-list">
@@ -492,27 +761,27 @@ onBeforeUnmount(() => {
                 class="sector-row"
                 :class="[statusClass(sector.statusLevel), { selected: sector.sectorId === selectedSectorId }]"
                 type="button"
-                @click="selectedSectorId = sector.sectorId"
+                @click="selectSector(sector.sectorId)"
               >
                 <strong>{{ sector.sectorName }}</strong>
                 <span>{{ statusLabel(sector.statusLevel) }}</span>
                 <small>
-                  {{ sector.blockName }}구역 / 차량 {{ vehicleCountBySectorId.get(sector.sectorId) || 0 }}대 / 작업 {{ sector.workOrderCount || 0 }}건
+                  {{ sector.blockName }}援ъ뿭 / 李⑤웾 {{ vehicleCountBySectorId.get(sector.sectorId) || 0 }}? / ?묒뾽 {{ sector.workOrderCount || 0 }}嫄?
                 </small>
                 <div class="usage-line">
                   <i :style="{ width: usageWidth(sector.usageRate) }"></i>
                 </div>
-                <small>사용률 {{ formatPercent(sector.usageRate) }}</small>
+                <small>?ъ슜瑜?{{ formatPercent(sector.usageRate) }}</small>
               </button>
-              <p v-if="visibleSectors.length === 0" class="empty">조건에 맞는 섹터가 없습니다.</p>
+              <p v-if="visibleSectors.length === 0" class="empty">議곌굔??留욌뒗 ?뱁꽣媛 ?놁뒿?덈떎.</p>
             </div>
           </div>
         </section>
 
         <section class="summary-group">
           <div class="summary-heading">
-            <strong>선택 섹터</strong>
-            <small>{{ selectedSector?.sectorName || '선택 없음' }}</small>
+            <strong>?좏깮 ?뱁꽣</strong>
+            <small>{{ selectedSector?.sectorName || '?좏깮 ?놁쓬' }}</small>
           </div>
           <div v-if="selectedSector" class="metric-grid">
             <div v-for="metric in selectedSectorMetrics" :key="metric.label" class="metric-card">
@@ -520,6 +789,7 @@ onBeforeUnmount(() => {
               <strong>{{ metric.value }}</strong>
             </div>
           </div>
+          <p class="sector-exception-note" :class="selectedSectorExceptionSummary.tone">{{ selectedSectorExceptionSummary.message }}</p>
           <div v-if="selectedSector" class="badge-list">
             <span
               v-for="badge in sectorAlertBadges(selectedSector)"
@@ -529,16 +799,16 @@ onBeforeUnmount(() => {
             >
               {{ badge.label }}
             </span>
-            <span v-if="sectorAlertBadges(selectedSector).length === 0" class="status-badge normal">특이사항 없음</span>
+            <span v-if="sectorAlertBadges(selectedSector).length === 0" class="status-badge normal">?뱀씠?ы빆 ?놁쓬</span>
           </div>
           <dl class="selected-detail">
-            <div><dt>블록</dt><dd>{{ selectedSector?.blockName || '-' }}</dd></div>
-            <div><dt>컨테이너</dt><dd>{{ formatCount(selectedSector?.containerCount) }}</dd></div>
+            <div><dt>釉붾줉</dt><dd>{{ selectedSector?.blockName || '-' }}</dd></div>
+            <div><dt>而⑦뀒?대꼫</dt><dd>{{ formatCount(selectedSector?.containerCount) }}</dd></div>
             <div><dt>수용량</dt><dd>{{ formatCount(selectedSector?.capacity) }}</dd></div>
             <div><dt>사용률</dt><dd>{{ formatPercent(selectedSector?.usageRate) }}</dd></div>
-            <div><dt>작업 차량</dt><dd>{{ selectedSectorVehicles.length }}대</dd></div>
-            <div><dt>대기 차량</dt><dd>{{ formatCount(selectedSector?.waitingVehicleCount) }}</dd></div>
-            <div><dt>안내</dt><dd>{{ selectedSector?.guideMessage || '-' }}</dd></div>
+            <div><dt>?묒뾽 李⑤웾</dt><dd>{{ selectedSectorVehicles.length }}?</dd></div>
+            <div><dt>?湲?李⑤웾</dt><dd>{{ formatCount(selectedSector?.waitingVehicleCount) }}</dd></div>
+            <div><dt>?덈궡</dt><dd>{{ selectedSector?.guideMessage || '-' }}</dd></div>
           </dl>
           <div class="vehicle-list">
             <div v-for="vehicle in selectedSectorVehicles" :key="vehicle.workOrderId" class="vehicle-row">
@@ -551,21 +821,21 @@ onBeforeUnmount(() => {
                 <strong>{{ vehicle.tractorPlateNumber || vehicle.vehicleId || vehicle.workOrderId }}</strong>
                 <span>{{ workStatusLabel(vehicle.workStatus) }}</span>
                 <small>
-                  컨테이너 {{ vehicle.containerNumber || '-' }} /
+                  而⑦뀒?대꼫 {{ vehicle.containerNumber || '-' }} /
                   {{ vehicle.routeSummary || '-' }} /
-                  트랙터 {{ vehicleStatusLabel(vehicle.tractorVehicleStatus) }} /
-                  트레일러 {{ vehicleStatusLabel(vehicle.trailerVehicleStatus) }}
+                  ?몃옓??{{ vehicleStatusLabel(vehicle.tractorVehicleStatus) }} /
+                  ?몃젅?쇰윭 {{ vehicleStatusLabel(vehicle.trailerVehicleStatus) }}
                 </small>
               </button>
             </div>
-            <p v-if="selectedSector && selectedSectorVehicles.length === 0" class="empty">현재 표시할 작업 차량이 없습니다.</p>
+            <p v-if="selectedSector && selectedSectorVehicles.length === 0" class="empty">?꾩옱 ?쒖떆???묒뾽 李⑤웾???놁뒿?덈떎.</p>
           </div>
         </section>
 
         <section class="summary-group">
           <div class="summary-heading">
-            <strong>작업 상세</strong>
-            <small>{{ selectedWorkVehicle?.workOrderId ? `#${selectedWorkVehicle.workOrderId}` : '선택 없음' }}</small>
+            <strong>?묒뾽 ?곸꽭</strong>
+            <small>{{ selectedWorkVehicle?.workOrderId ? `#${selectedWorkVehicle.workOrderId}` : '?좏깮 ?놁쓬' }}</small>
           </div>
           <div v-if="selectedWorkVehicle" class="badge-list">
             <span
@@ -576,23 +846,23 @@ onBeforeUnmount(() => {
             >
               {{ badge.label }}
             </span>
-            <span v-if="vehicleAlertBadges(selectedWorkVehicle).length === 0" class="status-badge normal">특이사항 없음</span>
+            <span v-if="vehicleAlertBadges(selectedWorkVehicle).length === 0" class="status-badge normal">?뱀씠?ы빆 ?놁쓬</span>
           </div>
           <dl class="selected-detail">
-            <div><dt>작업상태</dt><dd>{{ workStatusLabel(selectedWorkVehicle?.workStatus) }}</dd></div>
-            <div><dt>작업유형</dt><dd>{{ selectedWorkVehicle?.workType || '-' }}</dd></div>
-            <div><dt>예약시간</dt><dd>{{ formatDateTime(selectedWorkVehicle?.reservedTime) }}</dd></div>
-            <div><dt>기사</dt><dd>{{ selectedWorkVehicle?.driverName || '-' }}</dd></div>
+            <div><dt>?묒뾽?곹깭</dt><dd>{{ workStatusLabel(selectedWorkVehicle?.workStatus) }}</dd></div>
+            <div><dt>?묒뾽?좏삎</dt><dd>{{ selectedWorkVehicle?.workType || '-' }}</dd></div>
+            <div><dt>?덉빟?쒓컙</dt><dd>{{ formatDateTime(selectedWorkVehicle?.reservedTime) }}</dd></div>
+            <div><dt>湲곗궗</dt><dd>{{ selectedWorkVehicle?.driverName || '-' }}</dd></div>
             <div><dt>운송사</dt><dd>{{ selectedWorkVehicle?.carrierName || '-' }}</dd></div>
-            <div><dt>출발</dt><dd>{{ selectedWorkVehicle?.originLocation || '-' }}</dd></div>
-            <div><dt>목적</dt><dd>{{ selectedWorkVehicle?.destinationSectorName || selectedWorkVehicle?.sectorName || '-' }}</dd></div>
-            <div><dt>이동구간</dt><dd>{{ selectedWorkVehicle?.routeSummary || '-' }}</dd></div>
-            <div><dt>섹터</dt><dd>{{ selectedWorkVehicle?.sectorName || selectedSector?.sectorName || '-' }}</dd></div>
-            <div><dt>컨테이너</dt><dd>{{ selectedWorkVehicle?.containerNumber || '-' }}</dd></div>
-            <div><dt>규격/위치</dt><dd>{{ selectedWorkVehicle?.containerSize || '-' }} / {{ selectedWorkVehicle?.containerLocation || '-' }}</dd></div>
-            <div><dt>출차상태</dt><dd>{{ canExitLabel(selectedWorkVehicle?.canExit) }}</dd></div>
+            <div><dt>異쒕컻</dt><dd>{{ selectedWorkVehicle?.originLocation || '-' }}</dd></div>
+            <div><dt>紐⑹쟻</dt><dd>{{ selectedWorkVehicle?.destinationSectorName || selectedWorkVehicle?.sectorName || '-' }}</dd></div>
+            <div><dt>?대룞援ш컙</dt><dd>{{ selectedWorkVehicle?.routeSummary || '-' }}</dd></div>
+            <div><dt>?뱁꽣</dt><dd>{{ selectedWorkVehicle?.sectorName || selectedSector?.sectorName || '-' }}</dd></div>
+            <div><dt>而⑦뀒?대꼫</dt><dd>{{ selectedWorkVehicle?.containerNumber || '-' }}</dd></div>
+            <div><dt>洹쒓꺽/?꾩튂</dt><dd>{{ selectedWorkVehicle?.containerSize || '-' }} / {{ selectedWorkVehicle?.containerLocation || '-' }}</dd></div>
+            <div><dt>異쒖감?곹깭</dt><dd>{{ canExitLabel(selectedWorkVehicle?.canExit) }}</dd></div>
             <div><dt>트랙터</dt><dd>{{ selectedWorkVehicle?.tractorPlateNumber || '-' }} / {{ vehicleStatusLabel(selectedWorkVehicle?.tractorVehicleStatus) }}</dd></div>
-            <div><dt>트레일러</dt><dd>{{ selectedWorkVehicle?.trailerPlateNumber || '-' }} / {{ vehicleStatusLabel(selectedWorkVehicle?.trailerVehicleStatus) }}</dd></div>
+            <div><dt>?몃젅?쇰윭</dt><dd>{{ selectedWorkVehicle?.trailerPlateNumber || '-' }} / {{ vehicleStatusLabel(selectedWorkVehicle?.trailerVehicleStatus) }}</dd></div>
           </dl>
         </section>
       </aside>
@@ -629,23 +899,24 @@ onBeforeUnmount(() => {
 
 .map-toolbar,
 .map-notice,
-.map-loading,
-.refresh-panel {
+.map-loading {
   position: absolute;
   z-index: 500;
 }
 
 .map-toolbar {
-  display: flex;
+  display: grid;
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
+  grid-template-columns: minmax(220px, 1fr) 130px auto auto;
   gap: 8px;
-  align-items: end;
-  max-width: calc(100% - 100px);
+  align-items: center;
+  width: min(760px, calc(100% - 120px));
   padding: 8px;
   background: #ffffff;
   border: 1px solid #b9c5d1;
+  box-shadow: 0 2px 8px #1726361a;
 }
 
 .map-toolbar label {
@@ -667,7 +938,7 @@ onBeforeUnmount(() => {
 }
 
 .map-toolbar input {
-  width: min(250px, 34vw);
+  width: 100%;
 }
 
 .map-notice,
@@ -689,42 +960,35 @@ onBeforeUnmount(() => {
   top: 112px;
 }
 
-.refresh-panel {
-  display: flex;
-  left: 12px;
-  bottom: 12px;
-  gap: 10px;
-  align-items: center;
-  max-width: min(360px, calc(100% - 84px));
-  padding: 8px 9px;
+.toolbar-refresh {
+  display: grid;
+  gap: 1px;
+  min-width: 104px;
+  padding: 5px 7px;
   color: #1f2933;
-  background: #ffffff;
-  border: 1px solid #b9c5d1;
+  background: #f8fafc;
+  border: 1px solid #c7d1dc;
 }
 
-.refresh-panel.stale {
+.toolbar-refresh.stale {
   color: #7a5300;
   background: #fff5dc;
   border-color: #d5b766;
 }
 
-.refresh-panel div {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.refresh-panel strong {
+.toolbar-refresh strong {
   font-size: 12px;
+  line-height: 1.1;
 }
 
-.refresh-panel small {
+.toolbar-refresh small {
   color: #5d6875;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
+  line-height: 1.15;
 }
 
-.refresh-panel button {
+.toolbar-button {
   min-width: 74px;
   height: 30px;
   color: #ffffff;
@@ -734,7 +998,7 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
-.refresh-panel button:disabled {
+.toolbar-button:disabled {
   color: #5d6875;
   background: #edf1f5;
   border-color: #c6d0da;
@@ -774,11 +1038,162 @@ onBeforeUnmount(() => {
   padding: 10px;
 }
 
+.operation-brief {
+  border-left: 5px solid var(--green-600);
+}
+
+.operation-brief.warning {
+  border-left-color: var(--amber-500);
+}
+
+.operation-brief.danger {
+  border-left-color: var(--red-500);
+}
+
+.operation-status {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  background: #f8fafc;
+  border: 1px solid #c7d1dc;
+}
+
+.operation-status span {
+  color: #173b60;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.operation-status p {
+  margin: 0;
+  color: var(--ink-700);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.operation-status dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.operation-status dl div {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.operation-status dt {
+  color: var(--ink-500);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.operation-status dd {
+  margin: 0;
+  color: var(--ink-900);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.operation-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.operation-metrics div {
+  display: grid;
+  gap: 3px;
+  padding: 7px;
+  background: #f8fafc;
+  border: 1px solid #c7d1dc;
+  border-top: 4px solid #7b8794;
+}
+
+.operation-metrics div.normal {
+  border-top-color: var(--green-600);
+}
+
+.operation-metrics div.warning {
+  border-top-color: var(--amber-500);
+}
+
+.operation-metrics div.danger {
+  border-top-color: var(--red-500);
+}
+
+.operation-metrics span {
+  color: var(--ink-500);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.operation-metrics strong {
+  color: var(--ink-900);
+  font-size: 12px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.priority-list,
 .gate-list,
 .sector-list,
 .vehicle-list {
   display: grid;
   gap: 8px;
+}
+
+.priority-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid #c7d1dc;
+  border-left: 5px solid #7b8794;
+  text-align: left;
+}
+
+.priority-row.warning {
+  border-left-color: var(--amber-500);
+}
+
+.priority-row.danger {
+  border-left-color: var(--red-500);
+}
+
+.priority-row strong {
+  color: var(--ink-900);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.priority-row span {
+  color: var(--ink-700);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.priority-row small {
+  grid-column: 1 / -1;
+  color: var(--ink-500);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.compact-more-button {
+  width: 100%;
+  min-height: 30px;
+  color: #173b60;
+  background: #eef4fa;
+  border: 1px solid #b8c8d8;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .gate-card,
@@ -789,6 +1204,15 @@ onBeforeUnmount(() => {
   padding: 8px;
   background: #f8fafc;
   border: 1px solid #c7d1dc;
+}
+
+.gate-card.normal {
+  border-left: 4px solid var(--green-600);
+}
+
+.gate-card.warning {
+  border-left: 4px solid var(--amber-500);
+  background: #fffaf0;
 }
 
 .gate-card strong,
@@ -994,6 +1418,27 @@ onBeforeUnmount(() => {
   font-size: 16px;
 }
 
+.sector-exception-note {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: #f8fafc;
+  color: var(--ink-700);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.sector-exception-note.warning {
+  border-color: #f5d38a;
+  background: #fff8e7;
+}
+
+.sector-exception-note.danger {
+  border-color: #fecaca;
+  background: #fff1f2;
+}
+
 .badge-list {
   display: flex;
   flex-wrap: wrap;
@@ -1081,6 +1526,52 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
+:global(.yard-gate-complex-icon) {
+  background: transparent;
+  border: 0;
+}
+
+:global(.yard-gate-complex) {
+  display: grid;
+  gap: 2px;
+  width: 124px;
+  min-height: 58px;
+  padding: 8px 10px;
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 14px;
+  box-shadow: 0 10px 22px rgba(23, 38, 54, 0.24);
+  text-align: left;
+}
+
+:global(.yard-gate-complex.in) {
+  background: linear-gradient(135deg, #1f6aa9, #1b4f81);
+}
+
+:global(.yard-gate-complex.out) {
+  background: linear-gradient(135deg, #c14a43, #93322d);
+}
+
+:global(.yard-gate-complex.warning) {
+  box-shadow: 0 12px 24px rgba(143, 31, 27, 0.26);
+}
+
+:global(.yard-gate-complex span) {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.86;
+}
+
+:global(.yard-gate-complex strong) {
+  font-size: 13px;
+  line-height: 1.15;
+}
+
+:global(.yard-gate-complex small) {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.92;
+}
 :global(.yard-gate-icon),
 :global(.yard-vehicle-icon) {
   background: transparent;
@@ -1088,14 +1579,19 @@ onBeforeUnmount(() => {
 }
 
 :global(.yard-gate) {
+  position: relative;
   display: grid;
-  width: 48px;
-  height: 38px;
-  place-items: center;
+  width: 52px;
+  min-height: 46px;
+  grid-template-rows: auto auto auto;
+  justify-items: center;
+  gap: 2px;
+  padding: 5px 4px 4px;
   color: #fff;
   background: #23639c;
   border: 2px solid #fff;
-  box-shadow: 0 1px 4px #17263688;
+  border-radius: 10px;
+  box-shadow: 0 8px 18px rgba(23, 38, 54, 0.28);
   font-weight: 900;
 }
 
@@ -1103,13 +1599,101 @@ onBeforeUnmount(() => {
   background: #b8403a;
 }
 
+:global(.yard-gate.lane-primary) {
+  transform: translate(-12px, -8px);
+}
+
+:global(.yard-gate.lane-secondary) {
+  transform: translate(18px, 12px);
+}
+
+:global(.yard-gate::before) {
+  position: absolute;
+  z-index: -1;
+  width: 18px;
+  border-top: 2px dashed rgba(39, 52, 66, 0.55);
+  content: '';
+}
+
+:global(.yard-gate::after) {
+  position: absolute;
+  z-index: -1;
+  width: 8px;
+  height: 8px;
+  background: #ffffff;
+  border: 2px solid rgba(39, 52, 66, 0.72);
+  border-radius: 50%;
+  content: '';
+}
+
+:global(.yard-gate.in.lane-primary::before) {
+  right: -14px;
+  bottom: 8px;
+  transform: rotate(18deg);
+}
+
+:global(.yard-gate.in.lane-primary::after) {
+  right: -22px;
+  bottom: 3px;
+}
+
+:global(.yard-gate.in.lane-secondary::before) {
+  left: -14px;
+  top: 9px;
+  transform: rotate(-20deg);
+}
+
+:global(.yard-gate.in.lane-secondary::after) {
+  left: -22px;
+  top: 4px;
+}
+
+:global(.yard-gate.out.lane-primary::before) {
+  right: -14px;
+  bottom: 8px;
+  transform: rotate(18deg);
+}
+
+:global(.yard-gate.out.lane-primary::after) {
+  right: -22px;
+  bottom: 3px;
+}
+
+:global(.yard-gate.out.lane-secondary::before) {
+  left: -14px;
+  top: 9px;
+  transform: rotate(-20deg);
+}
+
+:global(.yard-gate.out.lane-secondary::after) {
+  left: -22px;
+  top: 4px;
+}
+
 :global(.yard-gate b) {
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1;
 }
 
 :global(.yard-gate small) {
-  margin-top: -5px;
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
   font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+:global(.yard-gate i) {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1;
 }
 
 :global(.vehicle-marker) {
@@ -1237,7 +1821,16 @@ onBeforeUnmount(() => {
     left: 12px;
     right: 12px;
     transform: none;
+    width: auto;
     max-width: none;
+    grid-template-columns: 1fr 120px;
+  }
+
+  .toolbar-refresh,
+  .toolbar-button {
+    grid-column: span 1;
   }
 }
 </style>
+
+

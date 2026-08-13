@@ -80,18 +80,15 @@ const submitLogin = async () => {
 <style scoped>
 .login-form {
   display: grid;
-  gap: 14px;
-  padding: 18px;
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  gap: 18px;
+  padding: 0;
+  background: transparent;
 }
 
 .form-head {
   display: grid;
-  gap: 4px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--line);
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .section-label {
@@ -99,44 +96,57 @@ const submitLogin = async () => {
   color: var(--blue-700);
   font-size: 12px;
   font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .form-head h2 {
   margin: 0;
   color: var(--ink-900);
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 800;
+  letter-spacing: 0;
 }
 
 .form-head p {
   margin: 0;
   color: var(--ink-500);
   font-size: 14px;
+  line-height: 1.45;
 }
 
 .field {
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
 .field label {
   color: var(--ink-700);
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .field input,
 .field select {
-  height: 42px;
-  padding: 0 12px;
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  color: var(--ink-900);
   background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  border: 1px solid #cbd7e3;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--blue-700);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(40, 103, 166, 0.12);
 }
 
 .message {
   padding: 10px 12px;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 700;
 }
@@ -148,13 +158,15 @@ const submitLogin = async () => {
 }
 
 .submit-button {
-  min-height: 40px;
+  min-height: 48px;
+  margin-top: 4px;
   color: #ffffff;
   background: var(--blue-700);
   border: 1px solid var(--blue-700);
-  border-radius: 4px;
+  border-radius: 8px;
   font-weight: 800;
   cursor: pointer;
+  box-shadow: 0 10px 22px rgba(31, 92, 150, 0.18);
 }
 
 .submit-button:disabled {

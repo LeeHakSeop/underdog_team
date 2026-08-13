@@ -123,14 +123,12 @@ const updateField = (key, value) => {
 <style scoped>
 .step-section {
   display: grid;
-  gap: 14px;
+  gap: 22px;
 }
 
 .section-head {
   display: grid;
-  gap: 4px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--line);
+  gap: 6px;
 }
 
 .section-label {
@@ -138,42 +136,47 @@ const updateField = (key, value) => {
   color: var(--blue-700);
   font-size: 12px;
   font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .section-head h3 {
   margin: 0;
-  font-size: 18px;
+  color: var(--ink-900);
+  font-size: 24px;
   font-weight: 800;
+  letter-spacing: 0;
 }
 
 .section-head p {
   margin: 0;
   color: var(--ink-500);
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .role-choice {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 12px;
 }
 
 .role-choice button {
   display: grid;
   align-items: center;
   justify-items: center;
-  min-height: 46px;
+  min-height: 50px;
   padding: 10px 12px;
   text-align: center;
-  background: #f7fafe;
-  border: 1px solid var(--line);
-  border-radius: 2px;
+  background: #ffffff;
+  border: 1px solid #cbd7e3;
+  border-radius: 10px;
+  cursor: pointer;
 }
 
 .role-choice button.active {
   background: #eef6ff;
   border-color: var(--blue-700);
-  box-shadow: inset 0 0 0 1px var(--blue-700);
+  box-shadow: 0 0 0 3px rgba(40, 103, 166, 0.10);
 }
 
 .role-choice strong {
@@ -184,29 +187,29 @@ const updateField = (key, value) => {
 .form-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 16px;
 }
 
 .field {
   display: grid;
   align-content: start;
   align-self: start;
-  gap: 5px;
+  gap: 7px;
 }
 
 .username-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 72px;
+  grid-template-columns: minmax(0, 1fr) 84px;
   overflow: hidden;
   background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 3px;
+  border: 1px solid #cbd7e3;
+  border-radius: 8px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .username-row:focus-within {
   border-color: var(--blue-700);
-  box-shadow: 0 0 0 2px rgba(40, 103, 166, 0.12);
+  box-shadow: 0 0 0 3px rgba(40, 103, 166, 0.12);
 }
 
 .username-row.checked {
@@ -220,14 +223,21 @@ const updateField = (key, value) => {
 .field label {
   color: var(--ink-700);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .field input {
-  min-height: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 2px;
+  min-height: 48px;
+  padding: 0 14px;
+  background: #ffffff;
+  border: 1px solid #cbd7e3;
+  border-radius: 8px;
+}
+
+.field input:focus {
+  border-color: var(--blue-700);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(40, 103, 166, 0.12);
 }
 
 .username-row input {
@@ -236,25 +246,19 @@ const updateField = (key, value) => {
 }
 
 .username-row input:focus {
-  outline: none;
+  box-shadow: none;
 }
 
 .check-button {
   min-width: 0;
-  min-height: 34px;
+  min-height: 48px;
   padding: 0 10px;
   color: #ffffff;
   font-size: 12px;
   font-weight: 800;
   background: var(--blue-700);
   border: 0;
-  border-left: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 0;
   cursor: pointer;
-}
-
-.check-button:hover {
-  background: #1d4e89;
 }
 
 .check-button:disabled {
@@ -263,9 +267,9 @@ const updateField = (key, value) => {
 }
 
 .check-message {
-  height: 16px;
-  overflow: hidden;
-  margin: 1px 0 0;
+  min-height: 16px;
+  margin: 0;
+  color: var(--ink-500);
   font-size: 12px;
   font-weight: 700;
   line-height: 16px;

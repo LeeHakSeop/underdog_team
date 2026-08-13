@@ -14,11 +14,47 @@ public interface YardMapMapper {
                 ys.sector_name AS sectorName,
                 ys.block_name AS blockName,
                 ys.sector_status AS sectorStatus,
-                COALESCE(ys.capacity, 40) AS capacity,
+                40 AS capacity,
                 COALESCE(ys.waiting_vehicle_count, 0) AS waitingVehicleCount,
                 ys.guide_message AS guideMessage,
+<<<<<<< HEAD
                 ys.alt_waiting_area AS altWaitingArea
             FROM yard_sector ys
+=======
+                ys.alt_waiting_area AS altWaitingArea,
+                COUNT(DISTINCT c.container_id) AS containerCount,
+                ROUND(
+                    (COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)) * 100,
+                    1
+                )::float AS usageRate,
+                COUNT(DISTINCT wo.work_order_id) AS workOrderCount,
+                CASE
+                    WHEN (
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
+                    ) >= 0.8
+                      OR COALESCE(ys.waiting_vehicle_count, 0) >= 6
+                      OR COUNT(DISTINCT wo.work_order_id) >= 3 THEN 'DANGER'
+                    WHEN (
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
+                    ) >= 0.5
+                      OR COALESCE(ys.waiting_vehicle_count, 0) >= 3
+                      OR COUNT(DISTINCT wo.work_order_id) >= 1 THEN 'WARNING'
+                    ELSE 'NORMAL'
+                END AS statusLevel
+            FROM yard_sector ys
+            LEFT JOIN container c ON c.sector_id = ys.sector_id
+            LEFT JOIN work_order wo
+                ON wo.container_id = c.container_id
+               AND wo.work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS')
+            GROUP BY
+                ys.sector_id,
+                ys.sector_name,
+                ys.block_name,
+                ys.sector_status,
+                ys.waiting_vehicle_count,
+                ys.guide_message,
+                ys.alt_waiting_area
+>>>>>>> origin/hakseop
             ORDER BY ys.sector_id
             """)
     List<YardMapSectorDTO> sectors();
@@ -137,3 +173,4 @@ public interface YardMapMapper {
             """)
     List<YardMapVehicleDTO> vehicles();
 }
+

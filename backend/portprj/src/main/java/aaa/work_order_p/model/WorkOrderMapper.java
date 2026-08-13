@@ -90,6 +90,31 @@ public interface WorkOrderMapper {
             @Param("workOrderId") Long workOrderId
     );
 
+    @Select("""
+            SELECT COUNT(*)
+            FROM work_order
+            WHERE tractor_vehicle_id = #{tractorVehicleId}
+              AND work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+              AND (#{workOrderId,jdbcType=BIGINT} IS NULL OR work_order_id <> #{workOrderId,jdbcType=BIGINT})
+            """)
+    int countActiveByTractorVehicleId(
+            @Param("tractorVehicleId") Long tractorVehicleId,
+            @Param("workOrderId") Long workOrderId
+    );
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM work_order wo
+            JOIN container c ON c.container_id = wo.container_id
+            WHERE c.sector_id = #{sectorId}
+              AND wo.work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+              AND (#{workOrderId,jdbcType=BIGINT} IS NULL OR wo.work_order_id <> #{workOrderId,jdbcType=BIGINT})
+            """)
+    int countActiveBySectorId(
+            @Param("sectorId") Long sectorId,
+            @Param("workOrderId") Long workOrderId
+    );
+
     @Update("""
             UPDATE work_order
             SET work_type = #{workType},

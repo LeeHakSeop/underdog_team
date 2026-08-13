@@ -47,16 +47,18 @@ defineProps({
 .progress-wrap {
   display: grid;
   gap: 0;
-  margin: 10px 0 16px;
+  width: min(100%, 520px);
+  justify-self: center;
+  margin: 2px auto 34px;
 }
 
 .progress-item {
   position: relative;
   display: grid;
   justify-items: center;
-  gap: 6px;
-  color: #6f8194;
-  font-size: 13px;
+  gap: 10px;
+  color: #718396;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -67,8 +69,8 @@ defineProps({
   height: 30px;
   place-items: center;
   color: #5e7185;
-  background: #eef3f8;
-  border: 1px solid #c4d1de;
+  background: #f4f7fa;
+  border: 1px solid #c7d3df;
   border-radius: 50%;
 }
 
@@ -76,6 +78,7 @@ defineProps({
   color: #ffffff;
   background: var(--blue-700);
   border-color: var(--blue-700);
+  box-shadow: 0 6px 14px rgba(31, 92, 150, 0.18);
 }
 
 .progress-item.done .circle {
@@ -102,8 +105,8 @@ defineProps({
   top: 15px;
   left: 50%;
   width: 100%;
-  height: 2px;
-  background: #c4d1de;
+  height: 1px;
+  background: #c7d3df;
   transform: translateX(15px);
 }
 
@@ -111,25 +114,13 @@ defineProps({
   background: #1f7a4d;
 }
 
-@media (max-height: 760px) and (min-width: 1100px) {
-  .progress-wrap {
-    margin: 8px 0 12px;
-  }
-}
-
 @media (max-width: 620px) {
+  .progress-wrap {
+    margin-bottom: 28px;
+  }
+
   .label {
     font-size: 11px;
-  }
-
-  .circle {
-    width: 24px;
-    height: 24px;
-  }
-
-  .line {
-    top: 12px;
-    transform: translateX(12px);
   }
 }
 </style>

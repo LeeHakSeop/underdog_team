@@ -29,3 +29,24 @@ jwt:
 ai:
   plate:
     url: http://127.0.0.1:8000/api/plate-recognition
+
+weather:
+  api:
+    url: https://api.openweathermap.org/data/2.5/weather
+    forecast-url: https://api.openweathermap.org/data/2.5/forecast
+    key: ${WEATHER_API_KEY:}
+    key-file: ${WEATHER_API_KEY_FILE:.weather-api-key}
+    latitude: ${WEATHER_LATITUDE:35.10535}
+    longitude: ${WEATHER_LONGITUDE:129.0846}
+    cache-ttl-seconds: ${WEATHER_CACHE_TTL_SECONDS:300}
+    timeout-ms: ${WEATHER_TIMEOUT_MS:3000}
+  risk:
+    wind:
+      caution: ${WEATHER_RISK_WIND_CAUTION:10}
+      danger: ${WEATHER_RISK_WIND_DANGER:15}
+    rain:
+      caution: ${WEATHER_RISK_RAIN_CAUTION:5}
+      danger: ${WEATHER_RISK_RAIN_DANGER:15}
+    visibility:
+      caution: ${WEATHER_RISK_VISIBILITY_CAUTION:5000}
+      danger: ${WEATHER_RISK_VISIBILITY_DANGER:1000}

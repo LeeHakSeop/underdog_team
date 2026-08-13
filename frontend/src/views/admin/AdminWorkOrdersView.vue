@@ -1,5 +1,6 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useNotificationStore } from '@/stores/adminStore/notificationStore'
 import { useCarrierStore } from '@/stores/carrierStore'
 import { useContainerStore } from '@/stores/adminStore/containerStore'
 import { useDriverStore } from '@/stores/driverStore'
@@ -9,6 +10,7 @@ import { fetchYardSectors } from '@/api/adminApi/yardSectorApi'
 import { fetchWorkStatusHistory } from '@/api/adminApi/workOrderApi'
 
 const workOrderStore = useWorkOrderStore()
+const notificationStore = useNotificationStore()
 const carrierStore = useCarrierStore()
 const containerStore = useContainerStore()
 const driverStore = useDriverStore()
@@ -36,6 +38,34 @@ const editingContainerId = ref(null)
 const containerForm = ref({})
 const yardSectors = ref([])
 let refreshTimer = null
+
+const exceptionTypeLabelMap = {
+  DRIVER_CANNOT_ENTER: '기사 출입 제한',
+  DRIVER_ALREADY_ASSIGNED: '기사 중복 배정',
+  DRIVER_UNAVAILABLE: '기사 배정 불가',
+  CARRIER_INACTIVE: '운송사 비활성',
+  WORK_ORDER_NOT_APPROVED: '작업 승인 대기',
+  WORK_ORDER_NOT_FOUND: '작업지시 누락',
+  VEHICLE_NOT_REGISTERED: '차량 미등록',
+  VEHICLE_UNAVAILABLE: '차량 배정 불가',
+  VEHICLE_DUPLICATE_ASSIGNMENT: '차량 중복 배정',
+  VEHICLE_TYPE_MISMATCH: '차량 유형 불일치',
+  PLATE_NOT_DETECTED: '번호판 인식 실패',
+  CONTAINER_NOT_FOUND: '컨테이너 정보 누락',
+  YARD_SECTOR_NOT_FOUND: '야드 섹터 누락',
+  YARD_SECTOR_UNAVAILABLE: '야드 섹터 사용 불가',
+  YARD_SECTOR_CAPACITY_EXCEEDED: '야드 수용량 초과',
+  TRACTOR_INFO_NOT_FOUND: '트랙터 정보 누락',
+  AI_SERVER_ERROR: '인식 서버 오류',
+  UNKNOWN_VEHICLE_TYPE: '차량 유형 미확인',
+}
+
+const getExceptionValue = (row, camelKey, snakeKey) => row?.[camelKey] ?? row?.[snakeKey] ?? ''
+
+const openExceptions = computed(() => (notificationStore.notifications || []).filter((item) => {
+  const status = getExceptionValue(item, 'processStatus', 'process_status') || 'UNPROCESSED'
+  return status !== 'PROCESSED'
+}))
 
 const pageSizeOptions = [10, 20, 50]
 const taskStatusOptions = [
@@ -95,6 +125,50 @@ const getVehicleForType = (order, vehicleType) => {
 
 const getTractorPlate = (order) => getPlateNumber(getId(order, 'tractorVehicleId') || getId(order, 'vehicleId'))
 const getTrailerPlate = (order) => getPlateNumber(getId(order, 'trailerVehicleId'))
+
+const criticalExceptionTypes = new Set([
+  'DRIVER_CANNOT_ENTER',
+  'DRIVER_ALREADY_ASSIGNED',
+  'VEHICLE_DUPLICATE_ASSIGNMENT',
+  'YARD_SECTOR_CAPACITY_EXCEEDED',
+  'AI_SERVER_ERROR',
+])
+
+const getOrderExceptionSummary = (order) => {
+  const vehicleIds = new Set([
+    getId(order, 'tractorVehicleId'),
+    getId(order, 'trailerVehicleId'),
+    getId(order, 'vehicleId'),
+  ].filter(Boolean).map(String))
+  const plateNumbers = new Set([
+    getTractorPlate(order),
+    getTrailerPlate(order),
+  ].filter((plate) => plate && plate !== '-').map(String))
+
+  const matched = openExceptions.value.filter((exception) => {
+    const vehicleId = getExceptionValue(exception, 'vehicleId', 'vehicle_id')
+    const plateNumber = getExceptionValue(exception, 'plateNumber', 'plate_number')
+    return (vehicleId && vehicleIds.has(String(vehicleId)))
+      || (plateNumber && plateNumbers.has(String(plateNumber)))
+  })
+
+  if (matched.length === 0) {
+    return { count: 0, label: '정상', detail: '', tone: 'green' }
+  }
+
+  const types = [...new Set(matched.map((item) => (
+    getExceptionValue(item, 'exceptionType', 'exception_type') || 'EXCEPTION'
+  )))]
+  const labels = types.map((type) => exceptionTypeLabelMap[type] || '기타 예외')
+  const hasCritical = types.some((type) => criticalExceptionTypes.has(type))
+
+  return {
+    count: matched.length,
+    label: hasCritical ? '위험' : '주의',
+    detail: labels.slice(0, 2).join(' / '),
+    tone: hasCritical ? 'red' : 'amber',
+  }
+}
 
 const getVehicleApprovalText = (vehicle) => {
   if (!vehicle) return '미연결'
@@ -372,6 +446,7 @@ const processWorkOrder = async (order, action) => {
 
 const loadData = () => {
   workOrderStore.loadWorkOrders().catch(() => {})
+  notificationStore.loadNotifications().catch(() => {})
   carrierStore.loadCarriers().catch(() => {})
   containerStore.loadContainers().catch(() => {})
   driverStore.loadDrivers().catch(() => {})
@@ -443,6 +518,7 @@ onMounted(() => {
   refreshTimer = setInterval(() => {
     if (!workOrderStore.loading && processingId.value === null) {
       workOrderStore.loadWorkOrders().catch(() => {})
+      notificationStore.loadNotifications().catch(() => {})
       fetchWorkStatusHistory().then((data) => {
         workHistory.value = data || []
       }).catch(() => {})
@@ -484,6 +560,14 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <div class="work-order-alert-strip">
+        <article class="work-alert-card warning">
+          <span>전체 미처리 운영 예외</span>
+          <strong>{{ openExceptions.length }}건</strong>
+          <small>현재 작업과 연결된 예외는 각 작업 행에서 확인할 수 있습니다.</small>
+        </article>
+      </div>
+
       <div class="table-wrap work-table-scroll">
         <table class="data-table">
           <thead>
@@ -499,6 +583,7 @@ onUnmounted(() => {
               <th>트랙터 승인</th>
               <th>트레일러 승인</th>
               <th>기사 출입</th>
+              <th>예외</th>
               <th>상태</th>
               <th>진행 주체</th>
             </tr>
@@ -529,6 +614,14 @@ onUnmounted(() => {
                 </span>
               </td>
               <td>
+                <span class="status-pill" :class="getOrderExceptionSummary(order).tone">
+                  {{ getOrderExceptionSummary(order).count > 0 ? `${getOrderExceptionSummary(order).label} ${getOrderExceptionSummary(order).count}건` : '없음' }}
+                </span>
+                <small v-if="getOrderExceptionSummary(order).count > 0" class="exception-cell-hint">
+                  {{ getOrderExceptionSummary(order).detail }}
+                </small>
+              </td>
+              <td>
                 <span class="status-pill amber">
                   {{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}
                 </span>
@@ -553,7 +646,7 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="filteredCarrierRequests.length === 0">
-              <td colspan="13">조회된 배차 대기 작업이 없습니다.</td>
+              <td colspan="14">조회된 배차 대기 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -632,6 +725,7 @@ onUnmounted(() => {
               <th>트랙터 승인</th>
               <th>트레일러 승인</th>
               <th>기사 출입</th>
+              <th>예외</th>
               <th>상태</th>
               <th>처리</th>
             </tr>
@@ -660,6 +754,14 @@ onUnmounted(() => {
                 </span>
               </td>
               <td>
+                <span class="status-pill" :class="getOrderExceptionSummary(order).tone">
+                  {{ getOrderExceptionSummary(order).count > 0 ? `${getOrderExceptionSummary(order).label} ${getOrderExceptionSummary(order).count}건` : '없음' }}
+                </span>
+                <small v-if="getOrderExceptionSummary(order).count > 0" class="exception-cell-hint">
+                  {{ getOrderExceptionSummary(order).detail }}
+                </small>
+              </td>
+              <td>
                 <span class="status-pill" :class="getStatusClass(getValue(order, 'workStatus', 'work_status'))">
                   {{ getStatusText(getValue(order, 'workStatus', 'work_status')) }}
                 </span>
@@ -675,7 +777,7 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="filteredProcessingTasks.length === 0">
-              <td colspan="11">조회된 처리 작업이 없습니다.</td>
+              <td colspan="12">조회된 처리 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -951,6 +1053,39 @@ onUnmounted(() => {
 
 .container-message {
   margin-bottom: 10px;
+}
+
+.work-order-alert-strip {
+  margin-bottom: 10px;
+}
+
+.work-alert-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 4px solid #cc8a12;
+  background: #fff8ea;
+}
+
+.work-alert-card span,
+.work-alert-card small,
+.exception-cell-hint {
+  color: var(--ink-700);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.work-alert-card strong {
+  color: var(--ink-900);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.exception-cell-hint {
+  display: block;
+  margin-top: 4px;
+  line-height: 1.4;
 }
 
 .reject-button {

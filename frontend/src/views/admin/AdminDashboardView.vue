@@ -3,9 +3,16 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useDashboardStore } from '@/stores/adminStore/dashboardStore'
+import { useNotificationStore } from '@/stores/adminStore/notificationStore'
+import { useWeatherStore } from '@/stores/weatherStore'
+import WeatherCard from '@/components/WeatherCard.vue'
 
 const dashboardStore = useDashboardStore()
+const notificationStore = useNotificationStore()
+const weatherStore = useWeatherStore()
 const { dashboard, loading, error, lastUpdatedAt } = storeToRefs(dashboardStore)
+const { notifications } = storeToRefs(notificationStore)
+const { weatherInfo, loading: weatherLoading, errMsg: weatherError } = storeToRefs(weatherStore)
 
 const summary = computed(() => dashboard.value?.summary || {})
 const workStatusList = computed(() => dashboard.value?.workStatusList || [])
@@ -39,7 +46,7 @@ const workStatusMap = {
 const sectorStatusMap = {
   NORMAL: { label: '정상', tone: 'green' },
   WARNING: { label: '주의', tone: 'amber' },
-  DANGER: { label: '혼잡', tone: 'red' },
+  DANGER: { label: '위험', tone: 'red' },
 }
 
 const getWorkStatus = (status) => workStatusMap[status] || { label: status || '-', tone: 'gray' }
@@ -63,7 +70,7 @@ const metricCards = computed(() => [
   {
     label: '대기 차량',
     value: formatVehicleCount(summary.value.waitingVehicles),
-    hint: `혼잡 섹터 ${summary.value.congestedSectors || 0}개 / 주의 ${summary.value.warningSectors || 0}개`,
+    hint: `위험 섹터 ${summary.value.congestedSectors || 0}개 / 주의 ${summary.value.warningSectors || 0}개`,
     to: '/admin/yard-map',
     tone: (summary.value.congestedSectors || 0) > 0 ? 'red' : (summary.value.warningSectors || 0) > 0 ? 'amber' : 'green',
   },
@@ -107,6 +114,146 @@ const operationCards = computed(() => [
   },
 ])
 
+const weatherReasons = computed(() => {
+  if (weatherError.value || !weatherInfo.value?.available) return []
+  const reasons = []
+  if (Number(weatherInfo.value.windSpeed || 0) >= 10) reasons.push('강풍')
+  if (Number(weatherInfo.value.rainfall || 0) >= 5) reasons.push('강수')
+  if (Number(weatherInfo.value.visibility || 0) <= 5000) reasons.push('저시정')
+  return reasons
+})
+
+const adminWeatherSummary = computed(() => {
+  if (weatherLoading.value) {
+    return { label: '기상 확인 중', tone: 'gray', reason: '운영 판단용 날씨 정보를 불러오는 중입니다.' }
+  }
+
+  if (weatherError.value || !weatherInfo.value?.available) {
+    return { label: '확인 필요', tone: 'amber', reason: '기상 데이터가 없어 운영 맵과 현장 공지를 함께 확인해야 합니다.' }
+  }
+
+  if (weatherInfo.value.riskLevel === 'DANGER') {
+    return {
+      label: '운영 위험',
+      tone: 'red',
+      reason: weatherReasons.value.length ? `${weatherReasons.value.join(' / ')} 영향으로 현장 통제 여부를 확인하세요.` : '기상 위험 상태입니다.',
+    }
+  }
+
+  if (weatherInfo.value.riskLevel === 'CAUTION') {
+    return {
+      label: '주의 운영',
+      tone: 'amber',
+      reason: weatherReasons.value.length ? `${weatherReasons.value.join(' / ')} 영향으로 운영 여유 시간을 두고 확인하세요.` : '기상 주의 상태입니다.',
+    }
+  }
+
+  return {
+    label: '정상 운영',
+    tone: 'green',
+    reason: '현재 부산항 날씨 기준으로 운영 제한 요인은 크지 않습니다.',
+  }
+})
+
+const weatherGuideList = computed(() => {
+  if (weatherLoading.value) {
+    return ['부산항 기상 데이터를 확인 중입니다.']
+  }
+
+  if (weatherError.value || !weatherInfo.value?.available) {
+    return [
+      '기상 데이터가 없으므로 운영 맵과 현장 연락을 우선 기준으로 확인하세요.',
+      '야드 혼잡도와 게이트 처리 상태를 먼저 점검하세요.',
+    ]
+  }
+
+  if (weatherInfo.value.riskLevel === 'DANGER') {
+    return [
+      '강풍, 강수, 저시정 여부에 따라 입차 지연 가능성을 확인하세요.',
+      '야드 작업 지속 여부와 기사 대기 지시를 함께 판단하세요.',
+    ]
+  }
+
+  if (weatherInfo.value.riskLevel === 'CAUTION') {
+    return [
+      '기상 주의 상태이므로 작업 간격과 대기 시간을 여유 있게 관리하세요.',
+      '운영 맵의 혼잡 섹터와 함께 확인하면 더 정확합니다.',
+    ]
+  }
+
+  return [
+    '현재 기상 기준으로 운영 제한 요인은 크지 않습니다.',
+    '야드 혼잡과 게이트 예외를 우선 확인하세요.',
+  ]
+})
+
+const getNotificationValue = (item, ...keys) => {
+  for (const key of keys) {
+    const value = item?.[key]
+    if (value !== undefined && value !== null && value !== '') return value
+  }
+  return ''
+}
+
+const exceptionMetaMap = {
+  DRIVER_ALREADY_ASSIGNED: { label: '기사 중복 배차', tone: 'red', priority: 3, guide: '기존 진행 작업과 신규 배차를 함께 확인하세요.' },
+  VEHICLE_DUPLICATE_ASSIGNMENT: { label: '차량 중복 배차', tone: 'red', priority: 3, guide: '트랙터·트레일러의 현재 배차를 먼저 정리하세요.' },
+  YARD_SECTOR_CAPACITY_EXCEEDED: { label: '야드 수용량 초과', tone: 'red', priority: 3, guide: '대상 섹터의 대기 차량과 작업 배치를 우선 조정하세요.' },
+  DRIVER_CANNOT_ENTER: { label: '기사 출입 제한', tone: 'red', priority: 3, guide: '기사 출입 상태와 승인 여부를 우선 확인하세요.' },
+  AI_SERVER_ERROR: { label: '번호판 인식 장애', tone: 'red', priority: 3, guide: '인식 장비와 수동 확인 대기 건을 함께 점검하세요.' },
+  CARRIER_INACTIVE: { label: '운송사 이용 제한', tone: 'amber', priority: 2, guide: '운송사 계정 상태와 최근 승인 이력을 확인하세요.' },
+  DRIVER_UNAVAILABLE: { label: '기사 배차 불가', tone: 'amber', priority: 2, guide: '기사 승인·근무 상태를 확인한 뒤 재배차하세요.' },
+  VEHICLE_UNAVAILABLE: { label: '차량 배차 불가', tone: 'amber', priority: 2, guide: '차량 운행 상태와 정비 여부를 확인하세요.' },
+  YARD_SECTOR_UNAVAILABLE: { label: '야드 배정 불가', tone: 'amber', priority: 2, guide: '섹터 운영 상태를 확인하고 대체 구역을 검토하세요.' },
+  WORK_ORDER_NOT_APPROVED: { label: '작업 승인 대기', tone: 'amber', priority: 2, guide: '배차 승인 대기 작업 누적 여부를 먼저 점검하세요.' },
+  WORK_ORDER_NOT_FOUND: { label: '작업지시 불일치', tone: 'amber', priority: 2, guide: '작업지시 누락 여부와 최근 배차 변경 이력을 확인하세요.' },
+  VEHICLE_NOT_REGISTERED: { label: '미등록 차량', tone: 'amber', priority: 2, guide: '차량 등록 상태와 번호판 매칭 결과를 재확인하세요.' },
+  VEHICLE_TYPE_MISMATCH: { label: '차량 유형 불일치', tone: 'amber', priority: 2, guide: '트랙터와 트레일러 연결 관계를 다시 확인하세요.' },
+  PLATE_NOT_DETECTED: { label: '번호판 인식 실패', tone: 'amber', priority: 2, guide: '번호판 인식 장비 상태와 촬영 환경을 점검하세요.' },
+  CONTAINER_NOT_FOUND: { label: '컨테이너 정보 없음', tone: 'amber', priority: 2, guide: '컨테이너 정보와 작업지시 연결 상태를 다시 확인하세요.' },
+}
+
+const getExceptionMeta = (type) => exceptionMetaMap[type] || {
+  label: '기타 운영 예외',
+  tone: 'amber',
+  priority: 1,
+  guide: '예외 처리 내역에서 상세 원인과 조치 이력을 확인하세요.',
+}
+
+const openExceptions = computed(() => notifications.value.filter((item) => {
+  const status = getNotificationValue(item, 'processStatus', 'process_status') || 'UNPROCESSED'
+  return status !== 'PROCESSED'
+}))
+
+const topExceptionGroups = computed(() => {
+  const grouped = new Map()
+
+  openExceptions.value.forEach((item) => {
+    const type = getNotificationValue(item, 'exceptionType', 'exception_type') || 'EXCEPTION'
+    const meta = getExceptionMeta(type)
+    const current = grouped.get(type) || {
+      type,
+      label: meta.label,
+      tone: meta.tone,
+      priority: meta.priority,
+      guide: meta.guide,
+      count: 0,
+      message: getNotificationValue(item, 'exceptionMessage', 'exception_message') || '예외 상세를 확인하세요.',
+      occurredTime: getNotificationValue(item, 'occurredTime', 'occurred_time'),
+    }
+    current.count += 1
+    grouped.set(type, current)
+  })
+
+  return Array.from(grouped.values())
+    .sort((left, right) => {
+      if (right.priority !== left.priority) return right.priority - left.priority
+      if (right.count !== left.count) return right.count - left.count
+      return new Date(right.occurredTime || 0) - new Date(left.occurredTime || 0)
+    })
+    .slice(0, 3)
+})
+
 const getWorkCount = (workStatus) => {
   const status = workStatusList.value.find((item) => item.workStatus === workStatus)
   return status ? status.workCount : 0
@@ -130,10 +277,18 @@ const workCards = computed(() => [
 
 onMounted(() => {
   dashboardStore.loadDashboard()
+  notificationStore.loadNotifications().catch(() => {})
+  weatherStore.fetchWeather().catch(() => {})
 
   refreshTimer = setInterval(() => {
     if (!dashboardStore.loading) {
       dashboardStore.loadDashboard().catch(() => {})
+    }
+    if (!notificationStore.loading) {
+      notificationStore.loadNotifications().catch(() => {})
+    }
+    if (!weatherStore.loading) {
+      weatherStore.fetchWeather().catch(() => {})
     }
   }, 5000)
 })
@@ -179,6 +334,26 @@ onUnmounted(() => {
       </div>
     </section>
 
+    <section v-if="!loading && !error" class="grid-2 weather-dashboard-grid">
+      <article class="panel weather-summary-panel" :class="adminWeatherSummary.tone">
+        <div class="section-title">
+          <h2>부산항 기상 판단</h2>
+          <span class="status-pill" :class="adminWeatherSummary.tone">{{ adminWeatherSummary.label }}</span>
+        </div>
+        <p class="weather-brief">{{ adminWeatherSummary.reason }}</p>
+        <div class="weather-guide-list">
+          <p v-for="item in weatherGuideList" :key="item">{{ item }}</p>
+        </div>
+      </article>
+
+      <WeatherCard
+        :weather="weatherInfo"
+        :loading="weatherLoading"
+        :error="weatherError"
+        title="부산항 날씨"
+      />
+    </section>
+
     <section v-if="!loading && !error" class="metric-grid">
       <RouterLink
         v-for="card in operationCards"
@@ -195,6 +370,34 @@ onUnmounted(() => {
 
     <section v-if="!loading && !error" class="panel">
       <div class="section-title">
+        <h2>미처리 예외 요약</h2>
+        <RouterLink class="status-pill red" to="/admin/events">
+          {{ formatCount(openExceptions.length) }}
+        </RouterLink>
+      </div>
+
+      <div v-if="topExceptionGroups.length === 0" class="empty-box">
+        현재 바로 확인이 필요한 예외는 없습니다.
+      </div>
+
+      <div v-else class="exception-summary-grid">
+        <RouterLink
+          v-for="item in topExceptionGroups"
+          :key="item.type"
+          class="exception-summary-card"
+          :class="item.tone"
+          to="/admin/events"
+        >
+          <span>{{ item.label }}</span>
+          <strong>{{ formatCount(item.count) }}</strong>
+          <p>{{ item.message }}</p>
+          <small>{{ item.guide }}</small>
+        </RouterLink>
+      </div>
+    </section>
+
+    <section v-if="!loading && !error" class="panel">
+      <div class="section-title">
         <h2>작업 흐름 현황</h2>
         <span class="status-pill">5초 갱신</span>
       </div>
@@ -206,7 +409,7 @@ onUnmounted(() => {
             <strong>{{ formatCount(card.count) }}</strong>
             <small>{{ getWorkStatus(card.status).label }}</small>
           </article>
-          <span v-if="index < workFlowCards.length - 1" class="flow-arrow">→</span>
+          <span v-if="index < workFlowCards.length - 1" class="flow-arrow">></span>
         </template>
       </div>
     </section>
@@ -321,7 +524,7 @@ onUnmounted(() => {
               <td>{{ formatDateTime(order.reservedTime) }}</td>
             </tr>
             <tr v-if="recentWorkOrders.length === 0">
-              <td colspan="9">최근 작업 정보가 없습니다.</td>
+              <td colspan="9">최근 작업 데이터가 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -332,19 +535,12 @@ onUnmounted(() => {
 
 <style scoped>
 .admin-dashboard-page {
-  font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", Arial, sans-serif;
+  width: 100%;
+  min-width: 0;
 }
 
 .dashboard-title {
   align-items: center;
-}
-
-.dashboard-title small {
-  display: block;
-  margin-top: 3px;
-  color: var(--ink-500);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .metric-grid {
@@ -380,16 +576,107 @@ onUnmounted(() => {
   font-weight: 900;
 }
 
-.metric-card.green {
-  border-left-color: var(--green-600);
+.metric-card.green { border-left-color: var(--green-600); }
+.metric-card.amber { border-left-color: var(--amber-500); }
+.metric-card.red { border-left-color: var(--red-500); }
+
+.weather-dashboard-grid {
+  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
 }
 
-.metric-card.amber {
+.weather-summary-panel {
+  border-left: 5px solid var(--green-600);
+}
+
+.weather-summary-panel.amber {
   border-left-color: var(--amber-500);
 }
 
-.metric-card.red {
+.weather-summary-panel.red {
   border-left-color: var(--red-500);
+}
+
+.weather-brief {
+  margin: 0 0 10px;
+  color: var(--ink-700);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.weather-guide-list {
+  display: grid;
+  gap: 8px;
+}
+
+.weather-guide-list p {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--ink-700);
+  background: #f8fafc;
+  border: 1px solid #c7d1dc;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.exception-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.exception-summary-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  color: inherit;
+  text-decoration: none;
+  background: #fff7f7;
+  border: 1px solid #e4b2b2;
+  border-left: 4px solid #b63a3a;
+}
+
+.exception-summary-card.amber {
+  background: #fffaf0;
+  border-color: #e4c277;
+  border-left-color: var(--amber-500);
+}
+
+.exception-summary-card span {
+  color: #8a2f2f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.exception-summary-card.amber span,
+.exception-summary-card.amber strong {
+  color: #8a5a08;
+}
+
+.exception-summary-card strong {
+  color: #7d2020;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.exception-summary-card p,
+.exception-summary-card small {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.exception-summary-card p {
+  color: var(--ink-900);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.exception-summary-card small {
+  color: var(--ink-600);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .dashboard-grid {
@@ -413,17 +700,9 @@ onUnmounted(() => {
   border-top: 4px solid var(--blue-700);
 }
 
-.flow-card.green {
-  border-top-color: var(--green-600);
-}
-
-.flow-card.amber {
-  border-top-color: var(--amber-500);
-}
-
-.flow-card.red {
-  border-top-color: var(--red-500);
-}
+.flow-card.green { border-top-color: var(--green-600); }
+.flow-card.amber { border-top-color: var(--amber-500); }
+.flow-card.red { border-top-color: var(--red-500); }
 
 .flow-card span,
 .flow-card small {
@@ -514,13 +793,8 @@ onUnmounted(() => {
   border-left: 4px solid var(--green-600);
 }
 
-.sector-card.amber {
-  border-left-color: var(--amber-500);
-}
-
-.sector-card.red {
-  border-left-color: var(--red-500);
-}
+.sector-card.amber { border-left-color: var(--amber-500); }
+.sector-card.red { border-left-color: var(--red-500); }
 
 .sector-head {
   display: flex;
@@ -592,7 +866,9 @@ onUnmounted(() => {
   }
 
   .dashboard-grid,
-  .sector-list {
+  .sector-list,
+  .weather-dashboard-grid,
+  .exception-summary-grid {
     grid-template-columns: 1fr;
   }
 
