@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { yardMapLayout } from '@/config/yardMapLayout'
 import { fetchYardMapSnapshot } from '@/api/adminApi/yardMapApi'
+import { fetchYardCongestion } from '@/api/adminApi/yardCongestionApi'
 
 const fallbackGateName = '위치 미설정 게이트'
 
@@ -73,8 +74,19 @@ export const useYardMapStore = defineStore('yardMap', {
       this.loading = true
 
       try {
-        const snapshot = await fetchYardMapSnapshot()
-        this.yardSectors = snapshot?.sectors || []
+        const [snapshot, congestion] = await Promise.all([
+          fetchYardMapSnapshot(),
+          fetchYardCongestion(),
+        ])
+        const congestionBySectorId = new Map((congestion?.sectors || []).map((sector) => [sector.sectorId, sector]))
+        const snapshotSectors = snapshot?.sectors || []
+
+        this.yardSectors = snapshotSectors.length > 0
+          ? snapshotSectors.map((sector) => ({
+            ...sector,
+            ...(congestionBySectorId.get(sector.sectorId) || {}),
+          }))
+          : congestion?.sectors || []
         this.gates = snapshot?.gates || []
         this.vehicles = snapshot?.vehicles || []
         this.error = ''
