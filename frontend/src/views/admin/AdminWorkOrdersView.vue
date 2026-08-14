@@ -207,6 +207,15 @@ const getYardLocation = (containerId) => {
   return `${container.block || '-'}-${container.bay || '-'}-${container.rowNo || container.row_no || '-'}`
 }
 
+const getSectorName = (order, type) => {
+  const nameKey = type === 'start' ? 'startSectorName' : 'destinationSectorName'
+  const idKey = type === 'start' ? 'startSectorId' : 'destinationSectorId'
+  const name = getValue(order, nameKey, nameKey.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`))
+  if (name) return name
+  const sectorId = getId(order, idKey)
+  return yardSectors.value.find((sector) => sector.sectorId === sectorId)?.sectorName || '-'
+}
+
 const getStatusText = (workStatus) => {
   if (workStatus === 'DISPATCH_WAITING') return '승인 대기'
   if (workStatus === 'APPROVED') return '입차 대기'
@@ -238,6 +247,8 @@ const getSearchText = (order) => {
     getDriverName(getId(order, 'driverId')),
     getContainerNumber(containerId),
     getYardLocation(containerId),
+    getSectorName(order, 'start'),
+    getSectorName(order, 'destination'),
     getValue(order, 'workType', 'work_type'),
     getValue(order, 'reservedTime', 'reserved_time'),
     workStatus,
@@ -578,6 +589,8 @@ onUnmounted(() => {
               <th>트레일러</th>
               <th>기사</th>
               <th>컨테이너</th>
+              <th>출발 Yard</th>
+              <th>목적 Yard</th>
               <th>작업 유형</th>
               <th>예약</th>
               <th>트랙터 승인</th>
@@ -596,6 +609,8 @@ onUnmounted(() => {
               <td>{{ getTrailerPlate(order) }}</td>
               <td>{{ getDriverName(getId(order, 'driverId')) }}</td>
               <td>{{ getContainerNumber(getId(order, 'containerId')) }}</td>
+              <td>{{ getSectorName(order, 'start') }}</td>
+              <td>{{ getSectorName(order, 'destination') }}</td>
               <td>{{ getValue(order, 'workType', 'work_type') }}</td>
               <td>{{ getValue(order, 'reservedTime', 'reserved_time') }}</td>
               <td>
@@ -646,7 +661,7 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="filteredCarrierRequests.length === 0">
-              <td colspan="14">조회된 배차 대기 작업이 없습니다.</td>
+              <td colspan="16">조회된 배차 대기 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -721,7 +736,9 @@ onUnmounted(() => {
               <th>트랙터</th>
               <th>트레일러</th>
               <th>기사</th>
-              <th>야드 위치</th>
+              <th>현재 위치</th>
+              <th>출발 Yard</th>
+              <th>목적 Yard</th>
               <th>트랙터 승인</th>
               <th>트레일러 승인</th>
               <th>기사 출입</th>
@@ -738,6 +755,8 @@ onUnmounted(() => {
               <td>{{ getTrailerPlate(order) }}</td>
               <td>{{ getDriverName(getId(order, 'driverId')) }}</td>
               <td>{{ getYardLocation(getId(order, 'containerId')) }}</td>
+              <td>{{ getSectorName(order, 'start') }}</td>
+              <td>{{ getSectorName(order, 'destination') }}</td>
               <td>
                 <span class="status-pill" :class="getVehicleApprovalClass(getVehicleForType(order, 'TRACTOR'))">
                   {{ getVehicleApprovalText(getVehicleForType(order, 'TRACTOR')) }}
@@ -777,7 +796,7 @@ onUnmounted(() => {
               </td>
             </tr>
             <tr v-if="filteredProcessingTasks.length === 0">
-              <td colspan="12">조회된 처리 작업이 없습니다.</td>
+              <td colspan="14">조회된 처리 작업이 없습니다.</td>
             </tr>
           </tbody>
         </table>

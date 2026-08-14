@@ -17,6 +17,7 @@ public interface YardSectorMapper {
                 sector_name AS sectorName,
                 block_name AS blockName,
                 sector_status AS sectorStatus,
+                environment_type AS environmentType,
                 capacity,
                 waiting_vehicle_count AS waitingVehicleCount,
                 guide_message AS guideMessage,

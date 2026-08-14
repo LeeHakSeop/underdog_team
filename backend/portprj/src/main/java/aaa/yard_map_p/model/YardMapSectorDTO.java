@@ -8,6 +8,7 @@ public class YardMapSectorDTO {
     private String sectorName;
     private String blockName;
     private String sectorStatus;
+    private String environmentType;
     private Integer waitingVehicleCount;
     private String guideMessage;
     private String altWaitingArea;

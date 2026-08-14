@@ -120,7 +120,7 @@ const nextGuide = computed(() => {
   if (order.workStatus === 'GATE_IN') return '입차 후 지정 섹터로 이동해 작업을 시작하세요.'
   if (!order.isApproved) return '관리자 승인 후 게이트 입차가 가능합니다.'
   if (!order.canEnter) return '기사 출입 가능 상태를 운송사 또는 관리자에게 확인하세요.'
-  return `${order.sectorName || '지정 섹터'}로 이동 후 안내 메시지를 확인하세요.`
+  return `${order.destinationSectorName || order.sectorName || '지정 섹터'}로 이동 후 안내 메시지를 확인하세요.`
 })
 
 const workflowSteps = computed(() => {
@@ -542,6 +542,14 @@ onUnmounted(() => {
             <span>작업 승인</span>
             <strong>{{ getBooleanText(currentWorkOrder.isApproved) }}</strong>
           </div>
+          <div>
+            <span>출발 Yard</span>
+            <strong>{{ currentWorkOrder.startSectorName || '-' }}</strong>
+          </div>
+          <div>
+            <span>목적 Yard</span>
+            <strong>{{ currentWorkOrder.destinationSectorName || '-' }}</strong>
+          </div>
         </div>
 
         <div class="workflow-strip" aria-label="작업 진행 상태">
@@ -665,7 +673,7 @@ onUnmounted(() => {
       </article>
       <article class="driver-pass-card">
         <span>목적지</span>
-        <strong>{{ currentWorkOrder.sectorName || '-' }}</strong>
+        <strong>{{ currentWorkOrder.destinationSectorName || '-' }}</strong>
         <p>{{ currentWorkOrder.guideMessage || '야드 안내 메시지가 없습니다.' }}</p>
       </article>
       <article class="driver-pass-card">
@@ -679,7 +687,7 @@ onUnmounted(() => {
       <article class="panel">
         <div class="section-title">
           <h2>컨테이너 / 야드 안내</h2>
-          <span class="status-pill green">{{ currentWorkOrder.sectorName || '-' }}</span>
+          <span class="status-pill green">{{ currentWorkOrder.destinationSectorName || '-' }}</span>
         </div>
 
         <table class="data-table">
@@ -691,7 +699,9 @@ onUnmounted(() => {
               <th>블록 / 베이 / 로우</th>
               <td>{{ currentWorkOrder.block || '-' }} / {{ currentWorkOrder.bay || '-' }} / {{ currentWorkOrder.rowNo || '-' }}</td>
             </tr>
-            <tr><th>야드 섹터</th><td>{{ currentWorkOrder.sectorName || '-' }}</td></tr>
+            <tr><th>현재 야드 섹터</th><td>{{ currentWorkOrder.sectorName || '-' }}</td></tr>
+            <tr><th>출발 Yard</th><td>{{ currentWorkOrder.startSectorName || '-' }}</td></tr>
+            <tr><th>목적 Yard</th><td>{{ currentWorkOrder.destinationSectorName || '-' }}</td></tr>
             <tr><th>섹터 상태</th><td>{{ currentWorkOrder.sectorStatus || '-' }}</td></tr>
             <tr><th>대체 대기장소</th><td>{{ currentWorkOrder.altWaitingArea || '-' }}</td></tr>
             <tr><th>중간 상태 안내</th><td>{{ currentWorkOrder.guideMessage || '-' }}</td></tr>
@@ -747,7 +757,8 @@ onUnmounted(() => {
               <th>트랙터</th>
               <th>트레일러</th>
               <th>컨테이너</th>
-              <th>야드 섹터</th>
+              <th>출발 Yard</th>
+              <th>목적 Yard</th>
               <th>예약 시간</th>
               <th>상태</th>
               <th>승인</th>
@@ -760,7 +771,8 @@ onUnmounted(() => {
               <td>{{ order.plateNumber || '-' }}</td>
               <td>{{ order.trailerPlateNumber || '-' }}</td>
               <td>{{ order.containerNumber || '-' }}</td>
-              <td>{{ order.sectorName || '-' }}</td>
+              <td>{{ order.startSectorName || '-' }}</td>
+              <td>{{ order.destinationSectorName || '-' }}</td>
               <td>{{ formatReservedTime(order.reservedTime) }}</td>
               <td>
                 <span class="status-pill" :class="getWorkStatusClass(order.workStatus)">

@@ -14,6 +14,7 @@ public interface YardMapMapper {
                 ys.sector_name AS sectorName,
                 ys.block_name AS blockName,
                 ys.sector_status AS sectorStatus,
+                ys.environment_type AS environmentType,
                 40 AS capacity,
                 COALESCE(ys.waiting_vehicle_count, 0) AS waitingVehicleCount,
                 ys.guide_message AS guideMessage,
@@ -47,6 +48,7 @@ public interface YardMapMapper {
                 ys.sector_name,
                 ys.block_name,
                 ys.sector_status,
+                ys.environment_type,
                 ys.waiting_vehicle_count,
                 ys.guide_message,
                 ys.alt_waiting_area
@@ -126,24 +128,22 @@ public interface YardMapMapper {
                 c.can_exit AS canExit,
                 d.driver_name AS driverName,
                 ca.carrier_name AS carrierName,
-                ys.sector_id AS sectorId,
-                ys.sector_name AS sectorName,
-                ys.block_name AS blockName,
+                current_sector.sector_id AS sectorId,
+                current_sector.sector_name AS sectorName,
+                current_sector.block_name AS blockName,
                 CASE
-                    WHEN wo.work_status IN ('DISPATCH_WAITING', 'APPROVED') THEN '입차 게이트'
-                    WHEN wo.work_status IN ('GATE_IN', 'IN_PROGRESS') THEN COALESCE(gl.gate_name, '입차 게이트')
-                    ELSE '운영 위치 미정'
+                    WHEN start_sector.sector_name IS NOT NULL THEN start_sector.sector_name
+                    WHEN wo.work_status IN ('GATE_IN', 'IN_PROGRESS') THEN COALESCE(gl.gate_name, current_sector.sector_name, '출발 위치 미정')
+                    ELSE COALESCE(current_sector.sector_name, '출발 위치 미정')
                 END AS originLocation,
-                ys.sector_id AS destinationSectorId,
-                ys.sector_name AS destinationSectorName,
+                wo.start_sector_id AS startSectorId,
+                start_sector.sector_name AS startSectorName,
+                wo.destination_sector_id AS destinationSectorId,
+                destination_sector.sector_name AS destinationSectorName,
                 CONCAT(
-                    CASE
-                        WHEN wo.work_status IN ('DISPATCH_WAITING', 'APPROVED') THEN '입차 게이트'
-                        WHEN wo.work_status IN ('GATE_IN', 'IN_PROGRESS') THEN COALESCE(gl.gate_name, '입차 게이트')
-                        ELSE '운영 위치 미정'
-                    END,
+                    COALESCE(start_sector.sector_name, current_sector.sector_name, '출발 미정'),
                     ' → ',
-                    COALESCE(ys.sector_name, c.container_location, '목적 섹터 미정')
+                    COALESCE(destination_sector.sector_name, '목적 미정')
                 ) AS routeSummary,
                 wo.reserved_time AS reservedTime
             FROM work_order wo
@@ -153,7 +153,9 @@ public interface YardMapMapper {
             LEFT JOIN driver d ON d.driver_id = wo.driver_id
             LEFT JOIN carrier ca ON ca.carrier_id = d.carrier_id
             LEFT JOIN container c ON c.container_id = wo.container_id
-            LEFT JOIN yard_sector ys ON ys.sector_id = c.sector_id
+            LEFT JOIN yard_sector current_sector ON current_sector.sector_id = c.sector_id
+            LEFT JOIN yard_sector start_sector ON start_sector.sector_id = wo.start_sector_id
+            LEFT JOIN yard_sector destination_sector ON destination_sector.sector_id = wo.destination_sector_id
             LEFT JOIN LATERAL (
                 SELECT gate_name
                 FROM gate_log
