@@ -7,6 +7,7 @@ const router = useRouter()
 const isCollapsed = ref(localStorage.getItem('portGateSidebar') === 'collapsed')
 
 const icons = {
+<<<<<<< HEAD
   home: [['path', { d: 'M3 10.5 12 3l9 7.5' }], ['path', { d: 'M5 9.5V21h14V9.5' }], ['path', { d: 'M9 21v-7h6v7' }]],
   cctv: [['path', { d: 'M4 6h11l3 3v5H4z' }], ['path', { d: 'M18 10h3v3h-3' }], ['path', { d: 'M9 14v4' }], ['path', { d: 'M6 21h10' }]],
   dashboard: [['path', { d: 'M4 4h7v7H4z' }], ['path', { d: 'M13 4h7v4h-7z' }], ['path', { d: 'M13 10h7v10h-7z' }], ['path', { d: 'M4 13h7v7H4z' }]],
@@ -22,6 +23,105 @@ const icons = {
   scan: [['path', { d: 'M4 7V4h3' }], ['path', { d: 'M17 4h3v3' }], ['path', { d: 'M20 17v3h-3' }], ['path', { d: 'M7 20H4v-3' }], ['path', { d: 'M7 12h10' }]],
   menu: [['path', { d: 'M4 7h16' }], ['path', { d: 'M4 12h16' }], ['path', { d: 'M4 17h16' }]],
   logout: [['path', { d: 'M10 5H5v14h5' }], ['path', { d: 'M14 8l4 4-4 4' }], ['path', { d: 'M8 12h10' }]],
+=======
+  home: [
+    ['path', { d: 'M3 10.5 12 3l9 7.5' }],
+    ['path', { d: 'M5 9.5V21h14V9.5' }],
+    ['path', { d: 'M9 21v-7h6v7' }],
+  ],
+  cctv: [
+    ['path', { d: 'M4 6h11l3 3v5H4z' }],
+    ['path', { d: 'M18 10h3v3h-3' }],
+    ['path', { d: 'M9 14v4' }],
+    ['path', { d: 'M6 21h10' }],
+    ['path', { d: 'M12 14l4 7' }],
+  ],
+  dashboard: [
+    ['path', { d: 'M4 4h7v7H4z' }],
+    ['path', { d: 'M13 4h7v4h-7z' }],
+    ['path', { d: 'M13 10h7v10h-7z' }],
+    ['path', { d: 'M4 13h7v7H4z' }],
+  ],
+  map: [
+    ['path', { d: 'M4 6.5 9 4l6 2.5L20 4v13.5l-5 2-6-2.5-5 2z' }],
+    ['path', { d: 'M9 4v13' }],
+    ['path', { d: 'M15 6.5v13' }],
+  ],
+  clipboard: [
+    ['path', { d: 'M9 4h6l1 2h3v15H5V6h3z' }],
+    ['path', { d: 'M9 4h6v4H9z' }],
+    ['path', { d: 'M8 12h8' }],
+    ['path', { d: 'M8 16h6' }],
+  ],
+  truck: [
+    ['path', { d: 'M3 7h11v9H3z' }],
+    ['path', { d: 'M14 10h4l3 3v3h-7z' }],
+    ['circle', { cx: '7', cy: '18', r: '2' }],
+    ['circle', { cx: '18', cy: '18', r: '2' }],
+  ],
+  container: [
+    ['path', { d: 'M3 7h18v11H3z' }],
+    ['path', { d: 'M7 7v11' }],
+    ['path', { d: 'M11 7v11' }],
+    ['path', { d: 'M15 7v11' }],
+    ['path', { d: 'M3 11h18' }],
+  ],
+  bell: [
+    ['path', { d: 'M6 17h12l-1.5-2.5V10a4.5 4.5 0 0 0-9 0v4.5z' }],
+    ['path', { d: 'M10 20h4' }],
+    ['path', { d: 'M12 4V2.5' }],
+  ],
+  request: [
+    ['path', { d: 'M5 4h10l4 4v12H5z' }],
+    ['path', { d: 'M15 4v4h4' }],
+    ['path', { d: 'M9 14h6' }],
+    ['path', { d: 'M12 11v6' }],
+  ],
+  approval: [
+    ['path', { d: 'M5 4h14v16H5z' }],
+    ['path', { d: 'm8 12 3 3 5-6' }],
+  ],
+  driver: [
+    ['circle', { cx: '12', cy: '7', r: '3' }],
+    ['path', { d: 'M5 21a7 7 0 0 1 14 0' }],
+    ['path', { d: 'm16 12 2 2 4-5' }],
+  ],
+  list: [
+    ['path', { d: 'M8 6h13' }],
+    ['path', { d: 'M8 12h13' }],
+    ['path', { d: 'M8 18h13' }],
+    ['path', { d: 'M3 6h1' }],
+    ['path', { d: 'M3 12h1' }],
+    ['path', { d: 'M3 18h1' }],
+  ],
+  users: [
+    ['path', { d: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' }],
+    ['circle', { cx: '9', cy: '7', r: '4' }],
+    ['path', { d: 'M22 21v-2a4 4 0 0 0-3-3.87' }],
+    ['path', { d: 'M16 3.13a4 4 0 0 1 0 7.75' }],
+  ],
+  scan: [
+    ['path', { d: 'M4 7V4h3' }],
+    ['path', { d: 'M17 4h3v3' }],
+    ['path', { d: 'M20 17v3h-3' }],
+    ['path', { d: 'M7 20H4v-3' }],
+    ['path', { d: 'M7 12h10' }],
+  ],
+  activity: [
+    ['path', { d: 'M3 12h4l2.5-6 4.5 12 2.5-6H21' }],
+    ['path', { d: 'M4 20h16' }],
+  ],
+  menu: [
+    ['path', { d: 'M4 7h16' }],
+    ['path', { d: 'M4 12h16' }],
+    ['path', { d: 'M4 17h16' }],
+  ],
+  logout: [
+    ['path', { d: 'M10 5H5v14h5' }],
+    ['path', { d: 'M14 8l4 4-4 4' }],
+    ['path', { d: 'M8 12h10' }],
+  ],
+>>>>>>> 30670a0f682138c7951d870b1151419b183f1609
 }
 
 const MenuIcon = (props) => h('svg', {
@@ -51,9 +151,16 @@ const menus = {
     { label: '상황 관제판', path: '/admin/main', icon: 'cctv' },
     { label: '운영 현황 요약', path: '/admin/dashboard', icon: 'dashboard' },
     { label: '운영 맵', path: '/admin/yard-map', icon: 'map' },
+<<<<<<< HEAD
     { label: 'AI 번호판 인식', path: '/admin/plate-recognition', icon: 'scan' },
     { label: '회원 관리', path: '/admin/members', icon: 'users' },
     { label: '컨테이너 관리', path: '/admin/containers', icon: 'container' },
+=======
+    { label: 'AI 인식 검증', path: '/admin/plate-recognition', icon: 'scan' },
+    { label: '예지보전', path: '/admin/predictive-maintenance', icon: 'activity' },
+    { label: '가입 회원 관리', path: '/admin/members', icon: 'users' },
+
+>>>>>>> 30670a0f682138c7951d870b1151419b183f1609
     { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
     { label: '알림/이벤트', path: '/admin/events', icon: 'bell' },
   ],
@@ -70,6 +177,7 @@ const pathRole = computed(() => (route.path.split('/')[1] || 'admin').toUpperCas
 const activeRole = computed(() => String(route.meta.role || currentUser.value?.roleCode || pathRole.value).toUpperCase())
 const activeMenus = computed(() => menus[activeRole.value] || menus.ADMIN)
 const pageTitle = computed(() => route.meta.title || '항만 게이트 시스템')
+<<<<<<< HEAD
 const activeRoleLabel = computed(() => roleLabels[activeRole.value] || '관리자')
 const accountDisplayName = computed(() =>
   currentUser.value?.displayName ||
@@ -78,6 +186,35 @@ const accountDisplayName = computed(() =>
   currentUser.value?.username ||
   '-',
 )
+=======
+
+const menuLabelOverrides = {
+  '/admin/main': '상황 관제판',
+  '/admin/dashboard': '데이터 현황',
+  '/admin/yard-map': '야드 맵',
+  '/admin/plate-recognition': 'AI 번호판 인식',
+  '/admin/predictive-maintenance': '예지보전',
+  '/admin/members': '회원 관리',
+  '/admin/work-orders': '작업 관리',
+  '/admin/events': '알림/이벤트',
+  '/carrier/dashboard': '대시보드',
+  '/carrier/driver-approval': '기사 승인/회원 관리',
+  '/carrier/input': '트레일러 배정 및 작업지시',
+  '/carrier/inquiry': '작업정보 조회',
+  '/driver/dashboard': '작업 홈',
+  '/driver/work-status': '작업 현황',
+  '/driver/vehicles': '내 차량',
+}
+
+const roleLabelOverrides = {
+  CARRIER: '운송사 담당자',
+  DRIVER: '화물 기사',
+  ADMIN: '관리자',
+}
+
+const getMenuLabel = (item) => menuLabelOverrides[item.path] || item.label
+const activeRoleLabel = computed(() => roleLabelOverrides[activeRole.value] || '관리자')
+>>>>>>> 30670a0f682138c7951d870b1151419b183f1609
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
@@ -109,7 +246,7 @@ const logout = () => {
 
       <div class="role-badge">
         <small>현재 화면</small>
-        <strong>{{ accountDisplayName }} / {{ activeRoleLabel }}</strong>
+        <strong>{{ activeRoleLabel }}</strong>
       </div>
 
       <nav class="side-nav">

@@ -5,7 +5,11 @@ import AdminEventsView from '@/views/admin/AdminEventsView.vue'
 import AdminMembersView from '@/views/admin/AdminMembersView.vue'
 import AdminPlateRecognitionView from '@/views/admin/AdminPlateRecognitionView.vue'
 import AdminYardMapView from '@/views/admin/AdminYardMapView.vue'
+<<<<<<< HEAD
 import AdminContainersView from '@/views/admin/AdminContainersView.vue'
+=======
+import AdminPredictiveMaintenanceView from '@/views/admin/AdminPredictiveMaintenanceView.vue'
+>>>>>>> 30670a0f682138c7951d870b1151419b183f1609
 
 export default [
   {
@@ -36,6 +40,12 @@ export default [
         name: 'admin-plate-recognition',
         component: AdminPlateRecognitionView,
         meta: { role: 'ADMIN', title: 'AI 번호판 인식' },
+      },
+      {
+        path: 'predictive-maintenance',
+        name: 'admin-predictive-maintenance',
+        component: AdminPredictiveMaintenanceView,
+        meta: { role: 'admin', title: '예지보전' },
       },
       {
         path: 'members',
