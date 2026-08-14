@@ -9,8 +9,6 @@ import java.util.List;
 public interface DashboardMapper {
 
     @Select("""
-<<<<<<< HEAD
-=======
             WITH sector_metrics AS (
                 SELECT
                     ys.sector_id,
@@ -38,7 +36,6 @@ public interface DashboardMapper {
                    AND wo.work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS')
                 GROUP BY ys.sector_id, ys.waiting_vehicle_count
             )
->>>>>>> origin/hakseop
             SELECT
                 (SELECT COUNT(*) FROM vehicle) AS totalVehicles,
                 (SELECT COUNT(*) FROM users WHERE status = 'PENDING') AS pendingUsers,
@@ -93,17 +90,6 @@ public interface DashboardMapper {
 
     @Select("""
             SELECT
-<<<<<<< HEAD
-                sector_id AS sectorId,
-                sector_name AS sectorName,
-                block_name AS blockName,
-                sector_status AS sectorStatus,
-                COALESCE(waiting_vehicle_count, 0) AS waitingVehicleCount,
-                guide_message AS guideMessage,
-                alt_waiting_area AS altWaitingArea
-            FROM yard_sector
-            ORDER BY COALESCE(waiting_vehicle_count, 0) DESC, sector_id ASC
-=======
                 ys.sector_id AS sectorId,
                 ys.sector_name AS sectorName,
                 ys.block_name AS blockName,
@@ -161,7 +147,6 @@ public interface DashboardMapper {
                 COALESCE(ys.waiting_vehicle_count, 0) DESC,
                 usageRate DESC,
                 ys.sector_id ASC
->>>>>>> origin/hakseop
             LIMIT 8
             """)
     List<DashboardSectorDTO> sectorList();

@@ -44,10 +44,10 @@ const { weatherInfo, loading: weatherLoading, errMsg: weatherError } = storeToRe
 const { notifications } = storeToRefs(notificationStore)
 
 const statusOptions = [
-  { value: 'ALL', label: '?꾩껜' },
-  { value: 'NORMAL', label: '?뺤긽' },
-  { value: 'WARNING', label: '二쇱쓽' },
-  { value: 'DANGER', label: '?쇱옟' },
+  { value: 'ALL', label: '전체' },
+  { value: 'NORMAL', label: '정상' },
+  { value: 'WARNING', label: '주의' },
+  { value: 'DANGER', label: '위험' },
 ]
 
 const error = computed(() => mapError.value || storeError.value)
@@ -400,26 +400,26 @@ function getSectorStyle(sector, muted = false) {
 const gatePopupHtml = (gate) => `
   <div class="gate-popup">
     <b>${escapeHtml(gate.gateName || gate.gateNumber)}</b>
-    <div><span>寃뚯씠??踰덊샇</span><strong>${escapeHtml(gate.gateNumber)}</strong></div>
-    <div><span>援щ텇</span><strong>${escapeHtml(formatDirection(gate.direction))}</strong></div>
-    <div><span>理쒓렐 泥섎━</span><strong>${escapeHtml(gate.latestProcessResult)}</strong></div>
-    <div><span>理쒓렐 李⑤웾</span><strong>${escapeHtml(gate.latestVehicleId)}</strong></div>
-    <div><span>理쒓렐 ?쒓컙</span><strong>${escapeHtml(formatDateTime(gate.latestExitTime || gate.latestEntryTime))}</strong></div>
-    <div><span>?ㅻ뒛 ?낆감</span><strong>${escapeHtml(formatCount(gate.todayInCount))}</strong></div>
-    <div><span>?ㅻ뒛 異쒖감</span><strong>${escapeHtml(formatCount(gate.todayOutCount))}</strong></div>
+    <div><span>게이트 번호</span><strong>${escapeHtml(gate.gateNumber)}</strong></div>
+    <div><span>구분</span><strong>${escapeHtml(formatDirection(gate.direction))}</strong></div>
+    <div><span>최근 처리</span><strong>${escapeHtml(gate.latestProcessResult)}</strong></div>
+    <div><span>최근 차량</span><strong>${escapeHtml(gate.latestVehicleId)}</strong></div>
+    <div><span>최근 시간</span><strong>${escapeHtml(formatDateTime(gate.latestExitTime || gate.latestEntryTime))}</strong></div>
+    <div><span>오늘 입차</span><strong>${escapeHtml(formatCount(gate.todayInCount))}</strong></div>
+    <div><span>오늘 출차</span><strong>${escapeHtml(formatCount(gate.todayOutCount))}</strong></div>
   </div>
 `
 
 const sectorPopupHtml = (sector) => `
   <div class="sector-popup">
     <b>${escapeHtml(sector.sectorName)}</b>
-    <div><span>釉붾줉</span><strong>${escapeHtml(sector.blockName)}</strong></div>
-    <div><span>而⑦뀒?대꼫</span><strong>${escapeHtml(formatCount(sector.containerCount))}</strong></div>
-    <div><span>?섏슜??/span><strong>${escapeHtml(formatCount(sector.capacity))}</strong></div>
-    <div><span>?ъ슜瑜?/span><strong>${escapeHtml(formatPercent(sector.usageRate))}</strong></div>
-    <div><span>?묒뾽 李⑤웾</span><strong>${escapeHtml(formatCount(vehicleCountBySectorId.value.get(sector.sectorId)))}</strong></div>
-    <div><span>吏꾪뻾 ?묒뾽</span><strong>${escapeHtml(formatCount(sector.workOrderCount))}</strong></div>
-    <div><span>?곹깭</span><strong>${escapeHtml(statusLabel(sector.statusLevel))}</strong></div>
+    <div><span>블록</span><strong>${escapeHtml(sector.blockName)}</strong></div>
+    <div><span>컨테이너</span><strong>${escapeHtml(formatCount(sector.containerCount))}</strong></div>
+    <div><span>수용량</span><strong>${escapeHtml(formatCount(sector.capacity))}</strong></div>
+    <div><span>사용률</span><strong>${escapeHtml(formatPercent(sector.usageRate))}</strong></div>
+    <div><span>작업 차량</span><strong>${escapeHtml(formatCount(vehicleCountBySectorId.value.get(sector.sectorId)))}</strong></div>
+    <div><span>진행 작업</span><strong>${escapeHtml(formatCount(sector.workOrderCount))}</strong></div>
+    <div><span>상태</span><strong>${escapeHtml(statusLabel(sector.statusLevel))}</strong></div>
   </div>
 `
 
@@ -491,7 +491,7 @@ const vehiclePopupHtml = (sectorVehicles) => {
     </div>
   `).join('')
 
-  return `<div class="vehicle-popup"><b>?묒뾽 李⑤웾 ${sectorVehicles.length}?</b>${rows}</div>`
+  return `<div class="vehicle-popup"><b>작업 차량 ${sectorVehicles.length}대</b>${rows}</div>`
 }
 
 const renderOperations = () => {
@@ -515,7 +515,7 @@ const renderOperations = () => {
       weight: 2,
       fillColor: style.fillColor,
       fillOpacity: 0.12,
-    }).bindPopup(`<b>${block.label}</b><br>而⑦뀒?대꼫 ${summary?.containerCount || 0}嫄?br>?묒뾽 李⑤웾 ${summary?.vehicleCount || 0}?`))
+    }).bindPopup(`<b>${block.label}</b><br>컨테이너 ${summary?.containerCount || 0}건<br>작업 차량 ${summary?.vehicleCount || 0}대`))
 
     getRoadLines(block).forEach((roadLine) => {
       operationLayer.addLayer(L.polyline(roadLine, { color: '#f8fafc', weight: 5, opacity: 0.95, dashArray: '8 5' }))
@@ -534,7 +534,7 @@ const renderOperations = () => {
         fillColor: sectorStyle.fillColor,
         fillOpacity: sectorStyle.fillOpacity,
       })
-        .bindTooltip(`${yardSector.sectorName} / ${statusLabel(yardSector.statusLevel)} / ?ъ슜瑜?${formatPercent(yardSector.usageRate)}`, { sticky: true })
+        .bindTooltip(`${yardSector.sectorName} / ${statusLabel(yardSector.statusLevel)} / 사용률 ${formatPercent(yardSector.usageRate)}`, { sticky: true })
         .bindPopup(sectorPopupHtml(yardSector))
         .on('click', () => {
           selectSector(yardSector.sectorId, false)
@@ -615,7 +615,7 @@ onMounted(async () => {
     await refreshData()
     refreshTimer = window.setInterval(refreshData, 10000)
   } catch (loadError) {
-    mapError.value = loadError.message || '吏?꾨? 以鍮꾪븯吏 紐삵뻽?듬땲??'
+    mapError.value = loadError.message || '지도를 준비하지 못했습니다.'
   }
 })
 
@@ -705,7 +705,7 @@ onBeforeUnmount(() => {
             >
               <strong>{{ sector.sectorName }}</strong>
               <span>{{ statusLabel(sector.statusLevel) }}</span>
-              <small>?ъ슜瑜?{{ formatPercent(sector.usageRate) }} 쨌 ?湲?{{ formatCount(sector.waitingVehicleCount) }} 쨌 ?묒뾽 {{ formatCount(sector.workOrderCount) }}</small>
+              <small>사용률 {{ formatPercent(sector.usageRate) }} · 대기 {{ formatCount(sector.waitingVehicleCount) }} · 작업 {{ formatCount(sector.workOrderCount) }}</small>
             </button>
             <button
               v-if="hiddenPriorityCount > 0 || showAllPrioritySectors"
@@ -713,28 +713,28 @@ onBeforeUnmount(() => {
               class="compact-more-button"
               @click="showAllPrioritySectors = !showAllPrioritySectors"
             >
-              {{ showAllPrioritySectors ? '?묎린' : `+ ${hiddenPriorityCount}媛???蹂닿린` }}
+              {{ showAllPrioritySectors ? '접기' : `+ ${hiddenPriorityCount}개 더 보기` }}
             </button>
-            <p v-if="prioritySectors.length === 0" class="empty">?뺤긽 ?댁쁺 以묒엯?덈떎.</p>
+            <p v-if="prioritySectors.length === 0" class="empty">정상 운영 중입니다.</p>
           </div>
         </section>
 
         <section class="summary-group">
           <div class="summary-heading">
-            <strong>寃뚯씠???꾪솴</strong>
-            <small>?뺤씤 ?꾩슂 ?곗꽑 ?쒖떆</small>
+            <strong>게이트 현황</strong>
+            <small>확인 필요 우선 표시</small>
           </div>
           <div class="summary-content gate-list">
             <div v-for="gate in visibleGates" :key="gate.gateNumber" class="gate-card" :class="gateTone(gate)">
               <div>
                 <strong>{{ gate.gateNumber }}</strong>
-                <small>{{ formatDirection(gate.direction) }} 쨌 {{ gateTone(gate) === 'normal' ? '?뺤긽' : '?뺤씤 ?꾩슂' }}</small>
+                <small>{{ formatDirection(gate.direction) }} · {{ gateTone(gate) === 'normal' ? '정상' : '확인 필요' }}</small>
               </div>
               <dl>
-                <div><dt>理쒓렐 泥섎━</dt><dd>{{ gate.latestProcessResult || '-' }}</dd></div>
-                <div><dt>理쒓렐 ?쒓컙</dt><dd>{{ formatDateTime(gate.latestExitTime || gate.latestEntryTime) }}</dd></div>
-                <div><dt>?ㅻ뒛 ?낆감</dt><dd>{{ formatCount(gate.todayInCount) }}</dd></div>
-                <div><dt>?ㅻ뒛 異쒖감</dt><dd>{{ formatCount(gate.todayOutCount) }}</dd></div>
+                <div><dt>최근 처리</dt><dd>{{ gate.latestProcessResult || '-' }}</dd></div>
+                <div><dt>최근 시간</dt><dd>{{ formatDateTime(gate.latestExitTime || gate.latestEntryTime) }}</dd></div>
+                <div><dt>오늘 입차</dt><dd>{{ formatCount(gate.todayInCount) }}</dd></div>
+                <div><dt>오늘 출차</dt><dd>{{ formatCount(gate.todayOutCount) }}</dd></div>
               </dl>
             </div>
             <button
@@ -743,15 +743,15 @@ onBeforeUnmount(() => {
               class="compact-more-button"
               @click="showNormalGates = !showNormalGates"
             >
-              {{ showNormalGates ? '?뺤긽 寃뚯씠???묎린' : `?뺤긽 寃뚯씠??${normalGates.length}媛?蹂닿린` }}
+              {{ showNormalGates ? '정상 게이트 접기' : `정상 게이트 ${normalGates.length}개 보기` }}
             </button>
           </div>
         </section>
 
         <section class="summary-group">
           <div class="summary-heading">
-            <strong>?쇰뱶 ?뱁꽣</strong>
-            <small>{{ yardSectors.length }}媛??뱁꽣</small>
+            <strong>야드 섹터</strong>
+            <small>{{ yardSectors.length }}개 섹터</small>
           </div>
           <div class="summary-content">
             <div class="sector-list">
@@ -766,22 +766,22 @@ onBeforeUnmount(() => {
                 <strong>{{ sector.sectorName }}</strong>
                 <span>{{ statusLabel(sector.statusLevel) }}</span>
                 <small>
-                  {{ sector.blockName }}援ъ뿭 / 李⑤웾 {{ vehicleCountBySectorId.get(sector.sectorId) || 0 }}? / ?묒뾽 {{ sector.workOrderCount || 0 }}嫄?
+                  {{ sector.blockName }}구역 / 차량 {{ vehicleCountBySectorId.get(sector.sectorId) || 0 }}대 / 작업 {{ sector.workOrderCount || 0 }}건
                 </small>
                 <div class="usage-line">
                   <i :style="{ width: usageWidth(sector.usageRate) }"></i>
                 </div>
-                <small>?ъ슜瑜?{{ formatPercent(sector.usageRate) }}</small>
+                <small>사용률 {{ formatPercent(sector.usageRate) }}</small>
               </button>
-              <p v-if="visibleSectors.length === 0" class="empty">議곌굔??留욌뒗 ?뱁꽣媛 ?놁뒿?덈떎.</p>
+              <p v-if="visibleSectors.length === 0" class="empty">조건에 맞는 섹터가 없습니다.</p>
             </div>
           </div>
         </section>
 
         <section class="summary-group">
           <div class="summary-heading">
-            <strong>?좏깮 ?뱁꽣</strong>
-            <small>{{ selectedSector?.sectorName || '?좏깮 ?놁쓬' }}</small>
+            <strong>선택 섹터</strong>
+            <small>{{ selectedSector?.sectorName || '선택 없음' }}</small>
           </div>
           <div v-if="selectedSector" class="metric-grid">
             <div v-for="metric in selectedSectorMetrics" :key="metric.label" class="metric-card">
@@ -799,16 +799,16 @@ onBeforeUnmount(() => {
             >
               {{ badge.label }}
             </span>
-            <span v-if="sectorAlertBadges(selectedSector).length === 0" class="status-badge normal">?뱀씠?ы빆 ?놁쓬</span>
+            <span v-if="sectorAlertBadges(selectedSector).length === 0" class="status-badge normal">특이사항 없음</span>
           </div>
           <dl class="selected-detail">
-            <div><dt>釉붾줉</dt><dd>{{ selectedSector?.blockName || '-' }}</dd></div>
-            <div><dt>而⑦뀒?대꼫</dt><dd>{{ formatCount(selectedSector?.containerCount) }}</dd></div>
+            <div><dt>블록</dt><dd>{{ selectedSector?.blockName || '-' }}</dd></div>
+            <div><dt>컨테이너</dt><dd>{{ formatCount(selectedSector?.containerCount) }}</dd></div>
             <div><dt>수용량</dt><dd>{{ formatCount(selectedSector?.capacity) }}</dd></div>
             <div><dt>사용률</dt><dd>{{ formatPercent(selectedSector?.usageRate) }}</dd></div>
-            <div><dt>?묒뾽 李⑤웾</dt><dd>{{ selectedSectorVehicles.length }}?</dd></div>
-            <div><dt>?湲?李⑤웾</dt><dd>{{ formatCount(selectedSector?.waitingVehicleCount) }}</dd></div>
-            <div><dt>?덈궡</dt><dd>{{ selectedSector?.guideMessage || '-' }}</dd></div>
+            <div><dt>작업 차량</dt><dd>{{ selectedSectorVehicles.length }}대</dd></div>
+            <div><dt>대기 차량</dt><dd>{{ formatCount(selectedSector?.waitingVehicleCount) }}</dd></div>
+            <div><dt>안내</dt><dd>{{ selectedSector?.guideMessage || '-' }}</dd></div>
           </dl>
           <div class="vehicle-list">
             <div v-for="vehicle in selectedSectorVehicles" :key="vehicle.workOrderId" class="vehicle-row">
@@ -821,21 +821,21 @@ onBeforeUnmount(() => {
                 <strong>{{ vehicle.tractorPlateNumber || vehicle.vehicleId || vehicle.workOrderId }}</strong>
                 <span>{{ workStatusLabel(vehicle.workStatus) }}</span>
                 <small>
-                  而⑦뀒?대꼫 {{ vehicle.containerNumber || '-' }} /
+                  컨테이너 {{ vehicle.containerNumber || '-' }} /
                   {{ vehicle.routeSummary || '-' }} /
-                  ?몃옓??{{ vehicleStatusLabel(vehicle.tractorVehicleStatus) }} /
-                  ?몃젅?쇰윭 {{ vehicleStatusLabel(vehicle.trailerVehicleStatus) }}
+                  트랙터 {{ vehicleStatusLabel(vehicle.tractorVehicleStatus) }} /
+                  트레일러 {{ vehicleStatusLabel(vehicle.trailerVehicleStatus) }}
                 </small>
               </button>
             </div>
-            <p v-if="selectedSector && selectedSectorVehicles.length === 0" class="empty">?꾩옱 ?쒖떆???묒뾽 李⑤웾???놁뒿?덈떎.</p>
+            <p v-if="selectedSector && selectedSectorVehicles.length === 0" class="empty">현재 표시할 작업 차량이 없습니다.</p>
           </div>
         </section>
 
         <section class="summary-group">
           <div class="summary-heading">
-            <strong>?묒뾽 ?곸꽭</strong>
-            <small>{{ selectedWorkVehicle?.workOrderId ? `#${selectedWorkVehicle.workOrderId}` : '?좏깮 ?놁쓬' }}</small>
+            <strong>작업 상세</strong>
+            <small>{{ selectedWorkVehicle?.workOrderId ? `#${selectedWorkVehicle.workOrderId}` : '선택 없음' }}</small>
           </div>
           <div v-if="selectedWorkVehicle" class="badge-list">
             <span
@@ -846,23 +846,23 @@ onBeforeUnmount(() => {
             >
               {{ badge.label }}
             </span>
-            <span v-if="vehicleAlertBadges(selectedWorkVehicle).length === 0" class="status-badge normal">?뱀씠?ы빆 ?놁쓬</span>
+            <span v-if="vehicleAlertBadges(selectedWorkVehicle).length === 0" class="status-badge normal">특이사항 없음</span>
           </div>
           <dl class="selected-detail">
-            <div><dt>?묒뾽?곹깭</dt><dd>{{ workStatusLabel(selectedWorkVehicle?.workStatus) }}</dd></div>
-            <div><dt>?묒뾽?좏삎</dt><dd>{{ selectedWorkVehicle?.workType || '-' }}</dd></div>
-            <div><dt>?덉빟?쒓컙</dt><dd>{{ formatDateTime(selectedWorkVehicle?.reservedTime) }}</dd></div>
-            <div><dt>湲곗궗</dt><dd>{{ selectedWorkVehicle?.driverName || '-' }}</dd></div>
+            <div><dt>작업 상태</dt><dd>{{ workStatusLabel(selectedWorkVehicle?.workStatus) }}</dd></div>
+            <div><dt>작업 유형</dt><dd>{{ selectedWorkVehicle?.workType || '-' }}</dd></div>
+            <div><dt>예약 시간</dt><dd>{{ formatDateTime(selectedWorkVehicle?.reservedTime) }}</dd></div>
+            <div><dt>기사</dt><dd>{{ selectedWorkVehicle?.driverName || '-' }}</dd></div>
             <div><dt>운송사</dt><dd>{{ selectedWorkVehicle?.carrierName || '-' }}</dd></div>
-            <div><dt>異쒕컻</dt><dd>{{ selectedWorkVehicle?.originLocation || '-' }}</dd></div>
-            <div><dt>紐⑹쟻</dt><dd>{{ selectedWorkVehicle?.destinationSectorName || selectedWorkVehicle?.sectorName || '-' }}</dd></div>
-            <div><dt>?대룞援ш컙</dt><dd>{{ selectedWorkVehicle?.routeSummary || '-' }}</dd></div>
-            <div><dt>?뱁꽣</dt><dd>{{ selectedWorkVehicle?.sectorName || selectedSector?.sectorName || '-' }}</dd></div>
-            <div><dt>而⑦뀒?대꼫</dt><dd>{{ selectedWorkVehicle?.containerNumber || '-' }}</dd></div>
-            <div><dt>洹쒓꺽/?꾩튂</dt><dd>{{ selectedWorkVehicle?.containerSize || '-' }} / {{ selectedWorkVehicle?.containerLocation || '-' }}</dd></div>
-            <div><dt>異쒖감?곹깭</dt><dd>{{ canExitLabel(selectedWorkVehicle?.canExit) }}</dd></div>
+            <div><dt>출발</dt><dd>{{ selectedWorkVehicle?.originLocation || '-' }}</dd></div>
+            <div><dt>목적</dt><dd>{{ selectedWorkVehicle?.destinationSectorName || selectedWorkVehicle?.sectorName || '-' }}</dd></div>
+            <div><dt>이동 구간</dt><dd>{{ selectedWorkVehicle?.routeSummary || '-' }}</dd></div>
+            <div><dt>섹터</dt><dd>{{ selectedWorkVehicle?.sectorName || selectedSector?.sectorName || '-' }}</dd></div>
+            <div><dt>컨테이너</dt><dd>{{ selectedWorkVehicle?.containerNumber || '-' }}</dd></div>
+            <div><dt>규격/위치</dt><dd>{{ selectedWorkVehicle?.containerSize || '-' }} / {{ selectedWorkVehicle?.containerLocation || '-' }}</dd></div>
+            <div><dt>출차 상태</dt><dd>{{ canExitLabel(selectedWorkVehicle?.canExit) }}</dd></div>
             <div><dt>트랙터</dt><dd>{{ selectedWorkVehicle?.tractorPlateNumber || '-' }} / {{ vehicleStatusLabel(selectedWorkVehicle?.tractorVehicleStatus) }}</dd></div>
-            <div><dt>?몃젅?쇰윭</dt><dd>{{ selectedWorkVehicle?.trailerPlateNumber || '-' }} / {{ vehicleStatusLabel(selectedWorkVehicle?.trailerVehicleStatus) }}</dd></div>
+            <div><dt>트레일러</dt><dd>{{ selectedWorkVehicle?.trailerPlateNumber || '-' }} / {{ vehicleStatusLabel(selectedWorkVehicle?.trailerVehicleStatus) }}</dd></div>
           </dl>
         </section>
       </aside>

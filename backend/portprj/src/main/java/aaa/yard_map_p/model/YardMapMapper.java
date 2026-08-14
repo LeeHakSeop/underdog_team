@@ -17,10 +17,6 @@ public interface YardMapMapper {
                 40 AS capacity,
                 COALESCE(ys.waiting_vehicle_count, 0) AS waitingVehicleCount,
                 ys.guide_message AS guideMessage,
-<<<<<<< HEAD
-                ys.alt_waiting_area AS altWaitingArea
-            FROM yard_sector ys
-=======
                 ys.alt_waiting_area AS altWaitingArea,
                 COUNT(DISTINCT c.container_id) AS containerCount,
                 ROUND(
@@ -54,7 +50,6 @@ public interface YardMapMapper {
                 ys.waiting_vehicle_count,
                 ys.guide_message,
                 ys.alt_waiting_area
->>>>>>> origin/hakseop
             ORDER BY ys.sector_id
             """)
     List<YardMapSectorDTO> sectors();
@@ -147,7 +142,7 @@ public interface YardMapMapper {
                         WHEN wo.work_status IN ('GATE_IN', 'IN_PROGRESS') THEN COALESCE(gl.gate_name, '입차 게이트')
                         ELSE '운영 위치 미정'
                     END,
-                    ' → ',
+                    ' -> ',
                     COALESCE(ys.sector_name, c.container_location, '목적 섹터 미정')
                 ) AS routeSummary,
                 wo.reserved_time AS reservedTime
@@ -173,4 +168,3 @@ public interface YardMapMapper {
             """)
     List<YardMapVehicleDTO> vehicles();
 }
-

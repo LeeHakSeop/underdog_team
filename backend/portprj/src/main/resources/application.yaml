@@ -30,7 +30,6 @@ ai:
   plate:
     url: http://127.0.0.1:8000/api/plate-recognition
 
-<<<<<<< HEAD
 weather:
   api:
     url: https://api.openweathermap.org/data/2.5/weather
@@ -51,7 +50,7 @@ weather:
     visibility:
       caution: ${WEATHER_RISK_VISIBILITY_CAUTION:5000}
       danger: ${WEATHER_RISK_VISIBILITY_DANGER:1000}
-=======
+
 kakao:
   message:
     enabled: ${KAKAO_MESSAGE_ENABLED:false}
@@ -59,4 +58,3 @@ kakao:
     access-token: ${KAKAO_ACCESS_TOKEN:}
     allowed-user-id: ${KAKAO_ALLOWED_USER_ID:}
     dashboard-url: ${KAKAO_DASHBOARD_URL:http://localhost:5173}
->>>>>>> origin/wjs

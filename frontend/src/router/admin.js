@@ -5,11 +5,8 @@ import AdminEventsView from '@/views/admin/AdminEventsView.vue'
 import AdminMembersView from '@/views/admin/AdminMembersView.vue'
 import AdminPlateRecognitionView from '@/views/admin/AdminPlateRecognitionView.vue'
 import AdminYardMapView from '@/views/admin/AdminYardMapView.vue'
-<<<<<<< HEAD
 import AdminContainersView from '@/views/admin/AdminContainersView.vue'
-=======
 import AdminPredictiveMaintenanceView from '@/views/admin/AdminPredictiveMaintenanceView.vue'
->>>>>>> origin/wjs
 
 export default [
   {
@@ -45,7 +42,7 @@ export default [
         path: 'predictive-maintenance',
         name: 'admin-predictive-maintenance',
         component: AdminPredictiveMaintenanceView,
-        meta: { role: 'admin', title: '예지보전' },
+        meta: { role: 'ADMIN', title: '예지보전' },
       },
       {
         path: 'members',
