@@ -35,6 +35,10 @@ public class DriverWorkOrderDTO {
     private Long sectorId;
     private String sectorName;
     private String sectorStatus;
+    private Long startSectorId;
+    private String startSectorName;
+    private Long destinationSectorId;
+    private String destinationSectorName;
     private String guideMessage;
     private Boolean canExit;
     private String altWaitingArea;

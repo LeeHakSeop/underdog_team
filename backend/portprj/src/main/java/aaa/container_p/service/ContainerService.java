@@ -79,6 +79,13 @@ public class ContainerService {
         return mapper.updateCanExit(containerId, false);
     }
 
+    public int moveToSector(Long containerId, Long sectorId) {
+        if (sectorId == null || !mapper.existsYardSector(sectorId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이동할 야드 섹터를 찾을 수 없습니다.");
+        }
+        return mapper.updateSector(containerId, sectorId);
+    }
+
     private void validate(ContainerDTO dto) {
         if (dto == null || dto.getContainerNumber() == null || dto.getContainerNumber().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "컨테이너 번호는 필수입니다.");

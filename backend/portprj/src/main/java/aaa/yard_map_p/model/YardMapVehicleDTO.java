@@ -27,6 +27,8 @@ public class YardMapVehicleDTO {
     private String sectorName;
     private String blockName;
     private String originLocation;
+    private Long startSectorId;
+    private String startSectorName;
     private Long destinationSectorId;
     private String destinationSectorName;
     private String routeSummary;

@@ -38,10 +38,10 @@ const handleSignupCompleted = () => {
   <main class="auth-page">
     <section class="brand-panel">
       <div class="brand-message">
-        <p class="eyebrow">PORT GATE</p>
+        <p class="eyebrow">PORT GATE MANAGEMENT SYSTEM</p>
         <h1>
-          <span>항만 차량 출입과</span>
-          <strong>컨테이너 작업 관리</strong>
+          <span>항만 게이트 차량 출입</span>
+          <strong>컨테이너 상차 섹터 안내 시스템</strong>
         </h1>
       </div>
     </section>
@@ -95,30 +95,34 @@ const handleSignupCompleted = () => {
   inset: 0;
   z-index: 0;
   content: '';
-  background: linear-gradient(90deg, rgba(9, 26, 43, 0.28), rgba(9, 26, 43, 0.06)),
-    url('/images/gamman-pier.jpg') center / cover no-repeat;
+  background: url('/images/gamman-pier.jpg') center / cover no-repeat;
   transform: scaleX(-1);
 }
 
 .brand-message {
   position: relative;
   z-index: 1;
-  width: min(100%, 480px);
+  width: max-content;
+  max-width: 100%;
   align-self: flex-start;
-  padding: 0;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.34);
+  padding: 18px 30px;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  box-shadow: 0 18px 42px rgba(10, 25, 40, 0.24);
+  backdrop-filter: blur(8px);
 }
 
 .eyebrow {
-  margin: 0 0 10px;
-  color: rgba(255, 255, 255, 0.82);
+  margin: 0;
+  color: var(--blue-700);
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
 .brand-panel h1 {
-  width: 100%;
+  width: max-content;
+  max-width: 100%;
   margin: 0;
   line-height: 1.16;
 }
@@ -130,7 +134,7 @@ const handleSignupCompleted = () => {
 }
 
 .brand-panel h1 span {
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--ink-700);
   font-size: clamp(19px, 2vw, 24px);
   font-weight: 700;
   letter-spacing: 0;
@@ -138,11 +142,12 @@ const handleSignupCompleted = () => {
 
 .brand-panel h1 strong {
   margin-top: 8px;
-  color: #ffffff;
-  font-size: clamp(30px, 3.7cqw, 42px);
+  color: var(--ink-900);
+  font-size: min(45px, 5cqw);
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1.18;
+  white-space: nowrap;
 }
 
 .auth-panel {
@@ -257,6 +262,11 @@ const handleSignupCompleted = () => {
 
   .brand-panel h1 strong {
     font-size: clamp(26px, 8vw, 34px);
+    white-space: normal;
+  }
+
+  .brand-message {
+    width: fit-content;
   }
 }
 </style>

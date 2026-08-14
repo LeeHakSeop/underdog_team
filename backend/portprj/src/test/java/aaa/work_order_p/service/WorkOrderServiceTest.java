@@ -1,6 +1,7 @@
 package aaa.work_order_p.service;
 
 import aaa.container_p.service.ContainerService;
+import aaa.container_p.model.ContainerDTO;
 import aaa.driver_p.model.DriverDTO;
 import aaa.driver_p.model.DriverMapper;
 import aaa.vehicle_p.model.VehicleDTO;
@@ -10,6 +11,8 @@ import aaa.work_order_p.model.WorkOrderMapper;
 import aaa.work_order_p.model.WorkOrderProcessResultDTO;
 import aaa.work_order_p.model.WorkStatusHistoryDTO;
 import aaa.work_order_p.model.WorkStatusHistoryMapper;
+import aaa.yard_sector_p.model.YardSectorDTO;
+import aaa.yard_sector_p.service.YardSectorService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -45,6 +48,9 @@ class WorkOrderServiceTest {
 
     @Mock
     private VehicleMapper vehicleMapper;
+
+    @Mock
+    private YardSectorService yardSectorService;
 
     @InjectMocks
     private WorkOrderService service;
@@ -83,14 +89,20 @@ class WorkOrderServiceTest {
     @Test
     void startRequiresGateInAndStoresHistory() {
         WorkOrderDTO gateIn = order("GATE_IN", true, 100L);
+        assignLifecycleVehicles(gateIn, "정상");
         when(mapper.detail(3L)).thenReturn(gateIn, gateIn);
         when(containerService.blockExit(100L)).thenReturn(1);
         when(mapper.updateStatus(3L, "IN_PROGRESS")).thenReturn(1);
+        when(vehicleMapper.updateTractorStatus(20L, "작업중")).thenReturn(1);
+        when(vehicleMapper.updateTrailerStatus(30L, "작업중")).thenReturn(1);
 
         WorkOrderProcessResultDTO result = service.start(3L);
 
         assertTrue(result.isSuccess());
         assertEquals("IN_PROGRESS", result.getWorkStatus());
+        verify(vehicleMapper).updateTractorStatus(20L, "작업중");
+        verify(vehicleMapper).updateTrailerStatus(30L, "작업중");
+        verify(containerService, never()).moveToSector(any(), any());
         WorkStatusHistoryDTO history = captureHistory();
         assertEquals("GATE_IN", history.getPrevStatus());
         assertEquals("IN_PROGRESS", history.getNewStatus());
@@ -112,14 +124,22 @@ class WorkOrderServiceTest {
     @Test
     void completeRequiresInProgressAndStoresHistory() {
         WorkOrderDTO inProgress = order("IN_PROGRESS", true, 101L);
+        inProgress.setDestinationSectorId(2L);
+        assignLifecycleVehicles(inProgress, "작업중");
         when(mapper.detail(5L)).thenReturn(inProgress, inProgress);
         when(containerService.allowExit(101L)).thenReturn(1);
         when(mapper.updateStatus(5L, "COMPLETED")).thenReturn(1);
+        when(vehicleMapper.updateTractorStatus(20L, "정상")).thenReturn(1);
+        when(vehicleMapper.updateTrailerStatus(30L, "정상")).thenReturn(1);
+        when(containerService.moveToSector(101L, 2L)).thenReturn(1);
 
         WorkOrderProcessResultDTO result = service.complete(5L);
 
         assertTrue(result.isSuccess());
         assertEquals("COMPLETED", result.getWorkStatus());
+        verify(vehicleMapper).updateTractorStatus(20L, "정상");
+        verify(vehicleMapper).updateTrailerStatus(30L, "정상");
+        verify(containerService).moveToSector(101L, 2L);
         WorkStatusHistoryDTO history = captureHistory();
         assertEquals("IN_PROGRESS", history.getPrevStatus());
         assertEquals("COMPLETED", history.getNewStatus());
@@ -224,6 +244,72 @@ class WorkOrderServiceTest {
     }
 
     @Test
+    void insertStoresIndependentStartAndDestinationSectors() {
+        WorkOrderDTO request = order("DISPATCH_WAITING", false, 100L);
+        request.setStartSectorId(1L);
+        request.setDestinationSectorId(2L);
+
+        ContainerDTO container = new ContainerDTO();
+        container.setContainerId(100L);
+        container.setSectorId(1L);
+
+        YardSectorDTO startSector = new YardSectorDTO();
+        startSector.setSectorId(1L);
+        startSector.setSectorName("A-01");
+
+        YardSectorDTO destinationSector = new YardSectorDTO();
+        destinationSector.setSectorId(2L);
+        destinationSector.setSectorName("A-02");
+        destinationSector.setSectorStatus("사용가능");
+        destinationSector.setCapacity(40);
+
+        when(containerService.detail(100L)).thenReturn(container);
+        when(yardSectorService.detail(1L)).thenReturn(startSector);
+        when(yardSectorService.detail(2L)).thenReturn(destinationSector);
+        when(mapper.countActiveBySectorId(2L, null)).thenReturn(0);
+        when(mapper.insert(request)).thenReturn(1);
+
+        assertEquals(1, service.insert(request));
+        assertEquals(1L, request.getStartSectorId());
+        assertEquals(2L, request.getDestinationSectorId());
+        assertEquals(1L, container.getSectorId());
+        verify(mapper).insert(request);
+    }
+
+    @Test
+    void completeLegacyWorkOrderKeepsContainerSectorWhenDestinationIsNull() {
+        WorkOrderDTO inProgress = order("IN_PROGRESS", true, 102L);
+        assignLifecycleVehicles(inProgress, "작업중");
+        when(mapper.detail(9L)).thenReturn(inProgress, inProgress);
+        when(containerService.allowExit(102L)).thenReturn(1);
+        when(mapper.updateStatus(9L, "COMPLETED")).thenReturn(1);
+        when(vehicleMapper.updateTractorStatus(20L, "정상")).thenReturn(1);
+        when(vehicleMapper.updateTrailerStatus(30L, "정상")).thenReturn(1);
+
+        WorkOrderProcessResultDTO result = service.complete(9L);
+
+        assertTrue(result.isSuccess());
+        assertEquals("COMPLETED", result.getWorkStatus());
+        verify(containerService, never()).moveToSector(any(), any());
+    }
+
+    @Test
+    void completeStopsBeforeContainerMoveWhenVehicleStatusUpdateFails() {
+        WorkOrderDTO inProgress = order("IN_PROGRESS", true, 103L);
+        inProgress.setDestinationSectorId(2L);
+        assignLifecycleVehicles(inProgress, "작업중");
+        when(mapper.detail(10L)).thenReturn(inProgress, inProgress);
+        when(containerService.allowExit(103L)).thenReturn(1);
+        when(mapper.updateStatus(10L, "COMPLETED")).thenReturn(1);
+        when(vehicleMapper.updateTractorStatus(20L, "정상")).thenReturn(1);
+        when(vehicleMapper.updateTrailerStatus(30L, "정상")).thenReturn(0);
+
+        assertThrows(ResponseStatusException.class, () -> service.complete(10L));
+
+        verify(containerService, never()).moveToSector(any(), any());
+    }
+
+    @Test
     void cancelOnlyAllowsDispatchWaitingAndStoresHistory() {
         WorkOrderDTO waiting = order("DISPATCH_WAITING", false, null);
         WorkOrderDTO canceled = order("CANCELED", false, null);
@@ -267,5 +353,27 @@ class WorkOrderServiceTest {
         order.setIsApproved(approved);
         order.setContainerId(containerId);
         return order;
+    }
+
+    private void assignLifecycleVehicles(WorkOrderDTO workOrder, String vehicleStatus) {
+        workOrder.setTractorVehicleId(20L);
+        workOrder.setTrailerVehicleId(30L);
+
+        VehicleDTO tractor = new VehicleDTO();
+        tractor.setVehicleId(20L);
+        tractor.setVehicleType("TRACTOR");
+        tractor.setVehicleStatus(vehicleStatus);
+        tractor.setIsRegistered(true);
+
+        VehicleDTO trailer = new VehicleDTO();
+        trailer.setVehicleId(30L);
+        trailer.setVehicleType("TRAILER");
+        trailer.setVehicleStatus(vehicleStatus);
+        trailer.setIsRegistered(true);
+
+        when(vehicleMapper.detail(20L)).thenReturn(tractor);
+        when(vehicleMapper.detail(30L)).thenReturn(trailer);
+        when(vehicleMapper.existsTractorSubtype(20L)).thenReturn(true);
+        when(vehicleMapper.existsTrailerSubtype(30L)).thenReturn(true);
     }
 }

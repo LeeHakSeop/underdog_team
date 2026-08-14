@@ -270,6 +270,16 @@ function statusLabel(statusLevel) {
   return '정상'
 }
 
+function environmentTypeLabel(environmentType) {
+  return {
+    GENERAL: '일반',
+    HEAVY: '중량',
+    REEFER: '냉동·냉장',
+    DANGEROUS: '위험물',
+    EMPTY: '공컨테이너',
+  }[environmentType] || '환경 미지정'
+}
+
 function workStatusLabel(status) {
   return {
     DISPATCH_WAITING: '배차 대기',
@@ -413,6 +423,10 @@ const gatePopupHtml = (gate) => `
 const sectorPopupHtml = (sector) => `
   <div class="sector-popup">
     <b>${escapeHtml(sector.sectorName)}</b>
+<<<<<<< HEAD
+=======
+    <div><span>작업환경</span><strong>${escapeHtml(environmentTypeLabel(sector.environmentType))}</strong></div>
+>>>>>>> e3435029cf4507fc14cdb7d807ae5fd589cd01b5
     <div><span>블록</span><strong>${escapeHtml(sector.blockName)}</strong></div>
     <div><span>컨테이너</span><strong>${escapeHtml(formatCount(sector.containerCount))}</strong></div>
     <div><span>수용량</span><strong>${escapeHtml(formatCount(sector.capacity))}</strong></div>
@@ -534,7 +548,11 @@ const renderOperations = () => {
         fillColor: sectorStyle.fillColor,
         fillOpacity: sectorStyle.fillOpacity,
       })
+<<<<<<< HEAD
         .bindTooltip(`${yardSector.sectorName} / ${statusLabel(yardSector.statusLevel)} / 사용률 ${formatPercent(yardSector.usageRate)}`, { sticky: true })
+=======
+        .bindTooltip(`${yardSector.sectorName} / ${environmentTypeLabel(yardSector.environmentType)} / ${statusLabel(yardSector.statusLevel)} / 사용률 ${formatPercent(yardSector.usageRate)}`, { sticky: true })
+>>>>>>> e3435029cf4507fc14cdb7d807ae5fd589cd01b5
         .bindPopup(sectorPopupHtml(yardSector))
         .on('click', () => {
           selectSector(yardSector.sectorId, false)
@@ -722,7 +740,11 @@ onBeforeUnmount(() => {
         <section class="summary-group">
           <div class="summary-heading">
             <strong>게이트 현황</strong>
+<<<<<<< HEAD
             <small>확인 필요 우선 표시</small>
+=======
+            <small>확인 필요 항목 우선 표시</small>
+>>>>>>> e3435029cf4507fc14cdb7d807ae5fd589cd01b5
           </div>
           <div class="summary-content gate-list">
             <div v-for="gate in visibleGates" :key="gate.gateNumber" class="gate-card" :class="gateTone(gate)">
@@ -766,7 +788,11 @@ onBeforeUnmount(() => {
                 <strong>{{ sector.sectorName }}</strong>
                 <span>{{ statusLabel(sector.statusLevel) }}</span>
                 <small>
+<<<<<<< HEAD
                   {{ sector.blockName }}구역 / 차량 {{ vehicleCountBySectorId.get(sector.sectorId) || 0 }}대 / 작업 {{ sector.workOrderCount || 0 }}건
+=======
+                  {{ sector.blockName }} 구역 / 차량 {{ vehicleCountBySectorId.get(sector.sectorId) || 0 }}대 / 작업 {{ sector.workOrderCount || 0 }}건
+>>>>>>> e3435029cf4507fc14cdb7d807ae5fd589cd01b5
                 </small>
                 <div class="usage-line">
                   <i :style="{ width: usageWidth(sector.usageRate) }"></i>
@@ -803,6 +829,10 @@ onBeforeUnmount(() => {
           </div>
           <dl class="selected-detail">
             <div><dt>블록</dt><dd>{{ selectedSector?.blockName || '-' }}</dd></div>
+<<<<<<< HEAD
+=======
+            <div><dt>작업환경</dt><dd>{{ environmentTypeLabel(selectedSector?.environmentType) }}</dd></div>
+>>>>>>> e3435029cf4507fc14cdb7d807ae5fd589cd01b5
             <div><dt>컨테이너</dt><dd>{{ formatCount(selectedSector?.containerCount) }}</dd></div>
             <div><dt>수용량</dt><dd>{{ formatCount(selectedSector?.capacity) }}</dd></div>
             <div><dt>사용률</dt><dd>{{ formatPercent(selectedSector?.usageRate) }}</dd></div>

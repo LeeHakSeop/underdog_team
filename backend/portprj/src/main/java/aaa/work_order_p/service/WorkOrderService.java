@@ -35,6 +35,8 @@ public class WorkOrderService {
     private static final String STATUS_COMPLETED = "COMPLETED";
     private static final String STATUS_GATE_OUT = "GATE_OUT";
     private static final String STATUS_CANCELED = "CANCELED";
+    private static final String VEHICLE_STATUS_WORKING = "작업중";
+    private static final String VEHICLE_STATUS_AVAILABLE = "정상";
     private static final String SYSTEM_ACTOR = "SYSTEM";
 
     @Resource
@@ -218,51 +220,82 @@ public class WorkOrderService {
             );
         }
 
-        if (dto.getContainerId() != null) {
-            validateYardSectorAssignment(dto, workOrderId);
-        }
+        validateYardSectorAssignment(dto, workOrderId);
     }
 
     private void validateYardSectorAssignment(WorkOrderDTO dto, Long workOrderId) {
+        if (dto.getContainerId() == null) {
+            throw dispatchValidationException(
+                    HttpStatus.BAD_REQUEST,
+                    "CONTAINER_NOT_FOUND",
+                    "작업 컨테이너를 선택해야 합니다.",
+                    null,
+                    null
+            );
+        }
+
         var container = containerService.detail(dto.getContainerId());
-        if (container == null || container.getSectorId() == null) {
+        if (container == null) {
             throw dispatchValidationException(
                     HttpStatus.BAD_REQUEST,
-                    "YARD_SECTOR_NOT_FOUND",
-                    "컨테이너의 야드 섹터 정보가 없어 작업을 배정할 수 없습니다.",
+                    "CONTAINER_NOT_FOUND",
+                    "작업 컨테이너를 찾을 수 없습니다.",
                     null,
                     null
             );
         }
 
-        YardSectorDTO sector = yardSectorService.detail(container.getSectorId());
-        if (sector == null) {
+        if (dto.getStartSectorId() == null || dto.getDestinationSectorId() == null) {
             throw dispatchValidationException(
                     HttpStatus.BAD_REQUEST,
                     "YARD_SECTOR_NOT_FOUND",
-                    "작업 목적지 야드 섹터를 찾을 수 없습니다.",
+                    "출발 및 목적 야드 섹터를 모두 선택해야 합니다.",
                     null,
                     null
             );
         }
 
-        if (!isSectorAssignable(sector.getSectorStatus())) {
+        YardSectorDTO startSector = yardSectorService.detail(dto.getStartSectorId());
+        if (startSector == null) {
+            throw dispatchValidationException(
+                    HttpStatus.BAD_REQUEST,
+                    "YARD_SECTOR_NOT_FOUND",
+                    "출발 야드 섹터를 찾을 수 없습니다.",
+                    null,
+                    null
+            );
+        }
+
+        YardSectorDTO destinationSector = yardSectorService.detail(dto.getDestinationSectorId());
+        if (destinationSector == null) {
+            throw dispatchValidationException(
+                    HttpStatus.BAD_REQUEST,
+                    "YARD_SECTOR_NOT_FOUND",
+                    "목적 야드 섹터를 찾을 수 없습니다.",
+                    null,
+                    null
+            );
+        }
+
+        if (!isSectorAssignable(destinationSector.getSectorStatus())) {
             throw dispatchValidationException(
                     HttpStatus.BAD_REQUEST,
                     "YARD_SECTOR_UNAVAILABLE",
-                    String.format("%s 섹터는 현재 작업 배정이 불가합니다.", sector.getSectorName()),
+                    String.format("%s 섹터는 현재 작업 배정이 불가합니다.", destinationSector.getSectorName()),
                     null,
                     null
             );
         }
 
-        int capacity = sector.getCapacity() == null || sector.getCapacity() <= 0 ? 40 : sector.getCapacity();
-        int activeAssignments = mapper.countActiveBySectorId(sector.getSectorId(), workOrderId);
+        int capacity = destinationSector.getCapacity() == null || destinationSector.getCapacity() <= 0
+                ? 40
+                : destinationSector.getCapacity();
+        int activeAssignments = mapper.countActiveBySectorId(destinationSector.getSectorId(), workOrderId);
         if (activeAssignments >= capacity) {
             throw dispatchValidationException(
                     HttpStatus.CONFLICT,
                     "YARD_SECTOR_CAPACITY_EXCEEDED",
-                    String.format("%s 섹터 배정 가능 수용량을 초과했습니다.", sector.getSectorName()),
+                    String.format("%s 섹터 배정 가능 수용량을 초과했습니다.", destinationSector.getSectorName()),
                     null,
                     null
             );
@@ -454,15 +487,22 @@ public class WorkOrderService {
             return fail(workOrderId, currentStatus, "WORK_ORDER_NOT_GATE_IN", "입차 완료 작업만 시작할 수 있습니다.");
         }
 
+        validateLifecycleVehicles(workOrder, true);
+
         if (workOrder.getContainerId() != null) {
-            containerService.blockExit(workOrder.getContainerId());
+            int containerUpdated = containerService.blockExit(workOrder.getContainerId());
+            if (containerUpdated == 0) {
+                return fail(workOrderId, currentStatus, "CONTAINER_UPDATE_FAILED", "컨테이너 출차 상태 변경에 실패했습니다.");
+            }
         }
 
         int updated = updateStatus(workOrderId, STATUS_IN_PROGRESS);
 
         if (updated == 0) {
-            return fail(workOrderId, currentStatus, "WORK_ORDER_UPDATE_FAILED", "작업 상태 변경에 실패했습니다.");
+            throw lifecycleUpdateException("작업 상태 변경에 실패했습니다.");
         }
+
+        updateLifecycleVehicleStatuses(workOrder, VEHICLE_STATUS_WORKING);
 
         return success(workOrderId, STATUS_IN_PROGRESS, "작업이 시작되었습니다.");
     }
@@ -497,6 +537,8 @@ public class WorkOrderService {
             return fail(workOrderId, currentStatus, "CONTAINER_NOT_FOUND", "작업에 연결된 컨테이너 정보가 없습니다.");
         }
 
+        validateLifecycleVehicles(workOrder, false);
+
         int containerUpdated = containerService.allowExit(workOrder.getContainerId());
 
         if (containerUpdated == 0) {
@@ -506,11 +548,70 @@ public class WorkOrderService {
         int updated = updateStatus(workOrderId, STATUS_COMPLETED);
 
         if (updated == 0) {
-            containerService.blockExit(workOrder.getContainerId());
-            return fail(workOrderId, currentStatus, "WORK_ORDER_UPDATE_FAILED", "작업 상태 변경에 실패했습니다.");
+            throw lifecycleUpdateException("작업 상태 변경에 실패했습니다.");
+        }
+
+        updateLifecycleVehicleStatuses(workOrder, VEHICLE_STATUS_AVAILABLE);
+
+        if (workOrder.getDestinationSectorId() != null) {
+            int sectorUpdated = containerService.moveToSector(
+                    workOrder.getContainerId(),
+                    workOrder.getDestinationSectorId()
+            );
+            if (sectorUpdated == 0) {
+                throw lifecycleUpdateException("컨테이너 목적 야드 이동에 실패했습니다.");
+            }
         }
 
         return success(workOrderId, STATUS_COMPLETED, makeCompleteMessage(workOrder.getWorkType()));
+    }
+
+    private void validateLifecycleVehicles(WorkOrderDTO workOrder, boolean requireAvailable) {
+        validateLifecycleVehicle(workOrder.getTractorVehicleId(), "TRACTOR", "트랙터", requireAvailable);
+        validateLifecycleVehicle(workOrder.getTrailerVehicleId(), "TRAILER", "트레일러", requireAvailable);
+    }
+
+    private void validateLifecycleVehicle(
+            Long vehicleId,
+            String expectedType,
+            String vehicleLabel,
+            boolean requireAvailable
+    ) {
+        if (vehicleId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "배정된 " + vehicleLabel + " 정보가 없습니다.");
+        }
+
+        VehicleDTO vehicle = vehicleMapper.detail(vehicleId);
+        boolean subtypeExists = "TRACTOR".equals(expectedType)
+                ? vehicleMapper.existsTractorSubtype(vehicleId)
+                : vehicleMapper.existsTrailerSubtype(vehicleId);
+        boolean typeMatches = "TRACTOR".equals(expectedType)
+                ? isTractor(vehicle == null ? null : vehicle.getVehicleType())
+                : isTrailer(vehicle == null ? null : vehicle.getVehicleType());
+
+        if (vehicle == null || !typeMatches || !subtypeExists) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "배정된 " + vehicleLabel + " 정보를 확인할 수 없습니다.");
+        }
+
+        if (requireAvailable && !isVehicleUsable(vehicle)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, vehicleLabel + "가 현재 작업 가능한 상태가 아닙니다.");
+        }
+    }
+
+    private void updateLifecycleVehicleStatuses(WorkOrderDTO workOrder, String vehicleStatus) {
+        int tractorUpdated = vehicleMapper.updateTractorStatus(workOrder.getTractorVehicleId(), vehicleStatus);
+        if (tractorUpdated == 0) {
+            throw lifecycleUpdateException("트랙터 상태 변경에 실패했습니다.");
+        }
+
+        int trailerUpdated = vehicleMapper.updateTrailerStatus(workOrder.getTrailerVehicleId(), vehicleStatus);
+        if (trailerUpdated == 0) {
+            throw lifecycleUpdateException("트레일러 상태 변경에 실패했습니다.");
+        }
+    }
+
+    private ResponseStatusException lifecycleUpdateException(String message) {
+        return new ResponseStatusException(HttpStatus.CONFLICT, message);
     }
 
     private WorkOrderDTO getWorkOrder(Long workOrderId) {
