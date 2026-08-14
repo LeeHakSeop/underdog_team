@@ -27,12 +27,16 @@ frontend/node_modules/
 /node_modules/
 /externals/
 
+# Local PostgreSQL safety backups
+DB/backups/
+
 .idea/
 
 # Local reference documents and shared screenshots
 *.pdf
 *.txt
 !backend-python/requirements.txt
+!docs/PM_알파테스트_설명자료.txt
 
 # Images / screenshots / exported mockups
 *.png
