@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import AntennaHistoryPlayback from '@/components/predictive/AntennaHistoryPlayback.vue'
 import MaintenanceRecordBoard from '@/components/predictive/MaintenanceRecordBoard.vue'
+import PredictiveDashboardSummary from '@/components/predictive/PredictiveDashboardSummary.vue'
 import PredictiveTypeSelector from '@/components/predictive/PredictiveTypeSelector.vue'
 import {
   predictiveMaintenanceSections,
@@ -55,27 +56,7 @@ const sectionDescriptions = {
 
       <AntennaHistoryPlayback v-if="selectedType === 'ANTENNA'" />
 
-      <section class="grid-2 dashboard-panels">
-        <article class="panel">
-          <div class="section-title">
-            <h2>관리자 판단</h2>
-            <span class="status-pill gray">기능 연결 예정</span>
-          </div>
-          <div class="empty-state">
-            모델 판단에 동의하거나 다른 판단을 선택하고, 근거와 점검 필요 여부를 기록하는 영역입니다.
-          </div>
-        </article>
-
-        <article class="panel">
-          <div class="section-title">
-            <h2>경보·정비 이력</h2>
-            <span class="status-pill gray">기능 연결 예정</span>
-          </div>
-          <div class="empty-state">
-            선택한 안테나의 모델 경보, 실제 고장, 관리자 조치와 정비 결과를 시간순으로 표시합니다.
-          </div>
-        </article>
-      </section>
+      <PredictiveDashboardSummary @open-maintenance="selectedSection = 'maintenance'" />
     </template>
 
     <MaintenanceRecordBoard

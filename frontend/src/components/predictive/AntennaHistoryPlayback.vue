@@ -423,7 +423,7 @@ const drawChart = () => {
 watch([visibleRecords, selectedMetric, axisMode], () => nextTick(drawChart))
 
 watch(observationTime, (nextTime, previousTime) => {
-  if (isDemoEquipment.value) predictiveDemoSession.observationTime = nextTime
+  predictiveDemoSession.observationTime = nextTime
 
   // 알림은 시간축을 정방향으로 통과할 때만 생성한다.
   // 슬라이더나 -6시간 버튼으로 과거로 돌아갈 때는 어떤 알림도 요청하지 않는다.
