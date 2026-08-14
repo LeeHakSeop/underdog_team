@@ -2,7 +2,7 @@ export const predictiveMaintenanceTypes = [
   {
     code: 'ANTENNA',
     label: '안테나 예지보전',
-    description: '안테나 센서 상태와 7일 이내 고장 위험을 확인합니다.',
+    description: '안테나별 센서 이상과 지속시간을 바탕으로 운영 상태와 고장 전조를 확인합니다.',
     enabled: true,
   },
   {

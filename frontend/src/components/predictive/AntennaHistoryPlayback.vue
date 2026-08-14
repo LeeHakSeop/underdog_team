@@ -1,46 +1,66 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  fetchPredictiveEquipment,
+  fetchPredictiveEvents,
+  fetchPredictiveMetadata,
+  fetchPredictiveSensorData,
+} from '@/api/predictiveMaintenanceApi'
+import {
+  DEMO_EQUIPMENT_ID,
+  DEMO_SOURCE_EQUIPMENT_ID,
+  predictiveDemoSession,
+  requestDemoNotification,
+  resetDemoNotifications,
+} from '@/config/predictiveDemoSession'
 
 const HOUR_MS = 60 * 60 * 1000
 const WINDOW_MS = 14 * 24 * HOUR_MS
 
 const metrics = {
-  successRate: { label: '통신 성공률', unit: '%', color: '#23639c', decimals: 2, range: [60, 100], caution: 90, danger: 80, direction: 'low' },
-  responseTimeMs: { label: '응답 시간', unit: 'ms', color: '#b47c1c', decimals: 1, range: [30, 230], caution: 100, danger: 140, direction: 'high' },
-  packetLossRate: { label: '패킷 손실률', unit: '%', color: '#b8403a', decimals: 2, range: [0, 15], caution: 3, danger: 6, direction: 'high' },
-  riskScore: { label: '합성 위험 점수', unit: '점', color: '#7b4ea3', decimals: 1, range: [0, 100], caution: 40, danger: 70, direction: 'high' },
-  trafficLoad: { label: '트래픽 부하', unit: '', color: '#2b8d9c', decimals: 3, range: [0, 1] },
-  temperatureC: { label: '온도', unit: '℃', color: '#d16a32', decimals: 1, range: [15, 40], comparison: 'daily-reference' },
-  voltageV: { label: '전압', unit: 'V', color: '#6a7f36', decimals: 2, range: [11, 13], caution: 11.8, danger: 11.5, direction: 'low' },
-  signalStrengthDbm: { label: '신호 세기', unit: 'dBm', color: '#4277a8', decimals: 1, range: [50, 100], caution: 70, danger: 60, direction: 'low' },
-  retryCount: { label: '재시도 횟수', unit: '회', color: '#8d6b3f', decimals: 0, range: [0, 20], caution: 6, danger: 10, direction: 'high' },
-  disconnectCount: { label: '연결 끊김', unit: '회', color: '#9c5362', decimals: 0, range: [0, 10], caution: 2, danger: 5, direction: 'high' },
-  errorCount: { label: '오류 횟수', unit: '회', color: '#6c5c91', decimals: 0, range: [0, 25], caution: 8, danger: 12, direction: 'high' },
+  successRate: { sensor: 'success_rate', label: '통신 성공률', unit: '%', color: '#23639c', decimals: 2, range: [60, 100] },
+  responseTimeMs: { sensor: 'response_time_ms', label: '응답 시간', unit: 'ms', color: '#b47c1c', decimals: 1, range: [30, 230] },
+  packetLossRate: { sensor: 'packet_loss_rate', label: '패킷 손실률', unit: '%', color: '#b8403a', decimals: 2, range: [0, 15] },
+  trafficLoad: { sensor: 'traffic_load', label: '트래픽 부하', unit: '', color: '#2b8d9c', decimals: 3, range: [0, 1], comparison: 'context' },
+  temperatureC: { sensor: 'temperature_c', label: '온도', unit: '℃', color: '#d16a32', decimals: 1, range: [10, 45], comparison: 'context' },
+  voltageV: { sensor: 'voltage_v', label: '전압', unit: 'V', color: '#6a7f36', decimals: 2, range: [11, 13] },
+  signalStrengthDbm: { sensor: 'signal_strength_dbm', label: '신호 세기', unit: 'dBm', color: '#4277a8', decimals: 1, range: [50, 100] },
+  retryCount: { sensor: 'retry_count', label: '재시도 횟수', unit: '회', color: '#8d6b3f', decimals: 0, range: [0, 20] },
+  disconnectCount: { sensor: 'disconnect_count', label: '연결 끊김', unit: '회', color: '#9c5362', decimals: 0, range: [0, 10] },
+  errorCount: { sensor: 'error_count', label: '오류 횟수', unit: '회', color: '#6c5c91', decimals: 0, range: [0, 25] },
 }
 
 const equipmentData = ref({})
+const equipmentCodes = ref([])
 const loading = ref(true)
 const loadError = ref('')
-const selectedEquipment = ref('ANT-018')
+const selectedEquipment = ref(predictiveDemoSession.selectedEquipmentId || DEMO_EQUIPMENT_ID)
 const selectedMetric = ref('successRate')
 const observationTime = ref(0)
 const isPlaying = ref(false)
 const playbackHours = ref(6)
 const maintenancePlaybackMode = ref(false)
 const axisMode = ref('operational')
+const datasetVersion = ref('CSV')
+const sensorLimits = ref({})
+const alertEvents = ref([])
 const canvas = ref(null)
 const chartWrap = ref(null)
 let timerId = null
 let resizeObserver = null
 
 const parseCollectedAt = (value) => {
-  const [date, rawTime] = value.split(' ')
-  const [hour, minute] = rawTime.split(':')
-  return new Date(`${date}T${hour.padStart(2, '0')}:${minute}:00`).getTime()
+  if (!value) return 0
+  return new Date(value.includes('T') ? value : value.replace(' ', 'T')).getTime()
 }
 
-const equipmentOptions = computed(() => Object.keys(equipmentData.value).sort())
+const equipmentOptions = computed(() => [DEMO_EQUIPMENT_ID, ...equipmentCodes.value].sort((a, b) => {
+  if (a === DEMO_EQUIPMENT_ID) return -1
+  if (b === DEMO_EQUIPMENT_ID) return 1
+  return a.localeCompare(b)
+}))
 const equipmentRecords = computed(() => equipmentData.value[selectedEquipment.value] ?? [])
+const isDemoEquipment = computed(() => selectedEquipment.value === DEMO_EQUIPMENT_ID)
 
 const minTime = computed(() => equipmentRecords.value[0]?.timestamp ?? 0)
 const maxTime = computed(() => equipmentRecords.value.at(-1)?.timestamp ?? 0)
@@ -53,6 +73,11 @@ const visibleRecords = computed(() => {
 })
 
 const currentRecord = computed(() => visibleRecords.value.at(-1))
+const selectedEquipmentLimits = computed(() => sensorLimits.value[selectedEquipment.value] ?? {})
+const selectedMetricLimit = computed(() => {
+  const metric = metrics[selectedMetric.value]
+  return selectedEquipmentLimits.value[metric.sensor] ?? null
+})
 const previous24HourRecords = computed(() => {
   if (!currentRecord.value) return []
   const end = currentRecord.value.timestamp
@@ -68,7 +93,7 @@ const metricComparisons = computed(() =>
         return [key, { status: 'normal', text: '비교할 데이터 없음' }]
       }
 
-      if (metric.comparison === 'daily-reference') {
+      if (metric.comparison === 'context') {
         return [key, { status: 'reference', text: '일중 변동 참고 · 경보 판단 제외' }]
       }
 
@@ -84,18 +109,20 @@ const metricComparisons = computed(() =>
       const deltaUnit = ['successRate', 'packetLossRate'].includes(key) ? '%p' : metric.unit
       const deltaText = `${delta > 0 ? '+' : ''}${delta.toFixed(Math.max(1, metric.decimals))}${deltaUnit}`
 
-      let status = 'reference'
-      if (metric.direction === 'high') {
-        status = value >= metric.danger ? 'danger' : value >= metric.caution ? 'caution' : 'normal'
-      } else if (metric.direction === 'low') {
-        status = value <= metric.danger ? 'danger' : value <= metric.caution ? 'caution' : 'normal'
-      }
+      const limit = selectedEquipmentLimits.value[metric.sensor]
+      const isAbnormal = limit?.direction === 'high'
+        ? value > limit.limit
+        : limit?.direction === 'low'
+          ? value < limit.limit
+          : false
+      const status = isAbnormal ? 'danger' : 'normal'
+      const limitText = limit
+        ? ` · 한계 ${limit.direction === 'high' ? '≤' : '≥'} ${Number(limit.limit).toFixed(metric.decimals)}${metric.unit}`
+        : ''
 
       const text = status === 'normal'
-        ? `24시간 평균 ${baselineText} · 특이 변화 없음`
-        : status === 'reference'
-          ? `24시간 평균 ${baselineText} · 대비 ${deltaText}`
-          : `24시간 평균 ${baselineText} · 대비 ${deltaText}`
+        ? `24시간 평균 ${baselineText} · 특이 변화 없음${limitText}`
+        : `24시간 평균 ${baselineText} · 대비 ${deltaText}${limitText}`
 
       return [key, { status, text }]
     }),
@@ -110,6 +137,16 @@ const firstMaintenanceTime = computed(
 )
 const hasMaintenanceEpisode = computed(
   () => Boolean(firstFailureTime.value && firstMaintenanceTime.value),
+)
+const currentAlertEvent = computed(() => {
+  const candidates = alertEvents.value.filter((item) => {
+    if (item.equipmentId !== selectedEquipment.value) return false
+    return !firstFailureTime.value || parseCollectedAt(item.occurredAt) <= firstFailureTime.value
+  })
+  return candidates.at(-1)
+})
+const isSuddenFailure = computed(() =>
+  hasMaintenanceEpisode.value && !currentAlertEvent.value,
 )
 const maintenanceStartTime = computed(() =>
   hasMaintenanceEpisode.value ? Math.max(minTime.value, firstFailureTime.value - WINDOW_MS) : minTime.value,
@@ -127,18 +164,15 @@ const activeMaxTime = computed(() =>
 )
 
 const riskClass = computed(() => {
-  const risk = currentRecord.value?.riskScore ?? 0
-  if (risk >= 70) return 'red'
-  if (risk >= 40) return 'amber'
-  return 'green'
+  const state = currentRecord.value?.operationalState
+  if (state === 'failure' || state === 'failure_expected') return 'red'
+  if (state === 'suspect' || state === 'risk' || state === 'post_failure_recovery') return 'amber'
+  return state ? 'green' : 'blue'
 })
 
 const modelDecision = computed(() => {
   if (!currentRecord.value) return '기록 없음'
-  const risk = currentRecord.value.riskScore
-  if (risk >= 70) return '위험'
-  if (risk >= 40) return '주의'
-  return '정상'
+  return currentRecord.value.operationalStateKo
 })
 
 const toDateTimeLocal = (timestamp) => {
@@ -172,6 +206,31 @@ const formatValue = (value, metricKey = selectedMetric.value) => {
   return `${Number(value).toFixed(metric.decimals)}${metric.unit}`
 }
 
+const formatCollectedAt = (timestamp) => {
+  const date = new Date(timestamp)
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:00`
+}
+
+const loadEquipmentRows = async (equipmentId) => {
+  if (!equipmentId || equipmentId === DEMO_EQUIPMENT_ID || equipmentData.value[equipmentId]) return
+  const [rows, events] = await Promise.all([
+    fetchPredictiveSensorData(equipmentId),
+    fetchPredictiveEvents(equipmentId),
+  ])
+  equipmentData.value = {
+    ...equipmentData.value,
+    [equipmentId]: rows.map((item) => ({
+      ...item,
+      timestamp: parseCollectedAt(item.collectedAt),
+    })),
+  }
+  alertEvents.value = [
+    ...alertEvents.value.filter((item) => item.equipmentId !== equipmentId),
+    ...events.filter((item) => item.eventType === 'FAILURE_EXPECTED'),
+  ]
+}
+
 const clampTime = (timestamp) => Math.min(activeMaxTime.value, Math.max(activeMinTime.value, timestamp))
 
 const setObservationTime = (timestamp) => {
@@ -192,8 +251,9 @@ const moveTime = (hours) => {
 const startMaintenancePlayback = () => {
   if (!hasMaintenanceEpisode.value) return
   stopPlayback()
+  if (isDemoEquipment.value) resetDemoNotifications()
   maintenancePlaybackMode.value = true
-  observationTime.value = maintenanceStartTime.value
+  setObservationTime(maintenanceStartTime.value)
   startPlayback()
 }
 
@@ -265,7 +325,8 @@ const drawChart = () => {
   context.fillStyle = '#fbfcfe'
   context.fillRect(padding.left, padding.top, plotWidth, plotHeight)
 
-  if (axisMode.value === 'operational' && metric.direction) {
+  const limit = selectedMetricLimit.value
+  if (axisMode.value === 'operational' && limit) {
     const fillBand = (from, to, color) => {
       const top = rawYForValue(Math.max(from, to))
       const bottom = rawYForValue(Math.min(from, to))
@@ -273,14 +334,12 @@ const drawChart = () => {
       context.fillRect(padding.left, top, plotWidth, bottom - top)
     }
 
-    if (metric.direction === 'high') {
-      fillBand(low, metric.caution, '#f1f8f4')
-      fillBand(metric.caution, metric.danger, '#fff8e8')
-      fillBand(metric.danger, high, '#fff0ef')
+    if (limit.direction === 'high') {
+      fillBand(low, limit.limit, '#f1f8f4')
+      fillBand(limit.limit, high, '#fff0ef')
     } else {
-      fillBand(metric.caution, high, '#f1f8f4')
-      fillBand(metric.danger, metric.caution, '#fff8e8')
-      fillBand(low, metric.danger, '#fff0ef')
+      fillBand(limit.limit, high, '#f1f8f4')
+      fillBand(low, limit.limit, '#fff0ef')
     }
   }
 
@@ -313,23 +372,33 @@ const drawChart = () => {
     context.fillText(formatAxisDate(timestamp), x, height - padding.bottom + 12)
   }
 
-  const firstVisibleFailure = visibleRecords.value.find((item) => item.failureEvent === 1)
+  const firstVisiblePrecursor = visibleRecords.value.find(
+    (item) => item.stateChanged && item.operationalState === 'failure_expected',
+  )
+  const firstVisibleFailure = visibleRecords.value.find((item) => item.currentFailure)
   const firstVisibleMaintenance = visibleRecords.value.find((item) => item.maintenanceEvent === 1)
-  const events = [firstVisibleFailure, firstVisibleMaintenance].filter(Boolean)
-  events.forEach((item) => {
-    const isFailure = item.failureEvent === 1
+  const events = [
+    firstVisiblePrecursor && { item: firstVisiblePrecursor, label: '고장 예상', color: '#b47c1c' },
+    firstVisibleFailure && {
+      item: firstVisibleFailure,
+      label: isSuddenFailure.value ? '급작 고장' : '고장',
+      color: '#b8403a',
+    },
+    firstVisibleMaintenance && { item: firstVisibleMaintenance, label: '정비', color: '#2f7d57' },
+  ].filter(Boolean)
+  events.forEach(({ item, label, color }) => {
     const x = xForTime(item.timestamp)
     context.setLineDash([5, 4])
-    context.strokeStyle = isFailure ? '#b8403a' : '#2f7d57'
+    context.strokeStyle = color
     context.beginPath()
     context.moveTo(x, padding.top)
     context.lineTo(x, padding.top + plotHeight)
     context.stroke()
     context.setLineDash([])
-    context.fillStyle = isFailure ? '#b8403a' : '#2f7d57'
+    context.fillStyle = color
     context.textAlign = 'center'
     context.textBaseline = 'bottom'
-    context.fillText(isFailure ? '고장' : '정비', x, padding.top - 5)
+    context.fillText(label, x, padding.top - 5)
   })
 
   context.strokeStyle = metric.color
@@ -353,12 +422,35 @@ const drawChart = () => {
 
 watch([visibleRecords, selectedMetric, axisMode], () => nextTick(drawChart))
 
-watch(selectedEquipment, () => {
+watch(observationTime, (nextTime, previousTime) => {
+  if (isDemoEquipment.value) predictiveDemoSession.observationTime = nextTime
+
+  // 알림은 시간축을 정방향으로 통과할 때만 생성한다.
+  // 슬라이더나 -6시간 버튼으로 과거로 돌아갈 때는 어떤 알림도 요청하지 않는다.
+  if (!isDemoEquipment.value || !Number.isFinite(previousTime) || nextTime <= previousTime) return
+
+  if (previousTime < predictiveDemoSession.alertAt && nextTime >= predictiveDemoSession.alertAt) {
+    requestDemoNotification('FAILURE_EXPECTED', predictiveDemoSession.alertAt)
+  }
+  if (previousTime < predictiveDemoSession.failureAt && nextTime >= predictiveDemoSession.failureAt) {
+    requestDemoNotification('FAILURE', predictiveDemoSession.failureAt)
+  }
+})
+
+watch(selectedEquipment, async () => {
   stopPlayback()
   maintenancePlaybackMode.value = false
-  observationTime.value = hasMaintenanceEpisode.value
+  predictiveDemoSession.selectedEquipmentId = selectedEquipment.value
+  try {
+    await loadEquipmentRows(selectedEquipment.value)
+  } catch (error) {
+    loadError.value = error.message
+    return
+  }
+  const nextTime = hasMaintenanceEpisode.value
     ? maintenanceStartTime.value
     : Math.max(minTime.value, maxTime.value - WINDOW_MS)
+  setObservationTime(nextTime)
 })
 
 watch(playbackHours, () => {
@@ -369,21 +461,66 @@ watch(playbackHours, () => {
 
 onMounted(async () => {
   try {
-    const response = await fetch('/data/antenna-maintenance-demo.json')
-    if (!response.ok) throw new Error('데이터 파일을 불러오지 못했습니다.')
-    const payload = await response.json()
-    equipmentData.value = Object.fromEntries(
-      Object.entries(payload.equipment).map(([equipmentId, rows]) => [
-        equipmentId,
-        rows.map((row) => {
-          const item = Object.fromEntries(payload.columns.map((column, index) => [column, row[index]]))
-          return { ...item, equipmentId, timestamp: parseCollectedAt(item.collectedAt) }
-        }),
-      ]),
-    )
-    observationTime.value = hasMaintenanceEpisode.value
-      ? maintenanceStartTime.value
-      : Math.max(minTime.value, maxTime.value - WINDOW_MS)
+    const [equipment, metadata] = await Promise.all([
+      fetchPredictiveEquipment(),
+      fetchPredictiveMetadata(),
+    ])
+    equipmentCodes.value = equipment.map((item) => item.equipmentCode)
+    datasetVersion.value = `${metadata.datasetVersion || 'CSV'} · DB API`
+    sensorLimits.value = metadata.sensorLimits || {}
+
+    await loadEquipmentRows(DEMO_SOURCE_EQUIPMENT_ID)
+    const sourceRows = equipmentData.value[DEMO_SOURCE_EQUIPMENT_ID] || []
+    const sourceAlert = alertEvents.value
+      .filter((item) => item.equipmentId === DEMO_SOURCE_EQUIPMENT_ID)
+      .at(-1)
+    const sourceAlertAt = sourceAlert ? parseCollectedAt(sourceAlert.occurredAt) : 0
+    const sessionWasInitialized = predictiveDemoSession.initialized
+    const targetAlertAt = sessionWasInitialized
+      ? predictiveDemoSession.alertAt
+      : new Date().setMinutes(0, 0, 0) + 6 * HOUR_MS
+    const demoOffset = targetAlertAt - sourceAlertAt
+    const demoRows = sourceRows.map((item) => {
+      const timestamp = item.timestamp + demoOffset
+      return {
+        ...item,
+        equipmentId: DEMO_EQUIPMENT_ID,
+        timestamp,
+        collectedAt: formatCollectedAt(timestamp),
+      }
+    })
+    const demoAlert = sourceAlert && {
+      ...sourceAlert,
+      id: `${DEMO_EQUIPMENT_ID}-${formatCollectedAt(targetAlertAt)}`,
+      equipmentId: DEMO_EQUIPMENT_ID,
+      occurredAt: formatCollectedAt(targetAlertAt),
+      deliveryStatus: 'DEMO_PENDING',
+      message: `[시연용 고장 예상] ${DEMO_EQUIPMENT_ID}에서 고장 전조가 확인되었습니다.`,
+    }
+
+    equipmentData.value = {
+      ...equipmentData.value,
+      [DEMO_EQUIPMENT_ID]: demoRows,
+    }
+    sensorLimits.value[DEMO_EQUIPMENT_ID] = sensorLimits.value[DEMO_SOURCE_EQUIPMENT_ID]
+    if (demoAlert) alertEvents.value.push(demoAlert)
+
+    const demoFailure = demoRows.find((item) => item.currentFailure)
+    const demoMaintenance = demoRows.find((item) => item.maintenanceEvent === 1)
+    predictiveDemoSession.initialized = true
+    predictiveDemoSession.alertAt = targetAlertAt
+    predictiveDemoSession.failureAt = demoFailure?.timestamp || 0
+    predictiveDemoSession.maintenanceAt = demoMaintenance?.timestamp || 0
+    predictiveDemoSession.anomalyCountAtAlert = demoAlert?.anomalyCount || 0
+    predictiveDemoSession.anomalyCountAtFailure = demoFailure?.anomalyCount || 0
+    predictiveDemoSession.maintenanceState = demoMaintenance?.operationalStateKo || '정상'
+
+    if (!isDemoEquipment.value) await loadEquipmentRows(selectedEquipment.value)
+    observationTime.value = isDemoEquipment.value && sessionWasInitialized && predictiveDemoSession.observationTime
+      ? predictiveDemoSession.observationTime
+      : hasMaintenanceEpisode.value
+        ? maintenanceStartTime.value
+        : Math.max(minTime.value, maxTime.value - WINDOW_MS)
   } catch (error) {
     loadError.value = error.message
   } finally {
@@ -406,7 +543,7 @@ onBeforeUnmount(() => {
   <section class="panel playback-panel">
     <div class="section-title playback-heading">
       <h2>안테나 상태 기록 재생</h2>
-      <span class="status-pill blue">CSV 기록 · 최근 14일</span>
+      <span class="status-pill blue">{{ datasetVersion }} · 최근 14일</span>
     </div>
 
     <div v-if="loading" class="message-state">데이터를 불러오는 중입니다.</div>
@@ -418,7 +555,7 @@ onBeforeUnmount(() => {
           <span>안테나</span>
           <select v-model="selectedEquipment">
             <option v-for="equipment in equipmentOptions" :key="equipment" :value="equipment">
-              {{ equipment }}
+              {{ equipment === DEMO_EQUIPMENT_ID ? '시연용 안테나 (ANT-018 복제)' : equipment }}
             </option>
           </select>
         </label>
@@ -441,6 +578,10 @@ onBeforeUnmount(() => {
               정비 구간 재생
             </button>
             <small>{{ formatDateTime(maintenanceStartTime) }} ~ {{ formatDateTime(maintenanceEndTime) }}</small>
+            <span v-if="currentAlertEvent" class="alert-badge available">
+              카카오 알림 기준 {{ formatDateTime(parseCollectedAt(currentAlertEvent.occurredAt)) }}
+            </span>
+            <span v-else class="alert-badge unavailable">사전 알림 없음 · 급작 고장</span>
           </div>
           <div v-else class="no-maintenance">이 안테나는 고장·정비 기록이 없습니다.</div>
         </div>
@@ -452,12 +593,13 @@ onBeforeUnmount(() => {
           <strong>{{ formatDateTime(observationTime) }}</strong>
         </div>
         <div>
-          <span>데이터 상태</span>
+          <span>운영 상태</span>
           <strong><span class="status-pill" :class="riskClass">{{ modelDecision }}</span></strong>
         </div>
         <div>
-          <span>합성 위험 점수</span>
-          <strong>{{ formatValue(currentRecord?.riskScore, 'riskScore') }}</strong>
+          <span>이상 센서</span>
+          <strong>{{ currentRecord?.anomalyCount ?? 0 }} / 8개</strong>
+          <small>현재고장 확률 {{ ((currentRecord?.currentFaultProbability ?? 0) * 100).toFixed(1) }}%</small>
         </div>
       </div>
 
@@ -502,12 +644,16 @@ onBeforeUnmount(() => {
             {{ formatValue(metrics[selectedMetric].range[1], selectedMetric) }}
           </span>
           <span v-else>현재 표시 데이터의 최솟값·최댓값에 맞춤</span>
-          <template v-if="axisMode === 'operational' && metrics[selectedMetric].direction">
+          <template v-if="axisMode === 'operational' && selectedMetricLimit">
             <span class="guide normal">정상</span>
-            <span class="guide caution">주의</span>
-            <span class="guide danger">위험</span>
+            <span class="guide danger">장비 한계 이탈</span>
           </template>
-          <small>합성 데이터 기준 임시 범위</small>
+          <small v-if="selectedMetricLimit">
+            {{ selectedEquipment }} 정상 한계
+            {{ selectedMetricLimit.direction === 'high' ? '≤' : '≥' }}
+            {{ formatValue(selectedMetricLimit.limit, selectedMetric) }}
+          </small>
+          <small v-else>상태 판정에서 제외하는 참고 지표</small>
         </div>
       </div>
 
@@ -544,7 +690,7 @@ onBeforeUnmount(() => {
       </div>
 
       <p class="playback-note">
-        정비 구간은 고장 약 14일 전부터 정비 후 24시간까지입니다. 재생 중에는 관찰 시점 이후의 기록을 표시하지 않습니다.
+        카카오 알림은 `고장 예상` 상태에 처음 진입한 시점을 기준으로 한 번 생성합니다. 상태는 장비별 센서 한계와 지속시간으로 판정하며, 재생 중에는 관찰 시점 이후 기록을 표시하지 않습니다.
       </p>
     </template>
   </section>
@@ -631,6 +777,29 @@ onBeforeUnmount(() => {
   font-size: 11px;
 }
 
+.alert-badge {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 3px 7px;
+  border: 1px solid;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.alert-badge.available {
+  color: #7a5400;
+  background: #fff7d6;
+  border-color: #e2c35d;
+}
+
+.alert-badge.unavailable {
+  color: #a23a35;
+  background: #fff0ef;
+  border-color: #dfaaa6;
+}
+
 .no-maintenance {
   display: flex;
   min-height: 34px;
@@ -669,6 +838,11 @@ onBeforeUnmount(() => {
   margin-top: 5px;
   color: #20364f;
   font-size: 16px;
+}
+
+.playback-summary small {
+  color: var(--ink-500);
+  font-size: 10px;
 }
 
 .metric-tabs {
