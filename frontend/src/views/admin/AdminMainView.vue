@@ -6,6 +6,7 @@ import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
 import { useDriverStore } from '@/stores/driverStore'
 import { useVehicleStore } from '@/stores/vehicleStore'
 import { useCarrierStore } from '@/stores/carrierStore'
+import { useNotificationStore } from '@/stores/adminStore/notificationStore'
 import { usePlateRecognitionStore } from '@/stores/adminStore/plateRecognitionStore'
 import { vehicleTypeLabel } from '@/config/vehicleType'
 import {
@@ -21,6 +22,7 @@ const containerStore = useContainerStore()
 const vehicleStore = useVehicleStore()
 const driverStore = useDriverStore()
 const carrierStore = useCarrierStore()
+const notificationStore = useNotificationStore()
 const plateRecognitionStore = usePlateRecognitionStore()
 
 const selectedGateId = ref('G-01')
@@ -36,6 +38,27 @@ const isGateProcessing = ref(false)
 let refreshTimer = null
 let refreshInFlight = false
 
+const exceptionTypeLabelMap = {
+  DRIVER_CANNOT_ENTER: '기사 출입 제한',
+  DRIVER_ALREADY_ASSIGNED: '기사 중복 배정',
+  DRIVER_UNAVAILABLE: '기사 배정 불가',
+  CARRIER_INACTIVE: '운송사 비활성',
+  WORK_ORDER_NOT_APPROVED: '작업 승인 대기',
+  WORK_ORDER_NOT_FOUND: '작업지시 누락',
+  VEHICLE_NOT_REGISTERED: '차량 미등록',
+  VEHICLE_UNAVAILABLE: '차량 배정 불가',
+  VEHICLE_DUPLICATE_ASSIGNMENT: '차량 중복 배정',
+  VEHICLE_TYPE_MISMATCH: '차량 유형 불일치',
+  PLATE_NOT_DETECTED: '번호판 인식 실패',
+  CONTAINER_NOT_FOUND: '컨테이너 정보 누락',
+  YARD_SECTOR_NOT_FOUND: '야드 섹터 누락',
+  YARD_SECTOR_UNAVAILABLE: '야드 섹터 사용 불가',
+  YARD_SECTOR_CAPACITY_EXCEEDED: '야드 수용량 초과',
+  TRACTOR_INFO_NOT_FOUND: '트랙터 정보 누락',
+  AI_SERVER_ERROR: '인식 서버 오류',
+  UNKNOWN_VEHICLE_TYPE: '차량 유형 미확인',
+}
+
 const gateSlots = [
   { id: 'G-01', gateNumber: 'G01', gateName: '입차 게이트 1', inOutType: 'IN' },
   { id: 'G-02', gateNumber: 'G02', gateName: '입차 게이트 2', inOutType: 'IN' },
@@ -45,6 +68,7 @@ const gateSlots = [
 
 const getId = (row, key) => row?.[key] ?? row?.[key.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)]
 const getValue = (row, camelKey, snakeKey) => row?.[camelKey] ?? row?.[snakeKey] ?? ''
+const getExceptionValue = (row, camelKey, snakeKey) => row?.[camelKey] ?? row?.[snakeKey] ?? ''
 
 const getPlateNumber = (vehicleId) => {
   const vehicle = vehicleStore.vehicles.find((item) => getId(item, 'vehicleId') === vehicleId)
@@ -113,6 +137,23 @@ const statusCards = computed(() => [
   { label: '현재 입차', value: todayGateIn.value, detail: '게이트 IN 로그', tone: 'blue' },
 ])
 
+const openExceptions = computed(() => (notificationStore.notifications || []).filter((item) => {
+  const status = getExceptionValue(item, 'processStatus', 'process_status') || 'UNPROCESSED'
+  return status !== 'PROCESSED'
+}))
+
+const plateExceptionMap = computed(() => {
+  const grouped = new Map()
+  openExceptions.value.forEach((item) => {
+    const plate = String(getExceptionValue(item, 'plateNumber', 'plate_number') || '').trim()
+    if (!plate) return
+    const list = grouped.get(plate) || []
+    list.push(item)
+    grouped.set(plate, list)
+  })
+  return grouped
+})
+
 const gateCells = computed(() => {
   const logsByType = {
     IN: [],
@@ -168,6 +209,46 @@ const matchedOrder = computed(() => {
 const matchedVehicle = computed(() => getVehicle(selectedGate.value?.vehicleId))
 const matchedContainer = computed(() => (matchedOrder.value ? getContainer(getId(matchedOrder.value, 'containerId')) : null))
 
+const selectedGateExceptions = computed(() => {
+  const plates = [
+    tractorResult.value?.vehicle?.plateNumber,
+    trailerResult.value?.vehicle?.plateNumber,
+    matchedVehicle.value ? getValue(matchedVehicle.value, 'plateNumber', 'plate_number') : '',
+    matchedOrder.value ? getPlateNumber(getId(matchedOrder.value, 'vehicleId') || getId(matchedOrder.value, 'tractorVehicleId')) : '',
+    matchedOrder.value ? getPlateNumber(getId(matchedOrder.value, 'trailerVehicleId')) : '',
+  ].filter(Boolean).map((plate) => String(plate).trim())
+
+  const unique = new Map()
+  plates.forEach((plate) => {
+    ;(plateExceptionMap.value.get(plate) || []).forEach((item, index) => {
+      const key = getExceptionValue(item, 'exceptionLogId', 'exception_log_id') || `${getExceptionValue(item, 'exceptionType', 'exception_type')}-${index}`
+      unique.set(key, item)
+    })
+  })
+  return Array.from(unique.values())
+})
+
+const selectedGateExceptionSummary = computed(() => {
+  if (selectedGateExceptions.value.length === 0) {
+    return {
+      count: 0,
+      label: '예외 없음',
+      detail: '현재 선택 게이트 기준 미처리 예외가 없습니다.',
+      tone: 'normal',
+    }
+  }
+
+  const first = selectedGateExceptions.value[0]
+  const type = getExceptionValue(first, 'exceptionType', 'exception_type')
+  const dangerTypes = ['DRIVER_CANNOT_ENTER', 'CARRIER_INACTIVE', 'VEHICLE_NOT_REGISTERED']
+  return {
+    count: selectedGateExceptions.value.length,
+    label: exceptionTypeLabelMap[type] || type || '예외',
+    detail: getExceptionValue(first, 'exceptionMessage', 'exception_message') || '상세 예외 확인 필요',
+    tone: dangerTypes.includes(type) ? 'danger' : 'warning',
+  }
+})
+
 const selectedDriverName = computed(() => {
   if (matchedOrder.value) return getDriverName(getId(matchedOrder.value, 'driverId'))
   const driverId = getId(matchedVehicle.value, 'driverId')
@@ -187,6 +268,30 @@ const activeOrders = computed(() =>
     .filter((order) => ['APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED'].includes(getWorkStatus(order)))
     .slice(0, 6),
 )
+
+const getOrderExceptionBadge = (order) => {
+  const plates = [
+    getPlateNumber(getId(order, 'vehicleId') || getId(order, 'tractorVehicleId')),
+    getPlateNumber(getId(order, 'trailerVehicleId')),
+  ].filter((plate) => plate && plate !== '-')
+
+  const matches = new Map()
+  plates.forEach((plate) => {
+    ;(plateExceptionMap.value.get(String(plate).trim()) || []).forEach((item, index) => {
+      const key = getExceptionValue(item, 'exceptionLogId', 'exception_log_id') || `${getExceptionValue(item, 'exceptionType', 'exception_type')}-${index}`
+      matches.set(key, item)
+    })
+  })
+
+  if (matches.size === 0) return null
+
+  const first = Array.from(matches.values())[0]
+  const type = getExceptionValue(first, 'exceptionType', 'exception_type')
+  return {
+    text: `${exceptionTypeLabelMap[type] || '예외'} ${matches.size}건`,
+    tone: ['DRIVER_CANNOT_ENTER', 'CARRIER_INACTIVE', 'VEHICLE_NOT_REGISTERED'].includes(type) ? 'red' : 'amber',
+  }
+}
 
 const yardSectors = computed(() => {
   const sectorMap = new Map()
@@ -391,9 +496,9 @@ const processGateImage = async (file, gate, targetType) => {
   selectedGateId.value = gate.id
   gateProcessFeedback.status = ''
   gateProcessFeedback.message = ''
-  gateLogStore.processResult = null
-  gateLogStore.error = ''
-  const key = `${gate.id}-${targetType}`
+      gateLogStore.processResult = null
+      gateLogStore.error = ''
+      const key = `${gate.id}-${targetType}`
   const oldPreviewUrl = gatePreviewUrls[key]
   if (oldPreviewUrl) URL.revokeObjectURL(oldPreviewUrl)
   gatePreviewUrls[key] = URL.createObjectURL(file)
@@ -475,6 +580,7 @@ const loadData = async ({ duringProcess = false } = {}) => {
   try {
     await Promise.all([
       gateLogStore.loadGateLogs(),
+      notificationStore.loadNotifications(),
       workOrderStore.loadWorkOrders(),
       containerStore.loadContainers(),
       vehicleStore.loadVehicles(),
@@ -574,6 +680,14 @@ onUnmounted(() => {
               <div><dt>WorkOrder 일치</dt><dd>{{ workOrderMatch ? '일치' : '확인 필요' }}</dd></div>
               <div><dt>출입 가능 상태</dt><dd>{{ isWorkOrderGateStatusAllowed(selectedGateType) ? '가능' : '확인 필요' }}</dd></div>
             </dl>
+          </section>
+
+          <section class="gate-exception-card" :class="selectedGateExceptionSummary.tone">
+            <div class="gate-exception-head">
+              <strong>{{ selectedGateExceptionSummary.label }}</strong>
+              <span>{{ selectedGateExceptionSummary.count }}건</span>
+            </div>
+            <p>{{ selectedGateExceptionSummary.detail }}</p>
           </section>
 
           <details class="detail-section">
@@ -677,9 +791,18 @@ onUnmounted(() => {
         </div>
         <div class="work-lane">
           <div v-for="order in activeOrders" :key="getId(order, 'workOrderId')" class="work-row">
-            <b>{{ getPlateNumber(getId(order, 'vehicleId') || getId(order, 'trailerVehicleId')) }}</b>
-            <span>{{ getContainerNumber(getId(order, 'containerId')) }}</span>
-            <small>{{ statusText(getWorkStatus(order)) }}</small>
+            <div class="work-row-main">
+              <b>{{ getPlateNumber(getId(order, 'vehicleId') || getId(order, 'trailerVehicleId')) }}</b>
+              <span>{{ getContainerNumber(getId(order, 'containerId')) }}</span>
+              <small>{{ statusText(getWorkStatus(order)) }}</small>
+            </div>
+            <span
+              v-if="getOrderExceptionBadge(order)"
+              class="status-pill work-exception-pill"
+              :class="getOrderExceptionBadge(order).tone"
+            >
+              {{ getOrderExceptionBadge(order).text }}
+            </span>
           </div>
           <div v-if="activeOrders.length === 0" class="empty-dark">진행 중인 작업이 없습니다.</div>
         </div>
@@ -816,9 +939,13 @@ onUnmounted(() => {
 
 .control-layout {
   display: grid;
+
+  grid-template-columns: minmax(0, 1.45fr) minmax(420px, 0.9fr);
+
   height: 686px;
   min-height: 0;
   grid-template-columns: minmax(0, 2fr) minmax(300px, 0.65fr);
+
   gap: 10px;
 }
 
@@ -979,13 +1106,61 @@ onUnmounted(() => {
 
 .camera-upload input { display: none; }
 
+.gate-exception-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #f7f9fb;
+  border: 1px solid #b8c5d2;
+}
+
+.gate-exception-card.normal {
+  border-left: 4px solid #2f7d57;
+}
+
+.gate-exception-card.warning {
+  background: #fff8ea;
+  border-left: 4px solid #b47c1c;
+}
+
+.gate-exception-card.danger {
+  background: #fff4f4;
+  border-left: 4px solid #b8403a;
+}
+
+.gate-exception-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gate-exception-head strong {
+  color: #16202a;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.gate-exception-head span,
+.gate-exception-card p {
+  margin: 0;
+  color: #536579;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .recognition-panel {
   display: grid;
   min-height: 0;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 10px;
+
+  padding: 12px;
+
   padding: 10px;
   overflow: hidden;
+
 }
 
 .ai-process-zone {
@@ -1051,8 +1226,8 @@ onUnmounted(() => {
   height: 26px;
   flex: 0 0 auto;
   place-items: center;
-  color: #172033;
-  background: #91a0c0;
+  color: #ffffff;
+  background: var(--blue-700);
   border-radius: 999px;
 }
 
@@ -1251,14 +1426,18 @@ onUnmounted(() => {
   color: #536579;
   font-size: 14px;
   font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 .info-stack dd {
+  min-width: 0;
   margin: 0;
   color: #16202a;
   font-size: 14px;
   line-height: 1.4;
   font-weight: 700;
+  line-height: 1.35;
 }
 
 .monitor-grid {
@@ -1275,12 +1454,18 @@ onUnmounted(() => {
 
 .work-row {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(110px, 1fr) 96px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   padding: 10px;
   background: #ffffff;
   border: 1px solid #b8c5d2;
   font-size: 14px;
+}
+
+.work-row-main {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(110px, 1fr) 96px;
+  gap: 8px;
 }
 
 .work-row b {
@@ -1291,6 +1476,11 @@ onUnmounted(() => {
 .work-row small {
   color: #34465b;
   font-weight: 700;
+}
+
+.work-exception-pill {
+  align-self: start;
+  white-space: nowrap;
 }
 
 .yard-grid {

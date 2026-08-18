@@ -1,6 +1,6 @@
-const LABELS = {
+﻿const LABELS = {
   work: {
-    DISPATCH_WAITING: { label: '승인 대기', tone: 'amber' },
+    DISPATCH_WAITING: { label: '배차 대기', tone: 'amber' },
     APPROVED: { label: '입차 대기', tone: 'blue' },
     GATE_IN: { label: '입차 완료', tone: 'green' },
     IN_PROGRESS: { label: '작업 중', tone: 'blue' },
@@ -8,9 +8,11 @@ const LABELS = {
     GATE_OUT: { label: '출차 완료', tone: 'green' },
     CANCELED: { label: '반려', tone: 'red' },
     CANCELLED: { label: '반려', tone: 'red' },
+    UNKNOWN: { label: '미지정', tone: 'gray' },
   },
   process: {
     SUCCESS: { label: '성공', tone: 'green' },
+    GATE_SUCCESS: { label: '정상 처리', tone: 'green' },
     FAILED: { label: '실패', tone: 'red' },
     FAIL: { label: '실패', tone: 'red' },
     RECOGNITION_NEED_REVIEW: { label: '검토 필요', tone: 'amber' },
@@ -30,11 +32,21 @@ const LABELS = {
     PENDING: { label: '승인 대기', tone: 'amber' },
     NORMAL: { label: '정상', tone: 'green' },
     ACTIVE: { label: '정상', tone: 'green' },
+    AVAILABLE: { label: '가용', tone: 'green' },
+    ASSIGNED: { label: '배정', tone: 'blue' },
+    IN_OPERATION: { label: '운행 중', tone: 'blue' },
+    MAINTENANCE: { label: '정비', tone: 'amber' },
+    INACTIVE: { label: '비활성', tone: 'gray' },
     APPROVED: { label: '승인 완료', tone: 'green' },
     REJECTED: { label: '승인 거절', tone: 'red' },
-    승인대기: { label: '승인 대기', tone: 'amber' },
-    정상: { label: '정상', tone: 'green' },
-    승인거절: { label: '승인 거절', tone: 'red' },
+    '승인대기': { label: '승인 대기', tone: 'amber' },
+    '정상': { label: '정상', tone: 'green' },
+    '승인거절': { label: '승인 거절', tone: 'red' },
+  },
+  sector: {
+    NORMAL: { label: '정상', tone: 'green' },
+    WARNING: { label: '주의', tone: 'amber' },
+    DANGER: { label: '혼잡', tone: 'red' },
   },
   inOut: {
     IN: { label: '입차', tone: 'blue' },
@@ -76,6 +88,8 @@ export const inOutTypeLabel = (value) => displayLabel('inOut', value)
 export const vehicleStatusLabel = (value) => displayLabel('vehicle', value)
 
 export const userStatusLabel = (value) => displayLabel('user', value)
+
+export const sectorStatusLabel = (value) => displayLabel('sector', value)
 
 export const booleanLabel = (value) => {
   if (value === true || value === false) {

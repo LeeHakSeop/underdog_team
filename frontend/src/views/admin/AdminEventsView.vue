@@ -9,25 +9,43 @@ import { displayTone, inOutTypeLabel, processResultLabel } from '@/config/displa
 const gateLogStore = useGateLogStore()
 const notificationStore = useNotificationStore()
 const vehicleStore = useVehicleStore()
-const { notifications, loading, error } = storeToRefs(notificationStore)
+const { notifications, loading, error, processingId } = storeToRefs(notificationStore)
 
-const exceptionFilter = ref('ALL')
+const exceptionFilter = ref('UNPROCESSED')
 
 const eventTypeText = {
-  GATE: '게이트',
+  GATE: '게이트 처리',
   EXCEPTION: '예외 발생',
   PROCESSED: '처리 완료',
+}
+
+const exceptionMetaMap = {
+  DRIVER_CANNOT_ENTER: { label: '기사 출입 제한', tone: 'danger', action: '기사 상태와 승인 여부를 우선 확인하세요.' },
+  DRIVER_ALREADY_ASSIGNED: { label: '기사 중복 배정', tone: 'warning', action: '같은 기사에 활성 작업이 중복 배정되었는지 확인하세요.' },
+  DRIVER_UNAVAILABLE: { label: '기사 배정 불가', tone: 'warning', action: '기사 승인 상태와 출입 가능 여부를 먼저 확인하세요.' },
+  CARRIER_INACTIVE: { label: '운송사 비활성', tone: 'danger', action: '운송사 계정 상태와 승인 이력을 확인하세요.' },
+  WORK_ORDER_NOT_APPROVED: { label: '작업 승인 대기', tone: 'warning', action: '배차 승인 누락 여부를 먼저 확인하세요.' },
+  WORK_ORDER_NOT_FOUND: { label: '작업지시 누락', tone: 'danger', action: '최근 배차 변경과 작업지시 생성 여부를 재확인하세요.' },
+  VEHICLE_NOT_REGISTERED: { label: '차량 미등록', tone: 'danger', action: '차량 등록과 번호판 정보를 즉시 확인하세요.' },
+  VEHICLE_UNAVAILABLE: { label: '차량 배정 불가', tone: 'warning', action: '차량 승인 상태와 정비 여부를 먼저 확인하세요.' },
+  VEHICLE_DUPLICATE_ASSIGNMENT: { label: '차량 중복 배정', tone: 'warning', action: '동일 차량이 다른 활성 작업에 배정됐는지 확인하세요.' },
+  VEHICLE_TYPE_MISMATCH: { label: '차량 유형 불일치', tone: 'warning', action: '트랙터와 트레일러 연결 상태를 점검하세요.' },
+  PLATE_NOT_DETECTED: { label: '번호판 인식 실패', tone: 'warning', action: '촬영 환경과 인식 장비 상태를 확인하세요.' },
+  CONTAINER_NOT_FOUND: { label: '컨테이너 정보 누락', tone: 'danger', action: '컨테이너와 작업지시 연결 상태를 확인하세요.' },
+  YARD_SECTOR_NOT_FOUND: { label: '야드 섹터 누락', tone: 'warning', action: '야드 배치 정보와 목적지를 점검하세요.' },
+  YARD_SECTOR_UNAVAILABLE: { label: '야드 섹터 사용 불가', tone: 'warning', action: '점검 또는 비활성 상태 섹터인지 먼저 확인하세요.' },
+  YARD_SECTOR_CAPACITY_EXCEEDED: { label: '야드 수용량 초과', tone: 'danger', action: '혼잡 섹터 대신 다른 배정 가능 위치를 확인하세요.' },
+  TRACTOR_INFO_NOT_FOUND: { label: '트랙터 정보 누락', tone: 'warning', action: '트랙터 등록 정보와 기사 연결 상태를 확인하세요.' },
+  AI_SERVER_ERROR: { label: '인식 서버 오류', tone: 'danger', action: 'AI 인식 서버 상태와 재시도 여부를 확인하세요.' },
+  UNKNOWN_VEHICLE_TYPE: { label: '차량 유형 미확인', tone: 'warning', action: '차량 기본 정보와 운영 규칙을 확인하세요.' },
+  EXCEPTION: { label: '기타 예외', tone: 'warning', action: '상세 로그를 확인해 원인과 조치를 정리하세요.' },
 }
 
 const getValue = (item, ...keys) => {
   for (const key of keys) {
     const value = item?.[key]
-
-    if (value !== undefined && value !== null && value !== '') {
-      return value
-    }
+    if (value !== undefined && value !== null && value !== '') return value
   }
-
   return ''
 }
 
@@ -35,7 +53,6 @@ const formatDateTime = (value) => {
   if (!value) return '-'
 
   const date = new Date(value)
-
   if (Number.isNaN(date.getTime())) return value
 
   return date.toLocaleString('ko-KR', {
@@ -69,8 +86,6 @@ const getLogVehiclePair = (log) => {
   let tractor = tractorVehicleId ? getPlateNumber(tractorVehicleId) : '-'
   let trailer = trailerVehicleId ? getPlateNumber(trailerVehicleId) : '-'
 
-  // 번호판 인식 로그처럼 한쪽 차량 ID만 저장된 경우, 반대쪽에 같은 번호를 반복하지 않는다.
-  // 구형 로그에서만 vehicle_id를 차량 종류로 확인해 해당 칸에 보완한다.
   if (!tractorVehicleId && !trailerVehicleId && fallbackVehicleId) {
     const fallbackVehicle = getVehicleById(fallbackVehicleId)
     const fallbackType = normalizeVehicleType(
@@ -81,10 +96,7 @@ const getLogVehiclePair = (log) => {
     if (fallbackType === 'TRAILER') trailer = getPlateNumber(fallbackVehicleId)
   }
 
-  return {
-    tractor,
-    trailer,
-  }
+  return { tractor, trailer }
 }
 
 const events = computed(() => gateLogStore.gateLogs.map((log) => {
@@ -104,7 +116,6 @@ const events = computed(() => gateLogStore.gateLogs.map((log) => {
 }))
 
 const getInOutClass = (value) => (value === 'OUT' ? 'red' : 'blue')
-
 const getProcessClass = (value) => displayTone('process', value)
 
 const buildTimeline = (item) => {
@@ -177,11 +188,17 @@ const normalizeTimeline = (item) => {
 const exceptionItems = computed(() => notifications.value.map((item, index) => {
   const key = getValue(item, 'exceptionLogId', 'exception_log_id', 'id')
     || `${getValue(item, 'exceptionType', 'exception_type')}-${getValue(item, 'occurredTime', 'occurred_time')}-${index}`
+  const type = getValue(item, 'exceptionType', 'exception_type') || 'EXCEPTION'
+  const meta = exceptionMetaMap[type] || exceptionMetaMap.EXCEPTION
 
   return {
     key,
+    exceptionLogId: getValue(item, 'exceptionLogId', 'exception_log_id', 'id'),
     status: getValue(item, 'processStatus', 'process_status') || 'UNPROCESSED',
-    type: getValue(item, 'exceptionType', 'exception_type') || 'EXCEPTION',
+    type,
+    typeLabel: meta.label,
+    tone: meta.tone,
+    recommendedAction: meta.action,
     plateNumber: getValue(item, 'plateNumber', 'plate_number')
       || getPlateNumber(getValue(item, 'vehicleId', 'vehicle_id')),
     occurredTime: formatDateTime(getValue(item, 'occurredTime', 'occurred_time')),
@@ -197,30 +214,74 @@ const exceptions = computed(() => exceptionItems.value.filter((item) => (
 )))
 
 const openExceptionCount = computed(() => exceptionItems.value.filter((item) => item.status !== 'PROCESSED').length)
+const criticalExceptionCount = computed(() => exceptionItems.value.filter((item) => item.status !== 'PROCESSED' && item.tone === 'danger').length)
+
+const topExceptionSummary = computed(() => {
+  const grouped = new Map()
+
+  exceptionItems.value
+    .filter((item) => item.status !== 'PROCESSED')
+    .forEach((item) => {
+      const current = grouped.get(item.type) || {
+        type: item.type,
+        label: item.typeLabel,
+        tone: item.tone,
+        count: 0,
+        action: item.recommendedAction,
+      }
+      current.count += 1
+      grouped.set(item.type, current)
+    })
+
+  return Array.from(grouped.values())
+    .sort((left, right) => {
+      if (left.tone !== right.tone) {
+        return left.tone === 'danger' ? -1 : 1
+      }
+      return right.count - left.count
+    })
+    .slice(0, 3)
+})
 
 const exceptionTimelineRows = computed(() => exceptions.value.flatMap((item) => {
   if (item.timeline.length === 0) {
     return [{
       key: `${item.key}-exception`,
+      exceptionLogId: item.exceptionLogId,
       time: item.occurredTime,
-      title: `${item.type} / ${item.plateNumber}`,
+      title: `${item.typeLabel} / ${item.plateNumber}`,
       message: item.message,
       status: item.status,
       type: 'EXCEPTION',
+      tone: item.tone,
+      recommendedAction: item.recommendedAction,
     }]
   }
 
   return item.timeline.map((event) => ({
     key: `${item.key}-${event.key}`,
+    exceptionLogId: item.exceptionLogId,
     time: event.time,
-    title: `${event.label} / ${item.type} / ${item.plateNumber}`,
+    title: `${event.label} / ${item.typeLabel} / ${item.plateNumber}`,
     message: event.description,
     status: item.status,
     type: event.type,
+    tone: item.tone,
+    recommendedAction: item.recommendedAction,
   }))
 }))
 
 const getExceptionStatusClass = (status) => (status === 'PROCESSED' ? 'green' : 'red')
+const getToneClass = (tone) => {
+  if (tone === 'danger') return 'danger'
+  if (tone === 'warning') return 'warning'
+  return 'info'
+}
+
+const handleProcessException = async (event) => {
+  if (!event?.exceptionLogId || event.status === 'PROCESSED') return
+  await notificationStore.processNotification(event.exceptionLogId, event.recommendedAction).catch(() => {})
+}
 
 onMounted(() => {
   gateLogStore.loadGateLogs().catch(() => {})
@@ -243,9 +304,9 @@ onMounted(() => {
             <div>
               <div class="gate-event-head">
                 <span class="status-pill gate-direction-pill" :class="getInOutClass(event.inOutType)">
-                  {{ inOutTypeLabel(event.inOutType) }} : {{ event.gateName }}
+                  {{ inOutTypeLabel(event.inOutType) }} · {{ event.gateName }}
                 </span>
-                <div class="gate-vehicles" aria-label="트랙터·트레일러 차량번호">
+                <div class="gate-vehicles" aria-label="트랙터와 트레일러 차량번호">
                   <div class="vehicle-tag tractor">
                     <span>트랙터</span>
                     <strong>{{ event.tractorPlateNumber }}</strong>
@@ -280,6 +341,40 @@ onMounted(() => {
             <option value="PROCESSED">처리 완료</option>
           </select>
         </div>
+
+        <div class="exception-overview">
+          <article class="overview-card danger">
+            <span>긴급 예외</span>
+            <strong>{{ criticalExceptionCount }}건</strong>
+            <small>즉시 확인이 필요한 위험 예외</small>
+          </article>
+          <article class="overview-card warning">
+            <span>미처리 예외</span>
+            <strong>{{ openExceptionCount }}건</strong>
+            <small>아직 조치 전인 예외 건수</small>
+          </article>
+          <article class="overview-card info">
+            <span>가장 많은 유형</span>
+            <strong>{{ topExceptionSummary[0]?.label || '없음' }}</strong>
+            <small>{{ topExceptionSummary[0] ? `${topExceptionSummary[0].count}건` : '현재 없음' }}</small>
+          </article>
+        </div>
+
+        <div v-if="topExceptionSummary.length > 0" class="exception-summary-list">
+          <article
+            v-for="item in topExceptionSummary"
+            :key="item.type"
+            class="exception-summary-item"
+            :class="getToneClass(item.tone)"
+          >
+            <div>
+              <b>{{ item.label }}</b>
+              <span>{{ item.count }}건</span>
+            </div>
+            <p>{{ item.action }}</p>
+          </article>
+        </div>
+
         <div class="timeline">
           <div v-if="loading" class="timeline-row alert">
             <time>-</time>
@@ -292,15 +387,27 @@ onMounted(() => {
           <div
             v-for="event in exceptionTimelineRows"
             :key="event.key"
-            :class="['timeline-row', 'alert', event.type?.toLowerCase()]"
+            :class="['timeline-row', 'alert', event.type?.toLowerCase(), getToneClass(event.tone)]"
           >
             <time>{{ event.time }}</time>
             <div>
               <div class="timeline-heading">
                 <b>{{ event.title }}</b>
-                <span class="status-pill" :class="getExceptionStatusClass(event.status)">{{ event.status }}</span>
+                <div class="timeline-actions">
+                  <button
+                    v-if="event.type === 'EXCEPTION' && event.status !== 'PROCESSED'"
+                    class="ghost-button"
+                    type="button"
+                    :disabled="processingId === event.exceptionLogId"
+                    @click="handleProcessException(event)"
+                  >
+                    {{ processingId === event.exceptionLogId ? '처리 중...' : '확인 처리' }}
+                  </button>
+                  <span class="status-pill" :class="getExceptionStatusClass(event.status)">{{ event.status }}</span>
+                </div>
               </div>
               <span>{{ event.message }}</span>
+              <small v-if="event.type === 'EXCEPTION'">{{ event.recommendedAction }}</small>
               <small v-if="event.type === 'PROCESSED'">관리자 조치 기록</small>
             </div>
           </div>
@@ -323,6 +430,95 @@ onMounted(() => {
   grid-template-columns: minmax(0, calc(50% + 45px)) minmax(0, calc(50% - 55px));
 }
 
+.exception-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.overview-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: #f7f9fb;
+}
+
+.overview-card span,
+.overview-card small {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.overview-card strong {
+  color: var(--ink-900);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.overview-card.danger {
+  background: #fff4f4;
+  border-color: #e4a6a6;
+}
+
+.overview-card.warning {
+  background: #fff8ea;
+  border-color: #ebcf8b;
+}
+
+.exception-summary-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.exception-summary-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: #f8fafc;
+}
+
+.exception-summary-item > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.exception-summary-item b {
+  color: var(--ink-900);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.exception-summary-item span,
+.exception-summary-item p {
+  margin: 0;
+  color: var(--ink-700);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.exception-summary-item.danger {
+  background: #fff4f4;
+  border-color: #e4a6a6;
+  border-left: 4px solid #b63a3a;
+}
+
+.exception-summary-item.warning {
+  background: #fff8ea;
+  border-color: #ebcf8b;
+  border-left: 4px solid #cc8a12;
+}
+
+.exception-summary-item.info {
+  border-left: 4px solid #2f6fad;
+}
+
 .timeline {
   display: grid;
   gap: 10px;
@@ -343,7 +539,8 @@ onMounted(() => {
   border-color: #f0cec5;
 }
 
-.timeline-row.alert.gate {
+.timeline-row.alert.gate,
+.timeline-row.alert.info {
   background: #f6f9fd;
   border-color: #c7d6e5;
 }
@@ -351,6 +548,16 @@ onMounted(() => {
 .timeline-row.alert.processed {
   background: #f5fbf7;
   border-color: #bddfc8;
+}
+
+.timeline-row.alert.warning {
+  background: #fff8ea;
+  border-color: #ebcf8b;
+}
+
+.timeline-row.alert.danger {
+  background: #fff4f4;
+  border-color: #e4a6a6;
 }
 
 .timeline-row time {
@@ -383,6 +590,19 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
+}
+
+.timeline-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-actions .ghost-button {
+  min-width: 72px;
+  white-space: nowrap;
 }
 
 .timeline-heading .status-pill {
@@ -454,12 +674,6 @@ onMounted(() => {
   color: #9a641b;
 }
 
-.gate-event-head b {
-  color: var(--ink-900);
-  font-size: 15px;
-  font-weight: 900;
-}
-
 .gate-event-head .status-pill {
   display: inline-flex;
   flex: 0 0 auto;
@@ -489,7 +703,8 @@ onMounted(() => {
 }
 
 @media (max-width: 1100px) {
-  .grid-2 {
+  .grid-2,
+  .exception-overview {
     grid-template-columns: 1fr;
   }
 }
@@ -504,5 +719,9 @@ onMounted(() => {
     flex-direction: column;
   }
 
+  .timeline-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>

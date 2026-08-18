@@ -5,6 +5,7 @@ import { fetchCarriers } from '@/api/carrierApi'
 import { fetchDrivers } from '@/api/driverApi'
 import { fetchVehiclesByCarrier } from '@/api/vehicleApi'
 import { fetchContainers } from '@/api/adminApi/containerApi'
+import { fetchYardSectors } from '@/api/adminApi/yardSectorApi'
 import { useWorkOrderStore } from '@/stores/adminStore/workOrderStore'
 import { vehicleTypeLabel } from '@/config/vehicleType'
 
@@ -36,6 +37,7 @@ const carriers = ref([])
 const drivers = ref([])
 const vehicles = ref([])
 const containers = ref([])
+const yardSectors = ref([])
 const workOrderPage = ref(1)
 const workOrderPageSize = 10
 let refreshTimer = null
@@ -44,6 +46,8 @@ const form = ref({
   driverId: null,
   trailerVehicleId: null,
   containerId: null,
+  startSectorId: null,
+  destinationSectorId: null,
   workType: '반출 상차',
   reservedTime: '',
 })
@@ -139,6 +143,31 @@ const selectedTrailer = computed(() =>
   trailerVehicles.value.find((vehicle) => vehicle.vehicleId === form.value.trailerVehicleId),
 )
 
+const selectedContainer = computed(() =>
+  containers.value.find((container) => container.containerId === form.value.containerId) || null,
+)
+
+const selectedStartSector = computed(() =>
+  yardSectors.value.find((sector) => sector.sectorId === form.value.startSectorId) || null,
+)
+
+const selectedDestinationSector = computed(() =>
+  yardSectors.value.find((sector) => sector.sectorId === form.value.destinationSectorId) || null,
+)
+
+const environmentTypeLabel = (environmentType) => ({
+  GENERAL: '일반',
+  HEAVY: '중량',
+  REEFER: '냉동·냉장',
+  DANGEROUS: '위험물',
+  EMPTY: '공컨테이너',
+}[environmentType] || '환경 미지정')
+
+const getSectorLabel = (sectorId, sectorName) => {
+  if (sectorName) return sectorName
+  return yardSectors.value.find((sector) => sector.sectorId === sectorId)?.sectorName || '-'
+}
+
 const getOrderValue = (order, key) => order?.[key] ?? null
 
 const myWorkOrders = computed(() => {
@@ -188,6 +217,71 @@ const getVehiclePlate = (vehicleId) =>
 const getContainerNumber = (containerId) =>
   containers.value.find((container) => container.containerId === containerId)?.containerNumber || '-'
 
+const activeSectorAssignments = computed(() => myWorkOrders.value
+  .filter((order) => isActiveWorkOrder(order))
+  .reduce((acc, order) => {
+    const sectorId = order.destinationSectorId
+    if (!sectorId) return acc
+    acc[sectorId] = (acc[sectorId] || 0) + 1
+    return acc
+  }, {}))
+
+const assignmentWarnings = computed(() => {
+  const items = []
+
+  if (form.value.driverId && assignedDriverIds.value.has(form.value.driverId) && editingWorkOrderId.value === null) {
+    items.push({
+      tone: 'red',
+      title: '기사 중복 배정 위험',
+      text: '선택한 기사는 이미 다른 활성 작업에 배정되어 있습니다.',
+    })
+  }
+
+  if (form.value.trailerVehicleId && assignedTrailerVehicleIds.value.has(form.value.trailerVehicleId) && editingWorkOrderId.value === null) {
+    items.push({
+      tone: 'red',
+      title: '트레일러 중복 배정 위험',
+      text: '선택한 트레일러는 이미 다른 활성 작업에서 사용 중입니다.',
+    })
+  }
+
+  if (selectedTrailer.value && selectedTrailer.value.vehicleStatus && selectedTrailer.value.vehicleStatus !== '정상') {
+    items.push({
+      tone: 'amber',
+      title: '트레일러 상태 확인 필요',
+      text: `현재 상태: ${selectedTrailer.value.vehicleStatus}`,
+    })
+  }
+
+  if (selectedDestinationSector.value?.sectorStatus && !['정상', '사용가능', 'NORMAL', 'ACTIVE'].includes(selectedDestinationSector.value.sectorStatus)) {
+    items.push({
+      tone: 'amber',
+      title: '야드 섹터 상태 확인 필요',
+      text: `${selectedDestinationSector.value.sectorName || '목적 섹터'} 상태가 ${selectedDestinationSector.value.sectorStatus}입니다.`,
+    })
+  }
+
+  const capacity = Number(selectedDestinationSector.value?.capacity || 40)
+  const sectorLoad = form.value.destinationSectorId ? (activeSectorAssignments.value[form.value.destinationSectorId] || 0) : 0
+  if (form.value.destinationSectorId && sectorLoad >= capacity) {
+    items.push({
+      tone: 'red',
+      title: '야드 수용량 초과 위험',
+      text: `${selectedDestinationSector.value?.sectorName || '목적 섹터'} 배정 작업이 ${sectorLoad}건으로 수용량 기준에 도달했습니다.`,
+    })
+  }
+
+  if (items.length === 0) {
+    items.push({
+      tone: 'green',
+      title: '사전 확인 정상',
+      text: '현재 선택 기준으로 즉시 확인되는 배정 충돌은 없습니다.',
+    })
+  }
+
+  return items
+})
+
 const getStatusText = (status) => {
   const statusMap = {
     DISPATCH_WAITING: '승인 대기',
@@ -215,6 +309,8 @@ const resetForm = () => {
     driverId: null,
     trailerVehicleId: null,
     containerId: null,
+    startSectorId: null,
+    destinationSectorId: null,
     workType: '반출 상차',
     reservedTime: '',
   }
@@ -231,6 +327,8 @@ const startEdit = (order) => {
     driverId: order.driverId,
     trailerVehicleId: order.trailerVehicleId,
     containerId: order.containerId,
+    startSectorId: order.startSectorId,
+    destinationSectorId: order.destinationSectorId,
     workType: order.workType || '반출 상차',
     reservedTime: order.reservedTime ? String(order.reservedTime).slice(0, 16) : '',
   }
@@ -263,15 +361,17 @@ const loadData = async () => {
   errorMessage.value = ''
 
   try {
-    const [carrierData, driverData, containerData] = await Promise.all([
+    const [carrierData, driverData, containerData, yardSectorData] = await Promise.all([
       fetchCarriers(),
       fetchDrivers(),
       fetchContainers(),
+      fetchYardSectors(),
     ])
 
     carriers.value = carrierData || []
     drivers.value = driverData || []
     containers.value = containerData || []
+    yardSectors.value = yardSectorData || []
 
     await loadCarrierVehicles()
 
@@ -297,6 +397,8 @@ const validate = () => {
   if (!selectedTractor.value) throw new Error('선택한 기사에게 등록된 트랙터가 없습니다.')
   if (!selectedTrailer.value) throw new Error('트레일러를 선택하세요.')
   if (!form.value.containerId) throw new Error('작업 컨테이너를 선택하세요.')
+  if (!form.value.startSectorId) throw new Error('출발 Yard Sector를 선택하세요.')
+  if (!form.value.destinationSectorId) throw new Error('목적 Yard Sector를 선택하세요.')
   if (!form.value.workType) throw new Error('작업 유형을 선택하세요.')
   if (!form.value.reservedTime) throw new Error('작업 예약 시간을 입력하세요.')
 }
@@ -316,6 +418,8 @@ const submitWorkOrder = async () => {
       trailerVehicleId: form.value.trailerVehicleId,
       driverId: form.value.driverId,
       containerId: form.value.containerId,
+      startSectorId: form.value.startSectorId,
+      destinationSectorId: form.value.destinationSectorId,
       reservedTime: form.value.reservedTime,
       workStatus: 'DISPATCH_WAITING',
       isApproved: false,
@@ -345,6 +449,12 @@ onMounted(() => {
       workOrderStore.loadWorkOrders().catch(() => {})
     }
   }, 5000)
+})
+
+watch(() => form.value.containerId, () => {
+  if (!editingWorkOrderId.value && selectedContainer.value?.sectorId) {
+    form.value.startSectorId = selectedContainer.value.sectorId
+  }
 })
 
 onUnmounted(() => {
@@ -432,6 +542,27 @@ onUnmounted(() => {
           </div>
 
           <div class="field">
+            <label for="startSector">출발 Yard Sector</label>
+            <select id="startSector" v-model.number="form.startSectorId">
+              <option disabled :value="null">출발 섹터를 선택하세요</option>
+              <option v-for="sector in yardSectors" :key="sector.sectorId" :value="sector.sectorId">
+                {{ sector.sectorName }} · {{ environmentTypeLabel(sector.environmentType) }}
+              </option>
+            </select>
+            <small>컨테이너의 현재 섹터가 처음 제안되며 직접 변경할 수 있습니다.</small>
+          </div>
+
+          <div class="field">
+            <label for="destinationSector">목적 Yard Sector</label>
+            <select id="destinationSector" v-model.number="form.destinationSectorId">
+              <option disabled :value="null">목적 섹터를 선택하세요</option>
+              <option v-for="sector in yardSectors" :key="sector.sectorId" :value="sector.sectorId">
+                {{ sector.sectorName }} · {{ environmentTypeLabel(sector.environmentType) }}
+              </option>
+            </select>
+          </div>
+
+          <div class="field">
             <label for="reservedTime">예약 시간</label>
             <input id="reservedTime" v-model="form.reservedTime" type="datetime-local" />
           </div>
@@ -456,8 +587,22 @@ onUnmounted(() => {
           <div><span>트랙터</span><strong>{{ selectedTractor?.plateNumber || '-' }}</strong></div>
           <div><span>트레일러</span><strong>{{ selectedTrailer?.plateNumber || '-' }}</strong></div>
           <div><span>컨테이너</span><strong>{{ getContainerNumber(form.containerId) }}</strong></div>
+          <div><span>출발 Yard</span><strong>{{ selectedStartSector?.sectorName || '-' }}</strong></div>
+          <div><span>목적 Yard</span><strong>{{ selectedDestinationSector?.sectorName || '-' }}</strong></div>
           <div><span>작업 유형</span><strong>{{ form.workType || '-' }}</strong></div>
           <div><span>등록 상태</span><strong>관리자 승인 대기</strong></div>
+        </div>
+
+        <div class="assignment-warning-list">
+          <article
+            v-for="item in assignmentWarnings"
+            :key="item.title"
+            class="assignment-warning-card"
+            :class="item.tone"
+          >
+            <strong>{{ item.title }}</strong>
+            <p>{{ item.text }}</p>
+          </article>
         </div>
 
         <div class="notice-box">
@@ -485,6 +630,8 @@ onUnmounted(() => {
               <th>트랙터</th>
               <th>트레일러</th>
               <th>컨테이너</th>
+              <th>출발 Yard</th>
+              <th>목적 Yard</th>
               <th>작업 유형</th>
               <th>예약 시간</th>
               <th>상태</th>
@@ -498,6 +645,8 @@ onUnmounted(() => {
               <td>{{ getVehiclePlate(order.tractorVehicleId || order.vehicleId) }}</td>
               <td>{{ getVehiclePlate(order.trailerVehicleId) }}</td>
               <td>{{ getContainerNumber(order.containerId) }}</td>
+              <td>{{ getSectorLabel(order.startSectorId, order.startSectorName) }}</td>
+              <td>{{ getSectorLabel(order.destinationSectorId, order.destinationSectorName) }}</td>
               <td>{{ order.workType || '-' }}</td>
               <td>{{ order.reservedTime || '-' }}</td>
               <td>
@@ -661,6 +810,46 @@ onUnmounted(() => {
 .auto-vehicle-field small {
   display: block;
   margin-top: 6px;
+}
+
+.assignment-warning-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.assignment-warning-card {
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: #f8fbfe;
+}
+
+.assignment-warning-card strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.assignment-warning-card p {
+  margin: 0;
+  color: var(--ink-600);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.assignment-warning-card.red {
+  border-color: #fecaca;
+  background: #fff1f2;
+}
+
+.assignment-warning-card.amber {
+  border-color: #f5d38a;
+  background: #fff8e7;
+}
+
+.assignment-warning-card.green {
+  border-color: #b7ebc9;
+  background: #ecfdf3;
 }
 
 .notice-box {

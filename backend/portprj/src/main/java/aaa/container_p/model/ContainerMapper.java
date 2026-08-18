@@ -101,4 +101,14 @@ public interface ContainerMapper {
             WHERE container_id = #{containerId}
             """)
     int updateCanExit(@Param("containerId") Long containerId, @Param("canExit") boolean canExit);
+
+    @Update("""
+            UPDATE container
+            SET sector_id = #{sectorId}
+            WHERE container_id = #{containerId}
+            """)
+    int updateSector(
+            @Param("containerId") Long containerId,
+            @Param("sectorId") Long sectorId
+    );
 }

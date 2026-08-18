@@ -10,46 +10,79 @@ public interface DriverMapper {
 
     @Select("""
             SELECT
-                driver_id AS driverId,
-                driver_name AS driverName,
-                driver_contact AS driverContact,
-                is_registered AS isRegistered,
-                carrier_id AS carrierId,
-                can_enter AS canEnter,
-                user_id AS userId,
-                (SELECT status FROM users u WHERE u.user_id = driver.user_id) AS userStatus
-            FROM driver
-            ORDER BY driver_id DESC
+                d.driver_id AS driverId,
+                d.driver_name AS driverName,
+                d.driver_contact AS driverContact,
+                d.is_registered AS isRegistered,
+                d.carrier_id AS carrierId,
+                d.can_enter AS canEnter,
+                d.user_id AS userId,
+                u.status AS userStatus,
+                v.vehicle_id AS tractorVehicleId,
+                v.plate_number AS tractorPlateNumber,
+                v.vehicle_type AS tractorVehicleType,
+                v.tonnage AS tractorTonnage,
+                v.tractor_no AS tractorNo,
+                v.chassis_no AS tractorChassisNo,
+                v.vehicle_status AS tractorVehicleStatus
+            FROM driver d
+            LEFT JOIN users u ON u.user_id = d.user_id
+            LEFT JOIN vehicle v
+                ON v.driver_id = d.driver_id
+               AND UPPER(v.vehicle_type) = 'TRACTOR'
+            ORDER BY d.driver_id DESC
             """)
     List<DriverDTO> list();
 
     @Select("""
             SELECT
-                driver_id AS driverId,
-                driver_name AS driverName,
-                driver_contact AS driverContact,
-                is_registered AS isRegistered,
-                carrier_id AS carrierId,
-                can_enter AS canEnter,
-                user_id AS userId,
-                (SELECT status FROM users u WHERE u.user_id = driver.user_id) AS userStatus
-            FROM driver
-            WHERE driver_id = #{driverId}
+                d.driver_id AS driverId,
+                d.driver_name AS driverName,
+                d.driver_contact AS driverContact,
+                d.is_registered AS isRegistered,
+                d.carrier_id AS carrierId,
+                d.can_enter AS canEnter,
+                d.user_id AS userId,
+                u.status AS userStatus,
+                v.vehicle_id AS tractorVehicleId,
+                v.plate_number AS tractorPlateNumber,
+                v.vehicle_type AS tractorVehicleType,
+                v.tonnage AS tractorTonnage,
+                v.tractor_no AS tractorNo,
+                v.chassis_no AS tractorChassisNo,
+                v.vehicle_status AS tractorVehicleStatus
+            FROM driver d
+            LEFT JOIN users u ON u.user_id = d.user_id
+            LEFT JOIN vehicle v
+                ON v.driver_id = d.driver_id
+               AND UPPER(v.vehicle_type) = 'TRACTOR'
+            WHERE d.driver_id = #{driverId}
             """)
     DriverDTO detail(@Param("driverId") Long driverId);
 
     @Select("""
             SELECT
-                driver_id AS driverId,
-                driver_name AS driverName,
-                driver_contact AS driverContact,
-                is_registered AS isRegistered,
-                carrier_id AS carrierId,
-                can_enter AS canEnter,
-                user_id AS userId,
-                (SELECT status FROM users u WHERE u.user_id = driver.user_id) AS userStatus
-            FROM driver
-            WHERE user_id = #{userId}
+                d.driver_id AS driverId,
+                d.driver_name AS driverName,
+                d.driver_contact AS driverContact,
+                d.is_registered AS isRegistered,
+                d.carrier_id AS carrierId,
+                d.can_enter AS canEnter,
+                d.user_id AS userId,
+                u.status AS userStatus,
+                v.vehicle_id AS tractorVehicleId,
+                v.plate_number AS tractorPlateNumber,
+                v.vehicle_type AS tractorVehicleType,
+                v.tonnage AS tractorTonnage,
+                v.tractor_no AS tractorNo,
+                v.chassis_no AS tractorChassisNo,
+                v.vehicle_status AS tractorVehicleStatus
+            FROM driver d
+            LEFT JOIN users u ON u.user_id = d.user_id
+            LEFT JOIN vehicle v
+                ON v.driver_id = d.driver_id
+               AND UPPER(v.vehicle_type) = 'TRACTOR'
+            WHERE d.user_id = #{userId}
             """)
     DriverDTO findByUserId(@Param("userId") Long userId);
 
@@ -177,6 +210,10 @@ public interface DriverMapper {
                 ys.sector_id,
                 ys.sector_name,
                 ys.sector_status,
+                wo.start_sector_id AS startSectorId,
+                start_ys.sector_name AS startSectorName,
+                wo.destination_sector_id AS destinationSectorId,
+                destination_ys.sector_name AS destinationSectorName,
                 CASE
                     WHEN wo.work_status = 'DISPATCH_WAITING'
                         THEN '운송사 배차 승인 대기 중입니다.'
@@ -185,7 +222,7 @@ public interface DriverMapper {
                     WHEN wo.work_status = 'GATE_IN'
                         THEN '입차 되었습니다. 해당 야드 섹터로 이동하여 작업을 실시하세요.'
                     WHEN wo.work_status = 'IN_PROGRESS'
-                        THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
+                        THEN CONCAT('작업 진행 중입니다. ', COALESCE(destination_ys.sector_name, ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
                     WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE
                         THEN '작업 완료 및 출차 가능 상태입니다. 게이트에서 출차 처리하세요.'
                     WHEN wo.work_status = 'COMPLETED'
@@ -194,10 +231,10 @@ public interface DriverMapper {
                         THEN '출차 처리가 완료되었습니다.'
                     WHEN wo.work_status = 'CANCELED'
                         THEN '취소된 작업지시입니다.'
-                    ELSE COALESCE(ys.guide_message, '작업 상태를 확인하세요.')
+                    ELSE COALESCE(destination_ys.guide_message, ys.guide_message, '작업 상태를 확인하세요.')
                 END AS guide_message,
                 c.can_exit AS can_exit,
-                ys.alt_waiting_area
+                COALESCE(destination_ys.alt_waiting_area, ys.alt_waiting_area) AS alt_waiting_area
             FROM work_order wo
             LEFT JOIN driver d
                 ON wo.driver_id = d.driver_id
@@ -211,6 +248,10 @@ public interface DriverMapper {
                 ON wo.container_id = c.container_id
             LEFT JOIN yard_sector ys
                 ON c.sector_id = ys.sector_id
+            LEFT JOIN yard_sector start_ys
+                ON wo.start_sector_id = start_ys.sector_id
+            LEFT JOIN yard_sector destination_ys
+                ON wo.destination_sector_id = destination_ys.sector_id
             WHERE d.driver_name = #{userName}
             ORDER BY wo.reserved_time DESC, wo.work_order_id DESC
             """)
@@ -249,6 +290,10 @@ public interface DriverMapper {
                 ys.sector_id,
                 ys.sector_name,
                 ys.sector_status,
+                wo.start_sector_id AS startSectorId,
+                start_ys.sector_name AS startSectorName,
+                wo.destination_sector_id AS destinationSectorId,
+                destination_ys.sector_name AS destinationSectorName,
                 CASE
                     WHEN wo.work_status = 'DISPATCH_WAITING'
                         THEN '운송사 배차 승인 대기 중입니다.'
@@ -257,7 +302,7 @@ public interface DriverMapper {
                     WHEN wo.work_status = 'GATE_IN'
                         THEN '입차 되었습니다. 해당 야드 섹터로 이동하여 작업을 실시하세요.'
                     WHEN wo.work_status = 'IN_PROGRESS'
-                        THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
+                        THEN CONCAT('작업 진행 중입니다. ', COALESCE(destination_ys.sector_name, ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
                     WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE
                         THEN '작업 완료 및 출차 가능 상태입니다. 게이트에서 출차 처리하세요.'
                     WHEN wo.work_status = 'COMPLETED'
@@ -266,10 +311,10 @@ public interface DriverMapper {
                         THEN '출차 처리가 완료되었습니다.'
                     WHEN wo.work_status = 'CANCELED'
                         THEN '취소된 작업지시입니다.'
-                    ELSE COALESCE(ys.guide_message, '작업 상태를 확인하세요.')
+                    ELSE COALESCE(destination_ys.guide_message, ys.guide_message, '작업 상태를 확인하세요.')
                 END AS guide_message,
                 c.can_exit AS can_exit,
-                ys.alt_waiting_area
+                COALESCE(destination_ys.alt_waiting_area, ys.alt_waiting_area) AS alt_waiting_area
             FROM work_order wo
             LEFT JOIN driver d
                 ON wo.driver_id = d.driver_id
@@ -283,6 +328,10 @@ public interface DriverMapper {
                 ON wo.container_id = c.container_id
             LEFT JOIN yard_sector ys
                 ON c.sector_id = ys.sector_id
+            LEFT JOIN yard_sector start_ys
+                ON wo.start_sector_id = start_ys.sector_id
+            LEFT JOIN yard_sector destination_ys
+                ON wo.destination_sector_id = destination_ys.sector_id
             WHERE d.user_id = #{userId}
             ORDER BY wo.reserved_time DESC, wo.work_order_id DESC
             """)

@@ -161,6 +161,52 @@ public interface    VehicleMapper {
     );
 
     @Select("""
+        SELECT EXISTS (
+            SELECT 1
+            FROM tractor
+            WHERE vehicle_id = #{vehicleId}
+        )
+        """)
+    boolean existsTractorSubtype(@Param("vehicleId") Long vehicleId);
+
+    @Select("""
+        SELECT EXISTS (
+            SELECT 1
+            FROM trailer
+            WHERE vehicle_id = #{vehicleId}
+        )
+        """)
+    boolean existsTrailerSubtype(@Param("vehicleId") Long vehicleId);
+
+    @Update("""
+        UPDATE vehicle
+        SET vehicle_status = #{vehicleStatus}
+        WHERE vehicle_id = #{vehicleId}
+          AND vehicle_type = 'TRACTOR'
+          AND EXISTS (
+              SELECT 1 FROM tractor WHERE tractor.vehicle_id = vehicle.vehicle_id
+          )
+        """)
+    int updateTractorStatus(
+            @Param("vehicleId") Long vehicleId,
+            @Param("vehicleStatus") String vehicleStatus
+    );
+
+    @Update("""
+        UPDATE vehicle
+        SET vehicle_status = #{vehicleStatus}
+        WHERE vehicle_id = #{vehicleId}
+          AND vehicle_type = 'TRAILER'
+          AND EXISTS (
+              SELECT 1 FROM trailer WHERE trailer.vehicle_id = vehicle.vehicle_id
+          )
+        """)
+    int updateTrailerStatus(
+            @Param("vehicleId") Long vehicleId,
+            @Param("vehicleStatus") String vehicleStatus
+    );
+
+    @Select("""
         SELECT
             vehicle_id AS vehicleId,
             plate_number AS plateNumber,

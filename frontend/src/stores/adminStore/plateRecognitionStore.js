@@ -21,10 +21,14 @@ export const usePlateRecognitionStore = defineStore('plateRecognition', {
       this.trailerLoading = false
       this.error = ''
     },
-    async recognize(file, targetType = 'trailer') {
+    async recognize(file, ocrType = 'crnn', targetType = 'trailer') {
       this.loading = true
       this.error = ''
       this.result = null
+      if ((ocrType === 'tractor' || ocrType === 'trailer') && targetType === 'trailer') {
+        targetType = ocrType
+        ocrType = 'crnn'
+      }
       const plateType = targetType === 'tractor' ? 'TRACTOR' : 'TRAILER'
 
       if (targetType === 'tractor') {
@@ -36,7 +40,7 @@ export const usePlateRecognitionStore = defineStore('plateRecognition', {
       }
 
       try {
-        const result = await recognizePlate(file, plateType)
+        const result = await recognizePlate(file, ocrType, plateType)
 
         this.result = result
 

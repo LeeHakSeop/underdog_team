@@ -13,6 +13,10 @@ public class WorkOrderDTO {
     private Long trailerVehicleId;
     private Long driverId;
     private Long containerId;
+    private Long startSectorId;
+    private String startSectorName;
+    private Long destinationSectorId;
+    private String destinationSectorName;
     private LocalDateTime reservedTime;
     private String workStatus;
     private Boolean isApproved;

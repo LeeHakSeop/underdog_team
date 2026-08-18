@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, h, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -106,27 +106,22 @@ const icons = {
   ],
 }
 
-const MenuIcon = (props) =>
-  h(
-    'svg',
-    {
-      class: 'menu-icon',
-      viewBox: '0 0 24 24',
-      fill: 'none',
-      stroke: 'currentColor',
-      'stroke-width': '1.8',
-      'stroke-linecap': 'round',
-      'stroke-linejoin': 'round',
-      'aria-hidden': 'true',
-    },
-    icons[props.name]?.map(([tag, attrs]) => h(tag, attrs)) || icons.home.map(([tag, attrs]) => h(tag, attrs)),
-  )
+const MenuIcon = (props) => h('svg', {
+  class: 'menu-icon',
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  'stroke-width': '1.8',
+  'stroke-linecap': 'round',
+  'stroke-linejoin': 'round',
+  'aria-hidden': 'true',
+}, (icons[props.name] || icons.home).map(([tag, attrs]) => h(tag, attrs)))
 
 const menus = {
   CARRIER: [
     { label: '홈', path: '/carrier/dashboard', icon: 'home' },
     { label: '승인·회원 관리', path: '/carrier/driver-approval', icon: 'approval' },
-    { label: '트레일러 배정 및 작업지시', path: '/carrier/input', icon: 'clipboard' },
+    { label: '트레일러 배정', path: '/carrier/input', icon: 'clipboard' },
     { label: '작업정보 조회', path: '/carrier/inquiry', icon: 'list' },
   ],
   DRIVER: [
@@ -136,13 +131,12 @@ const menus = {
   ],
   ADMIN: [
     { label: '상황 관제판', path: '/admin/main', icon: 'cctv' },
-    { label: '통계 요약', path: '/admin/dashboard', icon: 'dashboard' },
-
+    { label: '운영 현황 요약', path: '/admin/dashboard', icon: 'dashboard' },
     { label: '운영 맵', path: '/admin/yard-map', icon: 'map' },
-    { label: 'AI 인식 검증', path: '/admin/plate-recognition', icon: 'scan' },
+    { label: 'AI 번호판 인식', path: '/admin/plate-recognition', icon: 'scan' },
     { label: '예지보전', path: '/admin/predictive-maintenance', icon: 'activity' },
-    { label: '가입 회원 관리', path: '/admin/members', icon: 'users' },
-
+    { label: '회원 관리', path: '/admin/members', icon: 'users' },
+    { label: '컨테이너 관리', path: '/admin/containers', icon: 'container' },
     { label: '작업 관리', path: '/admin/work-orders', icon: 'clipboard' },
     { label: '알림/이벤트', path: '/admin/events', icon: 'bell' },
   ],
@@ -159,33 +153,14 @@ const pathRole = computed(() => (route.path.split('/')[1] || 'admin').toUpperCas
 const activeRole = computed(() => String(route.meta.role || currentUser.value?.roleCode || pathRole.value).toUpperCase())
 const activeMenus = computed(() => menus[activeRole.value] || menus.ADMIN)
 const pageTitle = computed(() => route.meta.title || '항만 게이트 시스템')
-
-const menuLabelOverrides = {
-  '/admin/main': '상황 관제판',
-  '/admin/dashboard': '데이터 현황',
-  '/admin/yard-map': '야드 맵',
-  '/admin/plate-recognition': 'AI 번호판 인식',
-  '/admin/predictive-maintenance': '예지보전',
-  '/admin/members': '회원 관리',
-  '/admin/work-orders': '작업 관리',
-  '/admin/events': '알림/이벤트',
-  '/carrier/dashboard': '대시보드',
-  '/carrier/driver-approval': '기사 승인/회원 관리',
-  '/carrier/input': '트레일러 배정 및 작업지시',
-  '/carrier/inquiry': '작업정보 조회',
-  '/driver/dashboard': '작업 홈',
-  '/driver/work-status': '작업 현황',
-  '/driver/vehicles': '내 차량',
-}
-
-const roleLabelOverrides = {
-  CARRIER: '운송사 담당자',
-  DRIVER: '화물 기사',
-  ADMIN: '관리자',
-}
-
-const getMenuLabel = (item) => menuLabelOverrides[item.path] || item.label
-const activeRoleLabel = computed(() => roleLabelOverrides[activeRole.value] || '관리자')
+const activeRoleLabel = computed(() => roleLabels[activeRole.value] || '관리자')
+const accountDisplayName = computed(() =>
+  currentUser.value?.displayName ||
+  currentUser.value?.userName ||
+  currentUser.value?.loginId ||
+  currentUser.value?.username ||
+  '-',
+)
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
@@ -221,16 +196,16 @@ const logout = () => {
       </div>
 
       <nav class="side-nav">
-        <template v-for="item in activeMenus" :key="item.path">
-          <RouterLink
-            :to="item.path"
-            class="side-link"
-            :title="getMenuLabel(item)"
-          >
-            <span class="side-icon"><MenuIcon :name="item.icon" /></span>
-            <span class="side-label">{{ getMenuLabel(item) }}</span>
-          </RouterLink>
-        </template>
+        <RouterLink
+          v-for="item in activeMenus"
+          :key="item.path"
+          :to="item.path"
+          class="side-link"
+          :title="item.label"
+        >
+          <span class="side-icon"><MenuIcon :name="item.icon" /></span>
+          <span class="side-label">{{ item.label }}</span>
+        </RouterLink>
       </nav>
 
       <div class="side-footer">
@@ -244,7 +219,7 @@ const logout = () => {
     <div class="main-area">
       <header class="topbar">
         <div>
-          <small>항만 게이트 차량 출입 및 컨테이너 상차 섹터 안내</small>
+          <small>항만 게이트 차량 출입 및 컨테이너 야드 안내</small>
           <h1>{{ pageTitle }}</h1>
         </div>
       </header>
@@ -282,7 +257,7 @@ const logout = () => {
   overflow-y: auto;
   padding: 12px;
   color: #ffffff;
-  background: #26384d;
+  background: #22374e;
   border-right: 1px solid #172636;
 }
 
@@ -325,13 +300,13 @@ const logout = () => {
 }
 
 .brand-text b {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
 }
 
 .brand-text small {
   color: #c5d2df;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .menu-icon {
@@ -339,16 +314,14 @@ const logout = () => {
   height: 17px;
 }
 
-.role-badge,
-.side-note {
+.role-badge {
   padding: 8px;
   background: #30455d;
   border: 1px solid #53677c;
   border-radius: 1px;
 }
 
-.role-badge small,
-.side-note span {
+.role-badge small {
   display: block;
   color: #c5d2df;
 }
@@ -356,7 +329,7 @@ const logout = () => {
 .role-badge strong {
   display: block;
   margin-top: 2px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -367,7 +340,7 @@ const logout = () => {
 
 .side-link {
   display: flex;
-  min-height: 34px;
+  min-height: 40px;
   min-width: 0;
   align-items: center;
   gap: 8px;
@@ -415,11 +388,6 @@ const logout = () => {
   margin-top: auto;
 }
 
-.side-note b {
-  display: block;
-  margin-bottom: 6px;
-}
-
 .logout-button {
   display: flex;
   min-height: 34px;
@@ -449,19 +417,14 @@ const logout = () => {
 
 .app-shell.collapsed .brand-text,
 .app-shell.collapsed .role-badge,
-.app-shell.collapsed .side-note,
 .app-shell.collapsed .side-label,
 .app-shell.collapsed .logout-label {
   display: none;
 }
 
-.app-shell.collapsed .side-link {
-  justify-content: center;
-  width: 34px;
-  padding: 0;
-}
-
+.app-shell.collapsed .side-link,
 .app-shell.collapsed .logout-button {
+  justify-content: center;
   width: 34px;
   padding: 0;
 }
@@ -474,31 +437,31 @@ const logout = () => {
 
 .topbar {
   display: flex;
-  min-height: 58px;
+  min-height: 66px;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 14px;
+  padding: 10px 16px;
   background: linear-gradient(#ffffff, #edf2f6);
   border-bottom: 1px solid var(--line);
 }
 
 .topbar small {
   color: var(--ink-500);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .topbar h1 {
   margin: 2px 0 0;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 700;
 }
 
 .content {
   min-width: 0;
   max-width: 100%;
-  padding: 10px;
+  padding: 12px;
   overflow-x: hidden;
 }
 
@@ -521,19 +484,14 @@ const logout = () => {
 
   .brand-text,
   .role-badge,
-  .side-note,
   .side-label,
   .logout-label {
     display: none;
   }
 
-  .side-link {
-    justify-content: center;
-    width: 34px;
-    padding: 0;
-  }
-
+  .side-link,
   .logout-button {
+    justify-content: center;
     width: 34px;
     padding: 0;
   }

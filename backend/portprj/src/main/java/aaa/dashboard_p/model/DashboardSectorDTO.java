@@ -11,4 +11,9 @@ public class DashboardSectorDTO {
     private Integer waitingVehicleCount;
     private String guideMessage;
     private String altWaitingArea;
+    private Integer capacity;
+    private Integer containerCount;
+    private Double usageRate;
+    private Integer workOrderCount;
+    private String statusLevel;
 }

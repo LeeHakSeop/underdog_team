@@ -8,35 +8,47 @@ import java.util.List;
 public interface WorkOrderMapper {
     @Select("""
             SELECT
-                work_order_id AS workOrderId,
-                work_type AS workType,
-                vehicle_id AS vehicleId,
-                tractor_vehicle_id AS tractorVehicleId,
-                trailer_vehicle_id AS trailerVehicleId,
-                driver_id AS driverId,
-                container_id AS containerId,
-                reserved_time AS reservedTime,
-                work_status AS workStatus,
-                is_approved AS isApproved
-            FROM work_order
-            ORDER BY work_order_id DESC
+                wo.work_order_id AS workOrderId,
+                wo.work_type AS workType,
+                wo.vehicle_id AS vehicleId,
+                wo.tractor_vehicle_id AS tractorVehicleId,
+                wo.trailer_vehicle_id AS trailerVehicleId,
+                wo.driver_id AS driverId,
+                wo.container_id AS containerId,
+                wo.start_sector_id AS startSectorId,
+                start_sector.sector_name AS startSectorName,
+                wo.destination_sector_id AS destinationSectorId,
+                destination_sector.sector_name AS destinationSectorName,
+                wo.reserved_time AS reservedTime,
+                wo.work_status AS workStatus,
+                wo.is_approved AS isApproved
+            FROM work_order wo
+            LEFT JOIN yard_sector start_sector ON start_sector.sector_id = wo.start_sector_id
+            LEFT JOIN yard_sector destination_sector ON destination_sector.sector_id = wo.destination_sector_id
+            ORDER BY wo.work_order_id DESC
             """)
     List<WorkOrderDTO> list();
 
     @Select("""
             SELECT
-                work_order_id AS workOrderId,
-                work_type AS workType,
-                vehicle_id AS vehicleId,
-                tractor_vehicle_id AS tractorVehicleId,
-                trailer_vehicle_id AS trailerVehicleId,
-                driver_id AS driverId,
-                container_id AS containerId,
-                reserved_time AS reservedTime,
-                work_status AS workStatus,
-                is_approved AS isApproved
-            FROM work_order
-            WHERE work_order_id = #{workOrderId}
+                wo.work_order_id AS workOrderId,
+                wo.work_type AS workType,
+                wo.vehicle_id AS vehicleId,
+                wo.tractor_vehicle_id AS tractorVehicleId,
+                wo.trailer_vehicle_id AS trailerVehicleId,
+                wo.driver_id AS driverId,
+                wo.container_id AS containerId,
+                wo.start_sector_id AS startSectorId,
+                start_sector.sector_name AS startSectorName,
+                wo.destination_sector_id AS destinationSectorId,
+                destination_sector.sector_name AS destinationSectorName,
+                wo.reserved_time AS reservedTime,
+                wo.work_status AS workStatus,
+                wo.is_approved AS isApproved
+            FROM work_order wo
+            LEFT JOIN yard_sector start_sector ON start_sector.sector_id = wo.start_sector_id
+            LEFT JOIN yard_sector destination_sector ON destination_sector.sector_id = wo.destination_sector_id
+            WHERE wo.work_order_id = #{workOrderId}
             """)
     WorkOrderDTO detail(Long workOrderId);
 
@@ -48,6 +60,8 @@ public interface WorkOrderMapper {
                 trailer_vehicle_id,
                 driver_id,
                 container_id,
+                start_sector_id,
+                destination_sector_id,
                 reserved_time,
                 work_status,
                 is_approved
@@ -58,6 +72,8 @@ public interface WorkOrderMapper {
                 #{trailerVehicleId},
                 #{driverId},
                 #{containerId},
+                #{startSectorId},
+                #{destinationSectorId},
                 #{reservedTime},
                 #{workStatus},
                 #{isApproved}
@@ -90,6 +106,30 @@ public interface WorkOrderMapper {
             @Param("workOrderId") Long workOrderId
     );
 
+    @Select("""
+            SELECT COUNT(*)
+            FROM work_order
+            WHERE tractor_vehicle_id = #{tractorVehicleId}
+              AND work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+              AND (#{workOrderId,jdbcType=BIGINT} IS NULL OR work_order_id <> #{workOrderId,jdbcType=BIGINT})
+            """)
+    int countActiveByTractorVehicleId(
+            @Param("tractorVehicleId") Long tractorVehicleId,
+            @Param("workOrderId") Long workOrderId
+    );
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM work_order wo
+            WHERE wo.destination_sector_id = #{sectorId}
+              AND wo.work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS', 'COMPLETED')
+              AND (#{workOrderId,jdbcType=BIGINT} IS NULL OR wo.work_order_id <> #{workOrderId,jdbcType=BIGINT})
+            """)
+    int countActiveBySectorId(
+            @Param("sectorId") Long sectorId,
+            @Param("workOrderId") Long workOrderId
+    );
+
     @Update("""
             UPDATE work_order
             SET work_type = #{workType},
@@ -98,6 +138,8 @@ public interface WorkOrderMapper {
                 trailer_vehicle_id = #{trailerVehicleId},
                 driver_id = #{driverId},
                 container_id = #{containerId},
+                start_sector_id = #{startSectorId},
+                destination_sector_id = #{destinationSectorId},
                 reserved_time = #{reservedTime},
                 work_status = 'DISPATCH_WAITING',
                 is_approved = false
@@ -143,6 +185,10 @@ public interface WorkOrderMapper {
                 ys.sector_name AS sectorName,
                 ys.block_name AS blockName,
                 ys.sector_status AS sectorStatus,
+                wo.start_sector_id AS startSectorId,
+                start_sector.sector_name AS startSectorName,
+                wo.destination_sector_id AS destinationSectorId,
+                destination_sector.sector_name AS destinationSectorName,
                 CASE
                     WHEN wo.work_status = 'DISPATCH_WAITING'
                         THEN '운송사 배차 승인 대기 중입니다.'
@@ -151,7 +197,7 @@ public interface WorkOrderMapper {
                     WHEN wo.work_status = 'GATE_IN'
                         THEN '입차 되었습니다. 해당 야드 섹터로 이동하여 작업을 실시하세요.'
                     WHEN wo.work_status = 'IN_PROGRESS'
-                        THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
+                        THEN CONCAT('작업 진행 중입니다. ', COALESCE(destination_sector.sector_name, ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
                     WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE
                         THEN '작업 완료 및 출차 가능 상태입니다. 게이트에서 출차 처리하세요.'
                     WHEN wo.work_status = 'COMPLETED'
@@ -160,14 +206,14 @@ public interface WorkOrderMapper {
                         THEN '출차 처리가 완료되었습니다.'
                     WHEN wo.work_status = 'CANCELED'
                         THEN '취소된 작업지시입니다.'
-                    ELSE COALESCE(ys.guide_message, '작업 상태를 확인하세요.')
+                    ELSE COALESCE(destination_sector.guide_message, ys.guide_message, '작업 상태를 확인하세요.')
                 END AS guideMessage,
                 c.can_exit AS canExit,
-                ys.alt_waiting_area AS altWaitingArea,
+                COALESCE(destination_sector.alt_waiting_area, ys.alt_waiting_area) AS altWaitingArea,
                 CONCAT(
                     '컨테이너 번호는 ', c.container_number,
                     '이고, 작업 유형은 ', wo.work_type,
-                    '입니다. 이동 위치는 ', COALESCE(ys.sector_name, c.container_location),
+                    '입니다. 이동 위치는 ', COALESCE(destination_sector.sector_name, ys.sector_name, c.container_location),
                     ' / ', COALESCE(c.block, '-'), '-', COALESCE(c.bay, '-'), '-', COALESCE(c.row_no, '-'),
                     CONCAT(
                         '. 안내: ',
@@ -179,7 +225,7 @@ public interface WorkOrderMapper {
                             WHEN wo.work_status = 'GATE_IN'
                                 THEN '입차 되었습니다. 해당 야드 섹터로 이동하여 작업을 실시하세요.'
                             WHEN wo.work_status = 'IN_PROGRESS'
-                                THEN CONCAT('작업 진행 중입니다. ', COALESCE(ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
+                                THEN CONCAT('작업 진행 중입니다. ', COALESCE(destination_sector.sector_name, ys.sector_name, c.container_location, '지정된 야드 섹터'), ' 섹터의 작업 위치를 확인하세요.')
                             WHEN wo.work_status = 'COMPLETED' AND COALESCE(c.can_exit, FALSE) = TRUE
                                 THEN '작업 완료 및 출차 가능 상태입니다. 게이트에서 출차 처리하세요.'
                             WHEN wo.work_status = 'COMPLETED'
@@ -188,12 +234,13 @@ public interface WorkOrderMapper {
                                 THEN '출차 처리가 완료되었습니다.'
                             WHEN wo.work_status = 'CANCELED'
                                 THEN '취소된 작업지시입니다.'
-                            ELSE COALESCE(ys.guide_message, '작업 상태를 확인하세요.')
+                            ELSE COALESCE(destination_sector.guide_message, ys.guide_message, '작업 상태를 확인하세요.')
                         END
                     ),
                     CASE
-                        WHEN ys.alt_waiting_area IS NOT NULL AND ys.alt_waiting_area <> ''
-                        THEN CONCAT('. 대체 대기 위치: ', ys.alt_waiting_area)
+                        WHEN COALESCE(destination_sector.alt_waiting_area, ys.alt_waiting_area) IS NOT NULL
+                             AND COALESCE(destination_sector.alt_waiting_area, ys.alt_waiting_area) <> ''
+                        THEN CONCAT('. 대체 대기 위치: ', COALESCE(destination_sector.alt_waiting_area, ys.alt_waiting_area))
                         ELSE ''
                     END,
                     '입니다.'
@@ -201,6 +248,8 @@ public interface WorkOrderMapper {
             FROM work_order wo
             JOIN container c ON wo.container_id = c.container_id
             JOIN yard_sector ys ON c.sector_id = ys.sector_id
+            LEFT JOIN yard_sector start_sector ON start_sector.sector_id = wo.start_sector_id
+            LEFT JOIN yard_sector destination_sector ON destination_sector.sector_id = wo.destination_sector_id
             WHERE (wo.trailer_vehicle_id = #{vehicleId}
                OR wo.vehicle_id = #{vehicleId})
               AND COALESCE(wo.is_approved, FALSE) = TRUE

@@ -1,47 +1,48 @@
-import AdminMainView from '@/views/admin/AdminMainView.vue'
+﻿import AdminMainView from '@/views/admin/AdminMainView.vue'
 import AdminDashboardView from '@/views/admin/AdminDashboardView.vue'
 import AdminWorkOrdersView from '@/views/admin/AdminWorkOrdersView.vue'
 import AdminEventsView from '@/views/admin/AdminEventsView.vue'
 import AdminMembersView from '@/views/admin/AdminMembersView.vue'
 import AdminPlateRecognitionView from '@/views/admin/AdminPlateRecognitionView.vue'
 import AdminYardMapView from '@/views/admin/AdminYardMapView.vue'
+import AdminContainersView from '@/views/admin/AdminContainersView.vue'
 import AdminPredictiveMaintenanceView from '@/views/admin/AdminPredictiveMaintenanceView.vue'
 
 export default [
   {
     path: '/admin',
     redirect: '/admin/main',
-    meta: { role: 'admin' },
+    meta: { role: 'ADMIN' },
     children: [
       {
         path: 'main',
         name: 'admin-main',
         component: AdminMainView,
-        meta: { role: 'admin', title: '상황 관제판' },
+        meta: { role: 'ADMIN', title: '상황 관제판' },
       },
       {
         path: 'dashboard',
         name: 'admin-dashboard',
         component: AdminDashboardView,
-        meta: { role: 'admin', title: '데이터 현황' },
+        meta: { role: 'ADMIN', title: '운영 현황 요약' },
       },
       {
         path: 'yard-map',
         name: 'admin-yard-map',
         component: AdminYardMapView,
-        meta: { role: 'admin', title: '야드 맵' },
+        meta: { role: 'ADMIN', title: '운영 맵' },
       },
       {
         path: 'plate-recognition',
         name: 'admin-plate-recognition',
         component: AdminPlateRecognitionView,
-        meta: { role: 'admin', title: 'AI 번호판 인식' },
+        meta: { role: 'ADMIN', title: 'AI 번호판 인식' },
       },
       {
         path: 'predictive-maintenance',
         name: 'admin-predictive-maintenance',
         component: AdminPredictiveMaintenanceView,
-        meta: { role: 'admin', title: '예지보전' },
+        meta: { role: 'ADMIN', title: '예지보전' },
       },
       {
         path: 'members',
@@ -50,16 +51,22 @@ export default [
         meta: { role: 'ADMIN', title: '회원 관리' },
       },
       {
+        path: 'containers',
+        name: 'admin-containers',
+        component: AdminContainersView,
+        meta: { role: 'ADMIN', title: '컨테이너 관리' },
+      },
+      {
         path: 'work-orders',
         name: 'admin-work-orders',
         component: AdminWorkOrdersView,
-        meta: { role: 'admin', title: '작업 관리' },
+        meta: { role: 'ADMIN', title: '작업 관리' },
       },
       {
         path: 'events',
         name: 'admin-events',
         component: AdminEventsView,
-        meta: { role: 'admin', title: '알림/이벤트' },
+        meta: { role: 'ADMIN', title: '알림/이벤트' },
       },
     ],
   },
