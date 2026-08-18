@@ -43,6 +43,14 @@ CREATE TABLE vehicle (
     user_id BIGINT REFERENCES users(user_id)
 );
 
+CREATE TABLE tractor (
+    vehicle_id BIGINT PRIMARY KEY REFERENCES vehicle(vehicle_id) ON DELETE CASCADE
+);
+
+CREATE TABLE trailer (
+    vehicle_id BIGINT PRIMARY KEY REFERENCES vehicle(vehicle_id) ON DELETE CASCADE
+);
+
 CREATE TABLE yard_sector (
     sector_id BIGSERIAL PRIMARY KEY,
     sector_name VARCHAR(50),
@@ -51,7 +59,13 @@ CREATE TABLE yard_sector (
     capacity INTEGER NOT NULL DEFAULT 40,
     waiting_vehicle_count INTEGER DEFAULT 0,
     guide_message VARCHAR(255),
-    alt_waiting_area VARCHAR(50)
+    alt_waiting_area VARCHAR(50),
+    environment_type VARCHAR(20),
+    CONSTRAINT ck_yard_sector_environment_type
+        CHECK (
+            environment_type IS NULL
+            OR environment_type IN ('GENERAL', 'HEAVY', 'REEFER', 'DANGEROUS', 'EMPTY')
+        )
 );
 
 CREATE TABLE container (
@@ -76,10 +90,18 @@ CREATE TABLE work_order (
     trailer_vehicle_id BIGINT REFERENCES vehicle(vehicle_id),
     driver_id BIGINT REFERENCES driver(driver_id),
     container_id BIGINT REFERENCES container(container_id),
+    start_sector_id BIGINT REFERENCES yard_sector(sector_id),
+    destination_sector_id BIGINT REFERENCES yard_sector(sector_id),
     reserved_time TIMESTAMP,
     work_status VARCHAR(30),
     is_approved BOOLEAN DEFAULT FALSE
 );
+
+CREATE INDEX IF NOT EXISTS idx_work_order_start_sector_id
+    ON work_order(start_sector_id);
+
+CREATE INDEX IF NOT EXISTS idx_work_order_destination_sector_id
+    ON work_order(destination_sector_id);
 
 CREATE TABLE work_status_history (
     history_id BIGSERIAL PRIMARY KEY,

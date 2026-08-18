@@ -720,7 +720,7 @@ onBeforeUnmount(() => {
 
 .playback-toolbar {
   display: grid;
-  grid-template-columns: 150px minmax(220px, 280px) minmax(300px, 1fr);
+  grid-template-columns: minmax(190px, 240px) minmax(220px, 280px) minmax(0, 1fr);
   gap: 10px;
   padding: 10px;
   background: #edf3f8;
@@ -732,6 +732,7 @@ onBeforeUnmount(() => {
 .speed-control {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
 .playback-toolbar label > span,
@@ -745,6 +746,8 @@ onBeforeUnmount(() => {
 .playback-toolbar select,
 .playback-toolbar input,
 .speed-control select {
+  width: 100%;
+  min-width: 0;
   min-height: 34px;
   padding: 5px 8px;
   background: #ffffff;
@@ -754,7 +757,9 @@ onBeforeUnmount(() => {
 .maintenance-range-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 5px;
+  min-width: 0;
 }
 
 .maintenance-play-button,
@@ -768,6 +773,7 @@ onBeforeUnmount(() => {
 }
 
 .maintenance-play-button {
+  flex: 0 0 auto;
   padding: 5px 10px;
 }
 
@@ -777,15 +783,20 @@ onBeforeUnmount(() => {
   font-size: 11px;
 }
 
+.maintenance-range-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .alert-badge {
   display: inline-flex;
+  max-width: 100%;
   min-height: 24px;
   align-items: center;
   padding: 3px 7px;
   border: 1px solid;
   font-size: 10px;
   font-weight: 700;
-  white-space: nowrap;
 }
 
 .alert-badge.available {

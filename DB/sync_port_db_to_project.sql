@@ -33,9 +33,31 @@ ALTER TABLE gate_log
     ALTER COLUMN manager_check SET DEFAULT FALSE;
 
 -- exception_log의 과거 오타 열 데이터를 정상 열로 이동한다.
-UPDATE exception_log
-SET occurred_time = COALESCE(occurred_time, occured_time)
-WHERE occurred_time IS NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'exception_log'
+          AND column_name = 'occurred_time'
+    ) THEN
+        ALTER TABLE exception_log
+            ADD COLUMN occurred_time TIMESTAMP;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'exception_log'
+          AND column_name = 'occured_time'
+    ) THEN
+        UPDATE exception_log
+        SET occurred_time = COALESCE(occurred_time, occured_time)
+        WHERE occurred_time IS NULL;
+    END IF;
+END $$;
 
 -- 누락된 ID 시퀀스와 기본키를 복구한다.
 CREATE SEQUENCE IF NOT EXISTS exception_log_exception_log_id_seq;
