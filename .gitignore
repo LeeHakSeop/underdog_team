@@ -24,6 +24,8 @@ backend/portprj/.weather-api-key
 
 frontend/dist/
 frontend/node_modules/
+/node_modules/
+/externals/
 
 # Local PostgreSQL safety backups
 DB/backups/

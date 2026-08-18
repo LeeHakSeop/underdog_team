@@ -6,9 +6,9 @@ import aaa.weather_p.model.WeatherProperties;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
@@ -93,15 +93,30 @@ public class WeatherClient {
             return "";
         }
 
-        try {
-            Path keyPath = Path.of(api.getKeyFile());
-            if (!Files.exists(keyPath)) {
-                return "";
+        for (Path keyPath : keyFileCandidates(api.getKeyFile())) {
+            try {
+                if (Files.exists(keyPath)) {
+                    return Files.readString(keyPath).trim();
+                }
+            } catch (IOException e) {
+                throw new WeatherClientException("API_KEY_FILE_ERROR", "날씨 API 키 파일을 읽을 수 없습니다.", e);
             }
-            return Files.readString(keyPath).trim();
-        } catch (IOException e) {
-            throw new WeatherClientException("API_KEY_FILE_ERROR", "날씨 API 키 파일을 읽을 수 없습니다.", e);
         }
+
+        return "";
+    }
+
+    private List<Path> keyFileCandidates(String keyFile) {
+        Path configured = Path.of(keyFile);
+        if (configured.isAbsolute()) {
+            return List.of(configured);
+        }
+
+        return List.of(
+                configured,
+                Path.of("backend", "portprj", keyFile),
+                Path.of("..", keyFile)
+        );
     }
 
     private RestTemplate restTemplate(int timeoutMs) {

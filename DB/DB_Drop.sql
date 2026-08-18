@@ -1,3 +1,6 @@
+DROP TABLE IF EXISTS pm_event;
+DROP TABLE IF EXISTS pm_sensor_data;
+DROP TABLE IF EXISTS pm_equipment;
 DROP TABLE IF EXISTS plate_recognition;
 DROP TABLE IF EXISTS exception_log;
 DROP TABLE IF EXISTS gate_log;

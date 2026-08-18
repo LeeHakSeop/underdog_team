@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Service
-public class GateLogService {
+public class    GateLogService {
 
     private static final String GATE_SUCCESS = "GATE_SUCCESS";
     private static final String GATE_FAIL = "GATE_FAIL";

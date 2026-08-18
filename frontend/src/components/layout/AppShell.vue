@@ -154,6 +154,13 @@ const activeRole = computed(() => String(route.meta.role || currentUser.value?.r
 const activeMenus = computed(() => menus[activeRole.value] || menus.ADMIN)
 const pageTitle = computed(() => route.meta.title || '항만 게이트 시스템')
 const activeRoleLabel = computed(() => roleLabels[activeRole.value] || '관리자')
+const accountDisplayName = computed(() =>
+  currentUser.value?.displayName ||
+  currentUser.value?.userName ||
+  currentUser.value?.loginId ||
+  currentUser.value?.username ||
+  '-',
+)
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value

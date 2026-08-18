@@ -198,4 +198,3 @@ public interface YardMapMapper {
             """)
     List<YardMapVehicleDTO> vehicles();
 }
-

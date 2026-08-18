@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS pm_sensor_data (
 
     -- 같은 시점의 모델/운영정책 판정값
     current_fault_probability NUMERIC(12, 10),
+    -- 고장 전 전조가 실제 고장으로 진행될 가능성. 공식 경보를 취소하지 않는 보조값이다.
+    progression_probability NUMERIC(12, 10),
+    progression_model VARCHAR(100),
     anomaly_count INTEGER NOT NULL DEFAULT 0,
     abnormal_sensors JSONB NOT NULL DEFAULT '[]'::JSONB,
     operational_state VARCHAR(30) NOT NULL DEFAULT 'NORMAL',
@@ -59,9 +62,18 @@ CREATE TABLE IF NOT EXISTS pm_sensor_data (
         current_fault_probability IS NULL
         OR current_fault_probability BETWEEN 0 AND 1
     ),
+    CONSTRAINT ck_pm_sensor_progression_probability CHECK (
+        progression_probability IS NULL
+        OR progression_probability BETWEEN 0 AND 1
+    ),
     CONSTRAINT ck_pm_sensor_source
         CHECK (source_type IN ('CSV', 'API', 'DEVICE', 'DEMO'))
 );
+
+-- 이미 생성된 DB에도 보조 모델 열을 안전하게 추가한다.
+ALTER TABLE pm_sensor_data
+    ADD COLUMN IF NOT EXISTS progression_probability NUMERIC(12, 10),
+    ADD COLUMN IF NOT EXISTS progression_model VARCHAR(100);
 
 CREATE TABLE IF NOT EXISTS pm_event (
     event_id BIGSERIAL PRIMARY KEY,

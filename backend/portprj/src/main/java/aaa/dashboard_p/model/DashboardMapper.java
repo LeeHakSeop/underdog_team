@@ -51,9 +51,6 @@ public interface DashboardMapper {
                 (SELECT COUNT(*) FROM work_order WHERE work_status IN ('DISPATCH_WAITING', 'APPROVED')) AS workReady,
                 (SELECT COUNT(*) FROM work_order WHERE work_status IN ('GATE_IN', 'IN_PROGRESS')) AS workInProgress,
                 (SELECT COUNT(*) FROM work_order WHERE work_status IN ('COMPLETED', 'GATE_OUT')) AS workDone,
-                (SELECT COALESCE(SUM(waiting_vehicle_count), 0) FROM sector_metrics) AS waitingVehicles,
-                (SELECT COUNT(*) FROM sector_metrics WHERE status_level = 'DANGER') AS congestedSectors,
-                (SELECT COUNT(*) FROM sector_metrics WHERE status_level = 'WARNING') AS warningSectors,
                 (SELECT COUNT(*) FROM vehicle WHERE vehicle_status = 'MAINTENANCE') AS maintenanceVehicles,
                 (SELECT COUNT(*) FROM container WHERE can_exit = false) AS exitHoldContainers
             """)
