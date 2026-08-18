@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { request } from '@/api/apiClient'
 
 export const DEMO_EQUIPMENT_ID = 'DEMO-ANT'
 export const DEMO_SOURCE_EQUIPMENT_ID = 'ANT-018'
@@ -26,28 +27,21 @@ export const setKakaoNotificationsEnabled = (enabled) => {
 }
 
 export const fetchKakaoRuntimeStatus = async () => {
-  const response = await fetch('/api/predictive-maintenance/demo/notifications/kakao/config')
-  if (!response.ok) throw new Error('카카오 연결 상태를 확인하지 못했습니다.')
-  return response.json()
+  return request('/api/predictive-maintenance/demo/notifications/kakao/config')
 }
 
 export const configureKakaoRuntime = async (accessToken) => {
-  const response = await fetch('/api/predictive-maintenance/demo/notifications/kakao/config', {
+  return request('/api/predictive-maintenance/demo/notifications/kakao/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ accessToken }),
   })
-  const result = await response.json()
-  if (!response.ok) throw new Error(result.message || '카카오 연결에 실패했습니다.')
-  return result
 }
 
 export const clearKakaoRuntime = async () => {
-  const response = await fetch('/api/predictive-maintenance/demo/notifications/kakao/config', {
+  return request('/api/predictive-maintenance/demo/notifications/kakao/config', {
     method: 'DELETE',
   })
-  if (!response.ok) throw new Error('카카오 연결 해제에 실패했습니다.')
-  return response.json()
 }
 
 export const requestDemoNotification = async (eventType, occurredAt) => {
@@ -69,13 +63,12 @@ export const requestDemoNotification = async (eventType, occurredAt) => {
   predictiveDemoSession.notificationRequests.push(request)
 
   try {
-    const response = await fetch('/api/predictive-maintenance/demo/notifications/kakao', {
+    const result = await request('/api/predictive-maintenance/demo/notifications/kakao', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
     })
-    const result = await response.json()
-    request.status = result.status || (response.ok ? 'SENT' : 'FAILED')
+    request.status = result.status || 'SENT'
   } catch {
     request.status = 'FAILED'
   }
