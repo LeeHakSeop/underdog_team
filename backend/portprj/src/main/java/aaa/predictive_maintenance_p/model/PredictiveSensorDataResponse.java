@@ -19,6 +19,8 @@ public record PredictiveSensorDataResponse(
         Integer errorCount,
         Integer daysSinceMaintenance,
         Double currentFaultProbability,
+        Double progressionProbability,
+        String progressionModel,
         int anomalyCount,
         List<String> abnormalSensors,
         boolean currentFailure,

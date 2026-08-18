@@ -129,6 +129,8 @@ public class PredictiveMaintenanceQueryService {
                     nullableInteger(rs, "error_count"),
                     nullableInteger(rs, "days_since_maintenance"),
                     nullableDouble(rs, "current_fault_probability"),
+                    optionalDouble(rs, "progression_probability"),
+                    optionalString(rs, "progression_model"),
                     rs.getInt("anomaly_count"),
                     jsonStringList(rs.getString("abnormal_sensors")),
                     rs.getBoolean("current_failure"),
@@ -195,5 +197,22 @@ public class PredictiveMaintenanceQueryService {
     private static Integer nullableInteger(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
         int value = rs.getInt(column);
         return rs.wasNull() ? null : value;
+    }
+
+    private static Double optionalDouble(java.sql.ResultSet rs, String column) {
+        try {
+            return nullableDouble(rs, column);
+        } catch (java.sql.SQLException ignored) {
+            // 구버전 DB 스키마는 보조 모델 열이 없을 수 있다.
+            return null;
+        }
+    }
+
+    private static String optionalString(java.sql.ResultSet rs, String column) {
+        try {
+            return rs.getString(column);
+        } catch (java.sql.SQLException ignored) {
+            return null;
+        }
     }
 }

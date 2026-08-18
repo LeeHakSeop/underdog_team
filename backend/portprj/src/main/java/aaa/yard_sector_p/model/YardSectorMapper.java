@@ -3,6 +3,7 @@ package aaa.yard_sector_p.model;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -26,4 +27,7 @@ public interface YardSectorMapper {
             WHERE sector_id = #{sectorId}
             """)
     YardSectorDTO detail(@Param("sectorId") Long sectorId);
+
+    @Update("UPDATE yard_sector SET capacity = #{capacity} WHERE sector_id = #{sectorId}")
+    int updateCapacity(@Param("sectorId") Long sectorId, @Param("capacity") Integer capacity);
 }

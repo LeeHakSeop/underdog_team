@@ -52,6 +52,14 @@ public class WorkOrderController {
         return service.update(dto);
     }
 
+    @PatchMapping("/{workOrderId}/route")
+    public WorkOrderDTO updateRoute(
+            @PathVariable Long workOrderId,
+            @RequestBody WorkOrderDTO dto
+    ) {
+        return service.updateRoute(workOrderId, dto);
+    }
+
     @DeleteMapping("/{workOrderId}")
     public WorkOrderDTO delete(@PathVariable Long workOrderId) {
         return service.cancel(workOrderId);

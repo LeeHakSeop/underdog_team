@@ -42,11 +42,12 @@ public class PredictiveMaintenanceImportService {
                 traffic_load, temperature_c, voltage_v, signal_strength_dbm,
                 success_rate, response_time_ms, retry_count, disconnect_count,
                 packet_loss_rate, error_count, days_since_maintenance,
-                current_fault_probability, anomaly_count, abnormal_sensors,
+                current_fault_probability, progression_probability, progression_model,
+                anomaly_count, abnormal_sensors,
                 operational_state, current_failure, precursor_entry_condition,
                 needs_attention, risk_score, risk_level, source_type
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb,
                 ?, ?, ?, ?, ?, ?, 'CSV'
             )
             ON CONFLICT (equipment_id, collected_at) DO UPDATE SET
@@ -62,6 +63,8 @@ public class PredictiveMaintenanceImportService {
                 error_count = EXCLUDED.error_count,
                 days_since_maintenance = EXCLUDED.days_since_maintenance,
                 current_fault_probability = EXCLUDED.current_fault_probability,
+                progression_probability = EXCLUDED.progression_probability,
+                progression_model = EXCLUDED.progression_model,
                 anomaly_count = EXCLUDED.anomaly_count,
                 abnormal_sensors = EXCLUDED.abnormal_sensors,
                 operational_state = EXCLUDED.operational_state,
@@ -212,6 +215,8 @@ public class PredictiveMaintenanceImportService {
                             integer(indexes, values, "error_count"),
                             integer(indexes, values, "days_since_maintenance"),
                             decimal(indexes, values, "current_fault_probability"),
+                            decimal(indexes, values, "progression_probability"),
+                            nullableText(value(indexes, values, "progression_model")),
                             integerOrZero(indexes, values, "anomaly_count"),
                             abnormalSensorsJson(value(indexes, values, "abnormal_sensors")),
                             state, currentFailure,
@@ -306,6 +311,8 @@ public class PredictiveMaintenanceImportService {
         statement.setObject(index++, row.errorCount());
         statement.setObject(index++, row.daysSinceMaintenance());
         statement.setObject(index++, row.currentFaultProbability());
+        statement.setObject(index++, row.progressionProbability());
+        statement.setString(index++, row.progressionModel());
         statement.setInt(index++, row.anomalyCount());
         statement.setString(index++, row.abnormalSensorsJson());
         statement.setString(index++, row.operationalState());
@@ -419,7 +426,8 @@ public class PredictiveMaintenanceImportService {
             Double trafficLoad, Double temperatureC, Double voltageV, Double signalStrengthDbm,
             Double successRate, Double responseTimeMs, Integer retryCount, Integer disconnectCount,
             Double packetLossRate, Integer errorCount, Integer daysSinceMaintenance,
-            Double currentFaultProbability, int anomalyCount, String abnormalSensorsJson,
+            Double currentFaultProbability, Double progressionProbability, String progressionModel,
+            int anomalyCount, String abnormalSensorsJson,
             String operationalState, boolean currentFailure, boolean precursorEntryCondition,
             boolean needsAttention, Double riskScore, String riskLevel,
             boolean stateChanged, boolean failureStart, boolean maintenanceEvent
@@ -428,6 +436,7 @@ public class PredictiveMaintenanceImportService {
             return new SensorRow(id, equipmentCode, collectedAt, trafficLoad, temperatureC, voltageV,
                     signalStrengthDbm, successRate, responseTimeMs, retryCount, disconnectCount,
                     packetLossRate, errorCount, daysSinceMaintenance, currentFaultProbability,
+                    progressionProbability, progressionModel,
                     anomalyCount, abnormalSensorsJson, operationalState, currentFailure,
                     precursorEntryCondition, needsAttention, riskScore, riskLevel,
                     stateChanged, failureStart, maintenanceEvent);

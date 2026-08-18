@@ -15,24 +15,24 @@ public interface YardMapMapper {
                 ys.block_name AS blockName,
                 ys.sector_status AS sectorStatus,
                 ys.environment_type AS environmentType,
-                40 AS capacity,
+                COALESCE(ys.capacity, 40) AS capacity,
                 COALESCE(ys.waiting_vehicle_count, 0) AS waitingVehicleCount,
                 ys.guide_message AS guideMessage,
                 ys.alt_waiting_area AS altWaitingArea,
                 COUNT(DISTINCT c.container_id) AS containerCount,
                 ROUND(
-                    (COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)) * 100,
+                    (COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)) * 100,
                     1
                 )::float AS usageRate,
                 COUNT(DISTINCT wo.work_order_id) AS workOrderCount,
                 CASE
                     WHEN (
-                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)
                     ) >= 0.8
                       OR COALESCE(ys.waiting_vehicle_count, 0) >= 6
                       OR COUNT(DISTINCT wo.work_order_id) >= 3 THEN 'DANGER'
                     WHEN (
-                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(40, 0)
+                        COUNT(DISTINCT c.container_id)::numeric / NULLIF(COALESCE(ys.capacity, 40), 0)
                     ) >= 0.5
                       OR COALESCE(ys.waiting_vehicle_count, 0) >= 3
                       OR COUNT(DISTINCT wo.work_order_id) >= 1 THEN 'WARNING'
@@ -49,6 +49,7 @@ public interface YardMapMapper {
                 ys.block_name,
                 ys.sector_status,
                 ys.environment_type,
+                ys.capacity,
                 ys.waiting_vehicle_count,
                 ys.guide_message,
                 ys.alt_waiting_area
@@ -57,7 +58,35 @@ public interface YardMapMapper {
     List<YardMapSectorDTO> sectors();
 
     @Select("""
-            WITH latest_gate_log AS (
+            WITH normalized_gate_log AS (
+                SELECT
+                    gate_log_id,
+                    vehicle_id,
+                    tractor_vehicle_id,
+                    trailer_vehicle_id,
+                    CASE
+                        WHEN gate_number = 'G-IN-01' THEN 'G01'
+                        WHEN gate_number = 'G-IN-02' THEN 'G03'
+                        WHEN gate_number = 'G-OUT-01' THEN 'G02'
+                        WHEN gate_number = 'G-OUT-02' THEN 'G04'
+                        WHEN gate_number = 'G01' AND in_out_type = 'OUT' THEN 'G02'
+                        WHEN gate_number = 'G03' AND in_out_type = 'OUT' THEN 'G04'
+                        ELSE gate_number
+                    END AS gate_number,
+                    gate_name,
+                    entry_time,
+                    exit_time,
+                    CASE
+                        WHEN gate_number IN ('G-IN-01', 'G-IN-02') THEN 'IN'
+                        WHEN gate_number IN ('G-OUT-01', 'G-OUT-02') THEN 'OUT'
+                        ELSE in_out_type
+                    END AS in_out_type,
+                    process_result,
+                    manager_check
+                FROM gate_log
+                WHERE gate_number IS NOT NULL
+            ),
+            latest_gate_log AS (
                 SELECT DISTINCT ON (gate_number)
                     gate_log_id,
                     vehicle_id,
@@ -70,8 +99,7 @@ public interface YardMapMapper {
                     in_out_type,
                     process_result,
                     manager_check
-                FROM gate_log
-                WHERE gate_number IS NOT NULL
+                FROM normalized_gate_log
                 ORDER BY gate_number, COALESCE(exit_time, entry_time) DESC NULLS LAST, gate_log_id DESC
             ),
             gate_counts AS (
@@ -85,7 +113,7 @@ public interface YardMapMapper {
                         WHERE in_out_type = 'OUT'
                           AND DATE(COALESCE(exit_time, entry_time)) = CURRENT_DATE
                     ) AS todayOutCount
-                FROM gate_log
+                FROM normalized_gate_log
                 WHERE gate_number IS NOT NULL
                 GROUP BY gate_number
             )
@@ -142,8 +170,13 @@ public interface YardMapMapper {
                 destination_sector.sector_name AS destinationSectorName,
                 CONCAT(
                     COALESCE(start_sector.sector_name, current_sector.sector_name, '출발 미정'),
+<<<<<<< HEAD
                     ' -> ',
                     COALESCE(destination_sector.sector_name, c.container_location, '목적 미정')
+=======
+                    ' → ',
+                    COALESCE(destination_sector.sector_name, '목적 미정')
+>>>>>>> 7d3a4933ce2ffc830bc22fdf80b24cd81fe24306
                 ) AS routeSummary,
                 wo.reserved_time AS reservedTime
             FROM work_order wo

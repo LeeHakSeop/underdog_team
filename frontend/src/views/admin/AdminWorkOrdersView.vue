@@ -36,6 +36,8 @@ const containerQuery = ref('')
 const containerMessage = ref('')
 const editingContainerId = ref(null)
 const containerForm = ref({})
+const editingRouteId = ref(null)
+const routeForm = ref({ startSectorId: '', destinationSectorId: '' })
 const yardSectors = ref([])
 let refreshTimer = null
 
@@ -214,6 +216,52 @@ const getSectorName = (order, type) => {
   if (name) return name
   const sectorId = getId(order, idKey)
   return yardSectors.value.find((sector) => sector.sectorId === sectorId)?.sectorName || '-'
+}
+
+const hasCompleteRoute = (order) => Boolean(
+  getId(order, 'startSectorId') && getId(order, 'destinationSectorId'),
+)
+
+const openRouteEdit = (order) => {
+  const container = getContainer(getId(order, 'containerId'))
+  editingRouteId.value = getId(order, 'workOrderId')
+  routeForm.value = {
+    startSectorId: getId(order, 'startSectorId') || getId(container, 'sectorId') || '',
+    destinationSectorId: getId(order, 'destinationSectorId') || '',
+  }
+  processMessage.value = ''
+}
+
+const closeRouteEdit = () => {
+  editingRouteId.value = null
+  routeForm.value = { startSectorId: '', destinationSectorId: '' }
+}
+
+const saveRoute = async () => {
+  const startSectorId = Number(routeForm.value.startSectorId)
+  const destinationSectorId = Number(routeForm.value.destinationSectorId)
+
+  if (!startSectorId || !destinationSectorId) {
+    processMessage.value = '출발과 목적 야드 섹터를 모두 선택하세요.'
+    return
+  }
+  if (startSectorId === destinationSectorId) {
+    processMessage.value = '출발과 목적 야드 섹터는 서로 달라야 합니다.'
+    return
+  }
+
+  processingId.value = editingRouteId.value
+  processMessage.value = ''
+
+  try {
+    await workOrderStore.editRoute(editingRouteId.value, { startSectorId, destinationSectorId })
+    processMessage.value = `작업 #${editingRouteId.value}의 야드 이동 경로를 저장했습니다.`
+    closeRouteEdit()
+  } catch (error) {
+    processMessage.value = error.message || '야드 이동 경로를 저장하지 못했습니다.'
+  } finally {
+    processingId.value = null
+  }
 }
 
 const getStatusText = (workStatus) => {
@@ -727,6 +775,32 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <form v-if="editingRouteId" class="route-form" @submit.prevent="saveRoute">
+        <strong>작업 #{{ editingRouteId }} 경로 설정</strong>
+        <label>
+          출발 Yard
+          <select v-model="routeForm.startSectorId" required>
+            <option value="">선택</option>
+            <option v-for="sector in yardSectors" :key="`start-${sector.sectorId}`" :value="sector.sectorId">
+              {{ sector.sectorName }} · {{ sector.blockName }}
+            </option>
+          </select>
+        </label>
+        <label>
+          목적 Yard
+          <select v-model="routeForm.destinationSectorId" required>
+            <option value="">선택</option>
+            <option v-for="sector in yardSectors" :key="`destination-${sector.sectorId}`" :value="sector.sectorId">
+              {{ sector.sectorName }} · {{ sector.blockName }}
+            </option>
+          </select>
+        </label>
+        <div class="route-actions">
+          <button class="primary-button" type="submit" :disabled="processingId === editingRouteId">저장</button>
+          <button class="ghost-button" type="button" @click="closeRouteEdit">취소</button>
+        </div>
+      </form>
+
       <div class="table-wrap work-table-scroll">
         <table class="data-table">
           <thead>
@@ -786,13 +860,14 @@ onUnmounted(() => {
                 </span>
               </td>
               <td>
-                <span v-if="getValue(order, 'workStatus', 'work_status') === 'GATE_IN'">
-                  기사 작업 시작 대기
-                </span>
-                <span v-else-if="getValue(order, 'workStatus', 'work_status') === 'IN_PROGRESS'">
-                  기사 작업 완료 대기
-                </span>
-                <span v-else>상태 조회</span>
+                <button
+                  class="ghost-button route-button"
+                  :class="{ required: !hasCompleteRoute(order) }"
+                  type="button"
+                  @click="openRouteEdit(order)"
+                >
+                  {{ hasCompleteRoute(order) ? '경로 수정' : '경로 설정 필요' }}
+                </button>
               </td>
             </tr>
             <tr v-if="filteredProcessingTasks.length === 0">
@@ -1070,6 +1145,52 @@ onUnmounted(() => {
   font-weight: 800;
 }
 
+.route-form {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) repeat(2, minmax(180px, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: #f8fbfe;
+  border: 1px solid var(--line);
+  border-left: 3px solid #23639c;
+}
+
+.route-form > strong {
+  align-self: center;
+  color: var(--ink-900);
+}
+
+.route-form label {
+  display: grid;
+  gap: 4px;
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.route-form select {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px;
+  color: var(--ink-900);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+
+.route-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.route-button.required {
+  color: #9f1d1d;
+  background: #fff2f1;
+  border-color: #df928d;
+}
+
 .container-message {
   margin-bottom: 10px;
 }
@@ -1183,6 +1304,10 @@ onUnmounted(() => {
 }
 
 @media (max-width: 980px) {
+  .route-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .container-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1205,6 +1330,10 @@ onUnmounted(() => {
   }
 
   .container-form {
+    grid-template-columns: 1fr;
+  }
+
+  .route-form {
     grid-template-columns: 1fr;
   }
 }

@@ -8,6 +8,7 @@ import {
   rejectWorkOrder,
   startWorkOrder,
   updateWorkOrder,
+  updateWorkOrderRoute,
 } from '@/api/adminApi/workOrderApi'
 
 export const useWorkOrderStore = defineStore('workOrder', {
@@ -59,6 +60,18 @@ export const useWorkOrderStore = defineStore('workOrder', {
         throw error
       } finally {
         this.loading = false
+      }
+    },
+
+    async editRoute(workOrderId, route) {
+      this.error = ''
+
+      try {
+        await updateWorkOrderRoute(workOrderId, route)
+        await this.loadWorkOrders()
+      } catch (error) {
+        this.error = error.message || '야드 이동 경로 수정에 실패했습니다.'
+        throw error
       }
     },
 

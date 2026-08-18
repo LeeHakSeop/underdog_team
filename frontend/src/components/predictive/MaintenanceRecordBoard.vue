@@ -106,6 +106,11 @@ const suddenFailureCount = computed(() => records.value.filter((record) => !reco
 const eventReached = (record, timestamp) => !record.isDemo || predictiveDemoSession.observationTime >= timestamp
 const notificationRequested = (eventType) =>
   predictiveDemoSession.notificationRequests.some((item) => item.eventType === eventType)
+
+const demoNotificationText = (eventType) => {
+  if (!predictiveDemoSession.kakaoNotificationsEnabled) return '카카오 알림 사용 안 함'
+  return notificationRequested(eventType) ? '카카오 알림 요청 생성' : '카카오 알림 예정'
+}
 const demoStage = computed(() => {
   if (predictiveDemoSession.observationTime >= predictiveDemoSession.maintenanceAt) return '수리 완료'
   if (predictiveDemoSession.observationTime >= predictiveDemoSession.failureAt) return '고장 발생'
@@ -296,7 +301,7 @@ onMounted(async () => {
                 <span class="event-label">고장 예상</span>
                 <strong>{{ formatDateTime(selectedRecord.alertAt) }}</strong>
                 <small v-if="selectedRecord.isDemo">
-                  {{ notificationRequested('FAILURE_EXPECTED') ? '카카오 알림 요청 생성' : '카카오 알림 예정' }}
+                  {{ demoNotificationText('FAILURE_EXPECTED') }}
                 </small>
                 <small v-else>과거 알림 시점 · 이상 센서 {{ selectedRecord.alertAnomalyCount }}개</small>
               </template>
@@ -320,7 +325,7 @@ onMounted(async () => {
               <strong v-else>대기 중</strong>
               <small v-if="eventReached(selectedRecord, selectedRecord.failureAt)">
                 <template v-if="selectedRecord.isDemo">
-                  {{ notificationRequested('FAILURE') ? '카카오 알림 요청 생성' : '카카오 알림 예정' }}
+                  {{ demoNotificationText('FAILURE') }}
                 </template>
                 <template v-else>과거 고장 시점 · 이상 센서 {{ selectedRecord.failureAnomalyCount }}개</template>
               </small>
