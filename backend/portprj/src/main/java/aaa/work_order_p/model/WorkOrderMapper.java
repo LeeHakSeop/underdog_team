@@ -150,6 +150,15 @@ public interface WorkOrderMapper {
 
     @Update("""
             UPDATE work_order
+            SET start_sector_id = #{startSectorId},
+                destination_sector_id = #{destinationSectorId}
+            WHERE work_order_id = #{workOrderId}
+              AND work_status IN ('DISPATCH_WAITING', 'APPROVED', 'GATE_IN', 'IN_PROGRESS')
+            """)
+    int updateRoute(WorkOrderDTO dto);
+
+    @Update("""
+            UPDATE work_order
             SET work_status = 'CANCELED',
                 is_approved = false
             WHERE work_order_id = #{workOrderId}

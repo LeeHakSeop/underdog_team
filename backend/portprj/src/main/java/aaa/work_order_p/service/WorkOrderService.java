@@ -114,6 +114,35 @@ public class WorkOrderService {
     }
 
     @Transactional
+    public WorkOrderDTO updateRoute(Long workOrderId, WorkOrderDTO route) {
+        WorkOrderDTO current = getWorkOrder(workOrderId);
+        if (!List.of(STATUS_DISPATCH_WAITING, STATUS_APPROVED, STATUS_GATE_IN, STATUS_IN_PROGRESS)
+                .contains(current.getWorkStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "진행 중인 작업만 야드 이동 경로를 수정할 수 있습니다.");
+        }
+
+        WorkOrderDTO update = new WorkOrderDTO();
+        update.setWorkOrderId(workOrderId);
+        update.setContainerId(current.getContainerId());
+        update.setStartSectorId(route == null ? null : route.getStartSectorId());
+        update.setDestinationSectorId(route == null ? null : route.getDestinationSectorId());
+        validateYardSectorAssignment(update, workOrderId);
+
+        if (mapper.updateRoute(update) != 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "야드 이동 경로를 수정하지 못했습니다.");
+        }
+
+        saveHistory(
+                current,
+                current.getWorkStatus(),
+                SYSTEM_ACTOR,
+                "야드 이동 경로 수정",
+                String.format("%d -> %d", update.getStartSectorId(), update.getDestinationSectorId())
+        );
+        return mapper.detail(workOrderId);
+    }
+
+    @Transactional
     public WorkOrderDTO cancel(Long workOrderId) {
         WorkOrderDTO current = getWorkOrder(workOrderId);
 
@@ -272,6 +301,16 @@ public class WorkOrderService {
                     HttpStatus.BAD_REQUEST,
                     "YARD_SECTOR_NOT_FOUND",
                     "목적 야드 섹터를 찾을 수 없습니다.",
+                    null,
+                    null
+            );
+        }
+
+        if (dto.getStartSectorId().equals(dto.getDestinationSectorId())) {
+            throw dispatchValidationException(
+                    HttpStatus.BAD_REQUEST,
+                    "YARD_ROUTE_INVALID",
+                    "출발과 목적 야드 섹터는 서로 달라야 합니다.",
                     null,
                     null
             );
