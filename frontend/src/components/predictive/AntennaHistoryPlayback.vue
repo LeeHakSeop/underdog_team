@@ -16,6 +16,7 @@ import {
 
 const HOUR_MS = 60 * 60 * 1000
 const WINDOW_MS = 14 * 24 * HOUR_MS
+const PROGRESSION_THRESHOLD = 0.4564690824
 
 const metrics = {
   successRate: { sensor: 'success_rate', label: '통신 성공률', unit: '%', color: '#23639c', decimals: 2, range: [60, 100] },
@@ -170,9 +171,47 @@ const riskClass = computed(() => {
   return state ? 'green' : 'blue'
 })
 
-const modelDecision = computed(() => {
+const operationalDecision = computed(() => {
   if (!currentRecord.value) return '기록 없음'
   return currentRecord.value.operationalStateKo
+})
+
+const sensorWarningConfirmed = computed(() =>
+  ['failure_expected', 'failure'].includes(currentRecord.value?.operationalState),
+)
+
+const progressionAdvisory = computed(() => {
+  const probability = currentRecord.value?.progressionProbability
+  if (probability === undefined || probability === null) {
+    return {
+      label: '보조 모델 미연결',
+      detail: '센서 규칙만으로 공식 상태를 판정합니다.',
+      className: 'blue',
+    }
+  }
+
+  const supportsWarning = probability >= PROGRESSION_THRESHOLD
+  const percentage = `${(probability * 100).toFixed(1)}%`
+  const modelName = currentRecord.value?.progressionModel || 'Random Forest'
+
+  if (sensorWarningConfirmed.value && supportsWarning) {
+    return { label: '모델 동의', detail: `${modelName} ${percentage}`, className: 'red' }
+  }
+  if (sensorWarningConfirmed.value) {
+    return {
+      label: '모델 이견 · 경보 유지',
+      detail: `${modelName} ${percentage} · 센서 경보를 취소하지 않음`,
+      className: 'amber',
+    }
+  }
+  if (supportsWarning) {
+    return {
+      label: '집중 관찰',
+      detail: `${modelName} ${percentage} · 공식 고장 예상 전 단계`,
+      className: 'amber',
+    }
+  }
+  return { label: '모델 특이사항 없음', detail: `${modelName} ${percentage}`, className: 'green' }
 })
 
 const toDateTimeLocal = (timestamp) => {
@@ -594,12 +633,18 @@ onBeforeUnmount(() => {
         </div>
         <div>
           <span>운영 상태</span>
-          <strong><span class="status-pill" :class="riskClass">{{ modelDecision }}</span></strong>
+          <strong><span class="status-pill" :class="riskClass">{{ operationalDecision }}</span></strong>
+          <small>센서 5개 이상 6시간 지속 시 고장 예상</small>
         </div>
         <div>
           <span>이상 센서</span>
           <strong>{{ currentRecord?.anomalyCount ?? 0 }} / 8개</strong>
-          <small>현재고장 확률 {{ ((currentRecord?.currentFaultProbability ?? 0) * 100).toFixed(1) }}%</small>
+          <small>L2 현재고장 확률 {{ ((currentRecord?.currentFaultProbability ?? 0) * 100).toFixed(1) }}%</small>
+        </div>
+        <div>
+          <span>전조 진행 보조판단</span>
+          <strong><span class="status-pill" :class="progressionAdvisory.className">{{ progressionAdvisory.label }}</span></strong>
+          <small>{{ progressionAdvisory.detail }}</small>
         </div>
       </div>
 
@@ -690,7 +735,7 @@ onBeforeUnmount(() => {
       </div>
 
       <p class="playback-note">
-        카카오 알림은 `고장 예상` 상태에 처음 진입한 시점을 기준으로 한 번 생성합니다. 상태는 장비별 센서 한계와 지속시간으로 판정하며, 재생 중에는 관찰 시점 이후 기록을 표시하지 않습니다.
+        공식 `고장 예상`은 장비별 센서 5개 이상이 6시간 지속될 때 확정합니다. Random Forest는 전조 진행 가능성을 보조하며 센서 경보를 취소하지 않습니다. 카카오 연동은 시연용 개인 전송 시험 상태로 유지합니다.
       </p>
     </template>
   </section>

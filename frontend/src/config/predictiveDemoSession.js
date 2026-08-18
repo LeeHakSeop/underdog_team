@@ -13,6 +13,7 @@ export const predictiveDemoSession = reactive({
   anomalyCountAtAlert: 0,
   anomalyCountAtFailure: 0,
   maintenanceState: '정상',
+  kakaoNotificationsEnabled: false,
   notificationRequests: [],
 })
 
@@ -20,7 +21,40 @@ export const resetDemoNotifications = () => {
   predictiveDemoSession.notificationRequests = []
 }
 
+export const setKakaoNotificationsEnabled = (enabled) => {
+  predictiveDemoSession.kakaoNotificationsEnabled = Boolean(enabled)
+}
+
+export const fetchKakaoRuntimeStatus = async () => {
+  const response = await fetch('/api/predictive-maintenance/demo/notifications/kakao/config')
+  if (!response.ok) throw new Error('카카오 연결 상태를 확인하지 못했습니다.')
+  return response.json()
+}
+
+export const configureKakaoRuntime = async (accessToken) => {
+  const response = await fetch('/api/predictive-maintenance/demo/notifications/kakao/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken }),
+  })
+  const result = await response.json()
+  if (!response.ok) throw new Error(result.message || '카카오 연결에 실패했습니다.')
+  return result
+}
+
+export const clearKakaoRuntime = async () => {
+  const response = await fetch('/api/predictive-maintenance/demo/notifications/kakao/config', {
+    method: 'DELETE',
+  })
+  if (!response.ok) throw new Error('카카오 연결 해제에 실패했습니다.')
+  return response.json()
+}
+
 export const requestDemoNotification = async (eventType, occurredAt) => {
+  if (!predictiveDemoSession.kakaoNotificationsEnabled) {
+    return { status: 'DISABLED' }
+  }
+
   const eventKey = `${eventType}-${occurredAt}`
   if (predictiveDemoSession.notificationRequests.some((item) => item.eventKey === eventKey)) return
 

@@ -35,7 +35,9 @@ const demoEvents = computed(() => [
     occurredAt: predictiveDemoSession.alertAt,
     anomalyCount: predictiveDemoSession.anomalyCountAtAlert,
     notificationStatus: predictiveDemoSession.notificationRequests
-      .some((item) => item.eventType === 'FAILURE_EXPECTED') ? 'REQUESTED' : 'PENDING',
+      .some((item) => item.eventType === 'FAILURE_EXPECTED')
+      ? 'REQUESTED'
+      : predictiveDemoSession.kakaoNotificationsEnabled ? 'PENDING' : 'DISABLED',
   },
   {
     eventId: 'demo-failure',
@@ -43,7 +45,9 @@ const demoEvents = computed(() => [
     occurredAt: predictiveDemoSession.failureAt,
     anomalyCount: predictiveDemoSession.anomalyCountAtFailure,
     notificationStatus: predictiveDemoSession.notificationRequests
-      .some((item) => item.eventType === 'FAILURE') ? 'REQUESTED' : 'PENDING',
+      .some((item) => item.eventType === 'FAILURE')
+      ? 'REQUESTED'
+      : predictiveDemoSession.kakaoNotificationsEnabled ? 'PENDING' : 'DISABLED',
   },
   {
     eventId: 'demo-maintenance',
@@ -74,6 +78,8 @@ const formatDateTime = (value) => {
 }
 
 const notificationText = (status) => {
+  if (status === 'DISABLED') return '카카오 알림 사용 안 함'
+  if (status === 'PENDING') return '카카오 알림 예정'
   if (status === 'SENT') return '카카오 발송 완료'
   if (status === 'REQUESTED') return '카카오 요청 생성'
   if (status === 'FAILED') return '카카오 발송 실패'

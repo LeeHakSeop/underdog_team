@@ -141,19 +141,9 @@ public interface YardMapMapper {
                 wo.destination_sector_id AS destinationSectorId,
                 destination_sector.sector_name AS destinationSectorName,
                 CONCAT(
-<<<<<<< HEAD
-                    CASE
-                        WHEN wo.work_status IN ('DISPATCH_WAITING', 'APPROVED') THEN '입차 게이트'
-                        WHEN wo.work_status IN ('GATE_IN', 'IN_PROGRESS') THEN COALESCE(gl.gate_name, '입차 게이트')
-                        ELSE '운영 위치 미정'
-                    END,
-                    ' -> ',
-                    COALESCE(ys.sector_name, c.container_location, '목적 섹터 미정')
-=======
                     COALESCE(start_sector.sector_name, current_sector.sector_name, '출발 미정'),
                     ' → ',
                     COALESCE(destination_sector.sector_name, '목적 미정')
->>>>>>> e3435029cf4507fc14cdb7d807ae5fd589cd01b5
                 ) AS routeSummary,
                 wo.reserved_time AS reservedTime
             FROM work_order wo
