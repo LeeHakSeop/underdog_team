@@ -4,6 +4,7 @@ import aaa.container_p.service.ContainerService;
 import aaa.container_p.model.ContainerDTO;
 import aaa.driver_p.model.DriverDTO;
 import aaa.driver_p.model.DriverMapper;
+import aaa.exception_log_p.service.ExceptionLogService;
 import aaa.vehicle_p.model.VehicleDTO;
 import aaa.vehicle_p.model.VehicleMapper;
 import aaa.work_order_p.model.WorkOrderDTO;
@@ -51,6 +52,9 @@ class WorkOrderServiceTest {
 
     @Mock
     private YardSectorService yardSectorService;
+
+    @Mock
+    private ExceptionLogService exceptionLogService;
 
     @InjectMocks
     private WorkOrderService service;
@@ -196,7 +200,7 @@ class WorkOrderServiceTest {
         );
 
         assertEquals(
-                "관리자 최종 승인이 완료된 기사만 작업에 배정할 수 있습니다.",
+                "관리자 최종 확인이 완료된 기사만 작업에 배정할 수 있습니다.",
                 error.getReason()
         );
         verify(mapper, never()).insert(any(WorkOrderDTO.class));
@@ -237,7 +241,7 @@ class WorkOrderServiceTest {
         );
 
         assertEquals(
-                "관리자 최종 승인이 완료된 기사 배정 트레일러가 필요합니다.",
+                "정상 승인된 기사 소속 트레일러만 배정할 수 있습니다.",
                 error.getReason()
         );
         verify(mapper, never()).insert(any(WorkOrderDTO.class));
@@ -322,6 +326,64 @@ class WorkOrderServiceTest {
         WorkStatusHistoryDTO history = captureHistory();
         assertEquals("DISPATCH_WAITING", history.getPrevStatus());
         assertEquals("CANCELED", history.getNewStatus());
+    }
+
+    @Test
+    void updatesMissingRouteWithoutChangingWorkStatus() {
+        WorkOrderDTO current = order("APPROVED", true, 100L);
+        current.setWorkOrderId(43L);
+        WorkOrderDTO updated = order("APPROVED", true, 100L);
+        updated.setWorkOrderId(43L);
+        updated.setStartSectorId(1L);
+        updated.setDestinationSectorId(2L);
+
+        WorkOrderDTO route = new WorkOrderDTO();
+        route.setStartSectorId(1L);
+        route.setDestinationSectorId(2L);
+
+        ContainerDTO container = new ContainerDTO();
+        container.setContainerId(100L);
+        YardSectorDTO start = new YardSectorDTO();
+        start.setSectorId(1L);
+        YardSectorDTO destination = new YardSectorDTO();
+        destination.setSectorId(2L);
+        destination.setSectorStatus("사용가능");
+        destination.setCapacity(40);
+
+        when(mapper.detail(43L)).thenReturn(current, updated);
+        when(containerService.detail(100L)).thenReturn(container);
+        when(yardSectorService.detail(1L)).thenReturn(start);
+        when(yardSectorService.detail(2L)).thenReturn(destination);
+        when(mapper.countActiveBySectorId(2L, 43L)).thenReturn(0);
+        when(mapper.updateRoute(any(WorkOrderDTO.class))).thenReturn(1);
+
+        WorkOrderDTO result = service.updateRoute(43L, route);
+
+        assertEquals("APPROVED", result.getWorkStatus());
+        assertEquals(2L, result.getDestinationSectorId());
+        verify(mapper).updateRoute(any(WorkOrderDTO.class));
+        WorkStatusHistoryDTO history = captureHistory();
+        assertEquals("야드 이동 경로 수정", history.getReason());
+    }
+
+    @Test
+    void rejectsRouteWithSameStartAndDestination() {
+        WorkOrderDTO current = order("APPROVED", true, 100L);
+        when(mapper.detail(44L)).thenReturn(current);
+        when(containerService.detail(100L)).thenReturn(new ContainerDTO());
+        when(yardSectorService.detail(1L)).thenReturn(new YardSectorDTO());
+
+        WorkOrderDTO route = new WorkOrderDTO();
+        route.setStartSectorId(1L);
+        route.setDestinationSectorId(1L);
+
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class,
+                () -> service.updateRoute(44L, route)
+        );
+
+        assertEquals("출발과 목적 야드 섹터는 서로 달라야 합니다.", error.getReason());
+        verify(mapper, never()).updateRoute(any(WorkOrderDTO.class));
     }
 
     @Test

@@ -59,7 +59,6 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/signup",
                                 "/api/auth/login-id/check",
-                                "/api/auth/admin-init",
                                 "/error"
                         ).permitAll()
 
@@ -68,16 +67,14 @@ public class SecurityConfig {
                          * JWT 필터에서 권한은 ROLE_ADMIN 형식으로 등록된다.
                          */
                         .requestMatchers(
-                                "/api/auth/users/**"
+                                "/api/auth/users/**",
+                                "/api/auth/admin-init"
                         ).hasRole("ADMIN")
 
-                        /*
-                         * 현재는 프로젝트 기능 연결 중이라 나머지 API를 허용한다.
-                         * 기능 통합 완료 후 역할별 접근제어로 변경할 수 있다.
-                         */
+                        /* 로그인 이후 사용하는 업무 API는 유효한 JWT가 필요하다. */
                         .requestMatchers(
                                 "/api/**"
-                        ).permitAll()
+                        ).authenticated()
 
                         .anyRequest().permitAll()
                 )

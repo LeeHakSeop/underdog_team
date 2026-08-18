@@ -1,6 +1,7 @@
 ﻿<script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { RouterLink } from 'vue-router'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { yardMapLayout } from '@/config/yardMapLayout'
@@ -18,6 +19,9 @@ const searchQuery = ref('')
 const statusFilter = ref('ALL')
 const showAllPrioritySectors = ref(false)
 const showNormalGates = ref(false)
+const capacityInput = ref('')
+const capacitySaving = ref(false)
+const capacityMessage = ref('')
 let map
 let operationLayer
 let refreshTimer
@@ -58,6 +62,34 @@ const selectedWorkVehicle = computed(() => {
   const selectedFromId = vehicles.value.find((vehicle) => vehicle.workOrderId === selectedWorkOrderId.value)
   return selectedFromId || selectedSectorVehicles.value[0] || null
 })
+
+watch(selectedSector, (sector) => {
+  capacityInput.value = sector?.capacity ?? ''
+  capacityMessage.value = ''
+})
+
+async function saveSectorCapacity() {
+  const capacity = Number(capacityInput.value)
+
+  if (!selectedSector.value) return
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > 10000) {
+    capacityMessage.value = '1~10000 사이 정수를 입력하세요.'
+    return
+  }
+
+  capacitySaving.value = true
+  capacityMessage.value = ''
+
+  try {
+    await yardMapStore.updateSectorCapacity(selectedSector.value.sectorId, capacity)
+    capacityInput.value = capacity
+    capacityMessage.value = '저장됨'
+  } catch (saveError) {
+    capacityMessage.value = saveError.message || '수용량을 저장하지 못했습니다.'
+  } finally {
+    capacitySaving.value = false
+  }
+}
 
 const getNotificationValue = (item, ...keys) => {
   for (const key of keys) {
@@ -566,6 +598,18 @@ const renderOperations = () => {
     }))
   })
 
+  const selectedRouteStart = sectorCenters.get(selectedWorkVehicle.value?.startSectorId)
+  const selectedRouteDestination = sectorCenters.get(selectedWorkVehicle.value?.destinationSectorId)
+  if (selectedRouteStart && selectedRouteDestination) {
+    operationLayer.addLayer(L.polyline([selectedRouteStart, selectedRouteDestination], {
+      color: '#23639c',
+      weight: 4,
+      opacity: 0.9,
+      dashArray: '7 6',
+      interactive: false,
+    }))
+  }
+
   vehiclesBySector.forEach((sectorVehicles, sectorId) => {
     const center = sectorCenters.get(sectorId)
     if (!center) return
@@ -660,6 +704,9 @@ onBeforeUnmount(() => {
             <small>갱신 {{ formatDateTime(lastUpdatedAt) }}</small>
             <small v-if="failedAt">실패 {{ formatDateTime(failedAt) }} / {{ failureCount }}회</small>
           </div>
+          <RouterLink class="toolbar-button toolbar-link" to="/admin/predictive-maintenance">
+            예지보전
+          </RouterLink>
           <button class="toolbar-button" type="button" :disabled="loading" @click="manualRefresh">
             {{ loading ? '갱신 중' : '새로고침' }}
           </button>
@@ -816,7 +863,26 @@ onBeforeUnmount(() => {
             <div><dt>블록</dt><dd>{{ selectedSector?.blockName || '-' }}</dd></div>
             <div><dt>작업환경</dt><dd>{{ environmentTypeLabel(selectedSector?.environmentType) }}</dd></div>
             <div><dt>컨테이너</dt><dd>{{ formatCount(selectedSector?.containerCount) }}</dd></div>
-            <div><dt>수용량</dt><dd>{{ formatCount(selectedSector?.capacity) }}</dd></div>
+            <div class="capacity-detail">
+              <dt>수용량</dt>
+              <dd>
+                <form class="capacity-control" @submit.prevent="saveSectorCapacity">
+                  <input
+                    v-model="capacityInput"
+                    aria-label="선택 섹터 수용량"
+                    inputmode="numeric"
+                    min="1"
+                    max="10000"
+                    step="1"
+                    type="number"
+                  />
+                  <button type="submit" :disabled="capacitySaving">
+                    {{ capacitySaving ? '저장 중' : '저장' }}
+                  </button>
+                </form>
+                <small v-if="capacityMessage" class="capacity-message">{{ capacityMessage }}</small>
+              </dd>
+            </div>
             <div><dt>사용률</dt><dd>{{ formatPercent(selectedSector?.usageRate) }}</dd></div>
             <div><dt>작업 차량</dt><dd>{{ selectedSectorVehicles.length }}대</dd></div>
             <div><dt>대기 차량</dt><dd>{{ formatCount(selectedSector?.waitingVehicleCount) }}</dd></div>
@@ -1269,6 +1335,59 @@ onBeforeUnmount(() => {
   overflow-wrap: anywhere;
   font-size: 11px;
   font-weight: 700;
+}
+
+.toolbar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.capacity-detail {
+  align-items: start;
+}
+
+.capacity-control {
+  display: grid;
+  grid-template-columns: minmax(72px, 110px) 54px;
+  gap: 5px;
+}
+
+.capacity-control input,
+.capacity-control button {
+  min-width: 0;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  font: inherit;
+}
+
+.capacity-control input {
+  padding: 0 7px;
+  color: var(--ink-900);
+  background: #ffffff;
+}
+
+.capacity-control button {
+  color: #ffffff;
+  background: #23639c;
+  border-color: #23639c;
+  cursor: pointer;
+}
+
+.capacity-control button:disabled {
+  color: var(--ink-500);
+  background: #edf1f5;
+  border-color: var(--line);
+  cursor: wait;
+}
+
+.capacity-message {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink-500);
+  font-size: 10px;
 }
 
 .legend {

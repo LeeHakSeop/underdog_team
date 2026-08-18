@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -98,7 +99,7 @@ public class AuthController {
         String status = body.get("status");
 
         if (status == null || status.isBlank()) {
-            throw new IllegalArgumentException("변경할 상태값은 필수입니다.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "변경할 상태값은 필수입니다.");
         }
 
         return authService.updateStatus(userId, status);

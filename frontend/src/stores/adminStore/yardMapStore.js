@@ -1,8 +1,54 @@
 import { defineStore } from 'pinia'
 import { yardMapLayout } from '@/config/yardMapLayout'
 import { fetchYardMapSnapshot } from '@/api/adminApi/yardMapApi'
+import { updateYardSectorCapacity } from '@/api/adminApi/yardSectorApi'
 
 const fallbackGateName = '위치 미설정 게이트'
+
+const gateAliasMap = {
+  'G-IN-01': 'G01',
+  'G-IN-02': 'G03',
+  'G-OUT-01': 'G02',
+  'G-OUT-02': 'G04',
+}
+
+const canonicalGateNumber = (gate) => {
+  const gateNumber = String(gate?.gateNumber || '').trim().toUpperCase()
+  const direction = String(gate?.direction || '').trim().toUpperCase()
+
+  if (gateNumber === 'G01' && direction === 'OUT') return 'G02'
+  if (gateNumber === 'G03' && direction === 'OUT') return 'G04'
+  return gateAliasMap[gateNumber] || gateNumber
+}
+
+const gateEventTime = (gate) => {
+  const value = gate?.latestExitTime || gate?.latestEntryTime
+  const timestamp = value ? new Date(value).getTime() : 0
+  return Number.isFinite(timestamp) ? timestamp : 0
+}
+
+const normalizeGateSummary = (gates) => {
+  const normalized = new Map()
+
+  gates.forEach((gate) => {
+    const gateNumber = canonicalGateNumber(gate)
+    if (!gateNumber) return
+
+    const current = normalized.get(gateNumber)
+    const todayInCount = Number(current?.todayInCount || 0) + Number(gate.todayInCount || 0)
+    const todayOutCount = Number(current?.todayOutCount || 0) + Number(gate.todayOutCount || 0)
+    const latest = !current || gateEventTime(gate) >= gateEventTime(current) ? gate : current
+
+    normalized.set(gateNumber, {
+      ...latest,
+      gateNumber,
+      todayInCount,
+      todayOutCount,
+    })
+  })
+
+  return normalized
+}
 
 export const useYardMapStore = defineStore('yardMap', {
   state: () => ({
@@ -44,18 +90,19 @@ export const useYardMapStore = defineStore('yardMap', {
     }),
 
     gateSummary: (state) => {
-      const gatesByNumber = new Map(state.gates.map((gate) => [gate.gateNumber, gate]))
+      const gatesByNumber = normalizeGateSummary(state.gates)
       const configuredNumbers = new Set(yardMapLayout.gates.map((gate) => gate.gateNumber))
 
       const configured = yardMapLayout.gates.map((gate) => ({
         ...gate,
         ...(gatesByNumber.get(gate.gateNumber) || {}),
-        gateName: gatesByNumber.get(gate.gateNumber)?.gateName || gate.gateName,
+        gateNumber: gate.gateNumber,
+        gateName: gate.gateName,
         direction: gate.direction,
         position: gate.position,
       }))
 
-      const unmapped = state.gates
+      const unmapped = [...gatesByNumber.values()]
         .filter((gate) => !configuredNumbers.has(gate.gateNumber))
         .map((gate) => ({
           ...gate,
@@ -90,6 +137,15 @@ export const useYardMapStore = defineStore('yardMap', {
       } finally {
         this.loading = false
       }
+    },
+
+    async updateSectorCapacity(sectorId, capacity) {
+      const updated = await updateYardSectorCapacity(sectorId, capacity)
+      this.yardSectors = this.yardSectors.map((sector) => (
+        sector.sectorId === sectorId ? { ...sector, ...updated } : sector
+      ))
+      await this.loadYardMap()
+      return updated
     },
   },
 })

@@ -1,7 +1,16 @@
+import { request } from '@/api/apiClient'
+import predictiveMaintenanceMetadata from '@/data/predictive-maintenance-metadata.json'
+
 const requestJson = async (url, errorMessage) => {
-  const response = await fetch(url)
-  if (!response.ok) throw new Error(errorMessage)
-  return response.json()
+  try {
+    return await request(url)
+  } catch (error) {
+    if (error?.message === '로그인이 필요합니다.') {
+      throw error
+    }
+
+    throw new Error(error?.message || errorMessage)
+  }
 }
 
 export const fetchPredictiveEquipment = () =>
@@ -23,8 +32,4 @@ export const fetchPredictiveEvents = (equipmentCode = '') => {
   )
 }
 
-export const fetchPredictiveMetadata = () =>
-  requestJson(
-    '/data/predictive-maintenance-metadata.json',
-    '예지보전 표시 설정을 불러오지 못했습니다.',
-  )
+export const fetchPredictiveMetadata = async () => predictiveMaintenanceMetadata
