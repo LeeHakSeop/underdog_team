@@ -18,9 +18,31 @@ CSV는 화면이 직접 읽지 않는다. 초기 데이터 적재 또는 갱신�
 
 ## 새 환경에서 실행하는 순서
 
-1. PostgreSQL의 `port_db`에서 `DB/predictive_maintenance.sql`을 실행한다.
-2. Spring 백엔드를 실행한다.
-3. 프로젝트 루트의 PowerShell에서 다음 명령으로 데이터를 적재한다.
+1. PostgreSQL과 Spring 백엔드를 실행한다.
+2. 프로젝트 루트의 PowerShell에서 다음 스크립트를 실행한다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\DB\setup_predictive_maintenance.ps1
+```
+
+이 스크립트는 다음 작업을 순서대로 수행한다.
+
+- `DB/predictive_maintenance.sql`로 예지보전 테이블 3개 생성
+- `DB/data/01_dashboard_timeseries.csv`를 백엔드 적재 API로 전송
+- 적재 결과 요약 조회
+
+DB 접속 정보가 기본값과 다르면 다음처럼 지정한다. 비밀번호는 파일에 저장하지 않으며 `psql`이 실행 중에 요청한다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\DB\setup_predictive_maintenance.ps1 `
+  -DatabaseHost localhost `
+  -DatabasePort 5432 `
+  -DatabaseName port_db `
+  -DatabaseUser port_user `
+  -ApiBaseUrl http://localhost
+```
+
+수동으로 적재하려면 PostgreSQL에서 `DB/predictive_maintenance.sql`을 먼저 실행하고, Spring 백엔드를 실행한 뒤 다음 명령을 사용한다.
 
 ```powershell
 curl.exe -X POST `
@@ -28,7 +50,7 @@ curl.exe -X POST `
   http://localhost/api/predictive-maintenance/sensor-data/import
 ```
 
-4. 다음 주소에서 적재 결과를 확인한다.
+3. 다음 주소에서 적재 결과를 확인한다.
 
 ```text
 http://localhost/api/predictive-maintenance/sensor-data/summary
@@ -36,7 +58,7 @@ http://localhost/api/predictive-maintenance/sensor-data/summary
 
 정상 기준은 장비 24개, 센서 데이터 69,120행, 사건 39건이다.
 
-5. Vue 프론트엔드를 실행하고 관리자 메뉴의 `예지보전`에 접속한다.
+4. Vue 프론트엔드를 실행하고 관리자 메뉴의 `예지보전`에 접속한다.
 
 ## 카카오 안전 기본값
 
