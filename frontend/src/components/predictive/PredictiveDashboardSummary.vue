@@ -119,7 +119,7 @@ watch(currentEquipment, loadEvents, { immediate: true })
           <span class="event-dot" :class="eventClasses[event.eventType]"></span>
           <div>
             <strong>{{ eventLabels[event.eventType] || event.eventType }}</strong>
-            <small>{{ formatDateTime(event.occurredAt) }} · 이상 센서 {{ event.anomalyCount ?? 0 }}개</small>
+            <small>{{ formatDateTime(event.occurredAt) }} · 이상 지표 {{ event.anomalyCount ?? 0 }}개</small>
           </div>
           <span class="notification-state">{{ notificationText(event.notificationStatus) }}</span>
         </li>

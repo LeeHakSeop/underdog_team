@@ -19,16 +19,16 @@ const WINDOW_MS = 14 * 24 * HOUR_MS
 const PROGRESSION_THRESHOLD = 0.4564690824
 
 const metrics = {
-  successRate: { sensor: 'success_rate', label: '통신 성공률', unit: '%', color: '#23639c', decimals: 2, range: [60, 100] },
-  responseTimeMs: { sensor: 'response_time_ms', label: '응답 시간', unit: 'ms', color: '#b47c1c', decimals: 1, range: [30, 230] },
-  packetLossRate: { sensor: 'packet_loss_rate', label: '패킷 손실률', unit: '%', color: '#b8403a', decimals: 2, range: [0, 15] },
-  trafficLoad: { sensor: 'traffic_load', label: '트래픽 부하', unit: '', color: '#2b8d9c', decimals: 3, range: [0, 1], comparison: 'context' },
-  temperatureC: { sensor: 'temperature_c', label: '온도', unit: '℃', color: '#d16a32', decimals: 1, range: [10, 45], comparison: 'context' },
-  voltageV: { sensor: 'voltage_v', label: '전압', unit: 'V', color: '#6a7f36', decimals: 2, range: [11, 13] },
-  signalStrengthDbm: { sensor: 'signal_strength_dbm', label: '신호 세기', unit: 'dBm', color: '#4277a8', decimals: 1, range: [50, 100] },
-  retryCount: { sensor: 'retry_count', label: '재시도 횟수', unit: '회', color: '#8d6b3f', decimals: 0, range: [0, 20] },
-  disconnectCount: { sensor: 'disconnect_count', label: '연결 끊김', unit: '회', color: '#9c5362', decimals: 0, range: [0, 10] },
-  errorCount: { sensor: 'error_count', label: '오류 횟수', unit: '회', color: '#6c5c91', decimals: 0, range: [0, 25] },
+  successRate: { sensor: 'success_rate', label: 'OCR 인식률', unit: '%', color: '#23639c', decimals: 2, range: [60, 100] },
+  responseTimeMs: { sensor: 'response_time_ms', label: '차단기 응답', unit: 'ms', color: '#b47c1c', decimals: 1, range: [30, 230] },
+  packetLossRate: { sensor: 'packet_loss_rate', label: '영상 손실률', unit: '%', color: '#b8403a', decimals: 2, range: [0, 15] },
+  trafficLoad: { sensor: 'traffic_load', label: '차로 부하', unit: '', color: '#2b8d9c', decimals: 3, range: [0, 1], comparison: 'context' },
+  temperatureC: { sensor: 'temperature_c', label: '장비 온도', unit: '℃', color: '#d16a32', decimals: 1, range: [10, 45], comparison: 'context' },
+  voltageV: { sensor: 'voltage_v', label: '전원 전압', unit: 'V', color: '#6a7f36', decimals: 2, range: [11, 13] },
+  signalStrengthDbm: { sensor: 'signal_strength_dbm', label: '조명·렌즈 상태', unit: '점', color: '#4277a8', decimals: 1, range: [50, 100] },
+  retryCount: { sensor: 'retry_count', label: '재인식 횟수', unit: '회', color: '#8d6b3f', decimals: 0, range: [0, 20] },
+  disconnectCount: { sensor: 'disconnect_count', label: '장비 끊김', unit: '회', color: '#9c5362', decimals: 0, range: [0, 10] },
+  errorCount: { sensor: 'error_count', label: '처리 오류', unit: '회', color: '#6c5c91', decimals: 0, range: [0, 25] },
 }
 
 const equipmentData = ref({})
@@ -53,6 +53,15 @@ let resizeObserver = null
 const parseCollectedAt = (value) => {
   if (!value) return 0
   return new Date(value.includes('T') ? value : value.replace(' ', 'T')).getTime()
+}
+
+const formatEquipmentLabel = (equipmentId) => {
+  if (equipmentId === DEMO_EQUIPMENT_ID) return '시연용 OCR 게이트 설비 (GT-OCR-018)'
+
+  const number = String(equipmentId || '').match(/\d+$/)?.[0] || String(equipmentId || '').padStart(3, '0')
+  const types = ['OCR', 'BAR', 'KSK', 'WGT', 'NET']
+  const type = types[(Number(number) - 1) % types.length]
+  return `GT-${type}-${number}`
 }
 
 const equipmentOptions = computed(() => [DEMO_EQUIPMENT_ID, ...equipmentCodes.value].sort((a, b) => {
@@ -185,7 +194,7 @@ const progressionAdvisory = computed(() => {
   if (probability === undefined || probability === null) {
     return {
       label: '보조 모델 미연결',
-      detail: '센서 규칙만으로 공식 상태를 판정합니다.',
+      detail: '설비 상태 규칙만으로 공식 상태를 판정합니다.',
       className: 'blue',
     }
   }
@@ -200,7 +209,7 @@ const progressionAdvisory = computed(() => {
   if (sensorWarningConfirmed.value) {
     return {
       label: '모델 이견 · 경보 유지',
-      detail: `${modelName} ${percentage} · 센서 경보를 취소하지 않음`,
+      detail: `${modelName} ${percentage} · 설비 경보를 취소하지 않음`,
       className: 'amber',
     }
   }
@@ -581,7 +590,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="panel playback-panel">
     <div class="section-title playback-heading">
-      <h2>안테나 상태 기록 재생</h2>
+      <h2>게이트 설비 상태 기록 재생</h2>
       <span class="status-pill blue">{{ datasetVersion }} · 최근 14일</span>
     </div>
 
@@ -591,10 +600,10 @@ onBeforeUnmount(() => {
     <template v-else>
       <div class="playback-toolbar">
         <label>
-          <span>안테나</span>
+          <span>게이트 설비</span>
           <select v-model="selectedEquipment">
             <option v-for="equipment in equipmentOptions" :key="equipment" :value="equipment">
-              {{ equipment === DEMO_EQUIPMENT_ID ? '시연용 안테나 (ANT-018 복제)' : equipment }}
+              {{ formatEquipmentLabel(equipment) }}
             </option>
           </select>
         </label>
@@ -622,7 +631,7 @@ onBeforeUnmount(() => {
             </span>
             <span v-else class="alert-badge unavailable">사전 알림 없음 · 급작 고장</span>
           </div>
-          <div v-else class="no-maintenance">이 안테나는 고장·정비 기록이 없습니다.</div>
+          <div v-else class="no-maintenance">이 게이트 설비는 고장·정비 기록이 없습니다.</div>
         </div>
       </div>
 
@@ -634,10 +643,10 @@ onBeforeUnmount(() => {
         <div>
           <span>운영 상태</span>
           <strong><span class="status-pill" :class="riskClass">{{ operationalDecision }}</span></strong>
-          <small>센서 5개 이상 6시간 지속 시 고장 예상</small>
+          <small>상태 지표 5개 이상 6시간 지속 시 고장 예상</small>
         </div>
         <div>
-          <span>이상 센서</span>
+          <span>이상 지표</span>
           <strong>{{ currentRecord?.anomalyCount ?? 0 }} / 8개</strong>
           <small>L2 현재고장 확률 {{ ((currentRecord?.currentFaultProbability ?? 0) * 100).toFixed(1) }}%</small>
         </div>
@@ -694,7 +703,7 @@ onBeforeUnmount(() => {
             <span class="guide danger">장비 한계 이탈</span>
           </template>
           <small v-if="selectedMetricLimit">
-            {{ selectedEquipment }} 정상 한계
+            {{ formatEquipmentLabel(selectedEquipment) }} 정상 한계
             {{ selectedMetricLimit.direction === 'high' ? '≤' : '≥' }}
             {{ formatValue(selectedMetricLimit.limit, selectedMetric) }}
           </small>
@@ -703,7 +712,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div ref="chartWrap" class="chart-wrap">
-        <canvas ref="canvas" aria-label="선택한 관찰 시점까지의 최근 14일 안테나 상태 그래프"></canvas>
+        <canvas ref="canvas" aria-label="선택한 관찰 시점까지의 최근 14일 게이트 설비 상태 그래프"></canvas>
       </div>
 
       <div class="timeline-controls">
@@ -735,7 +744,7 @@ onBeforeUnmount(() => {
       </div>
 
       <p class="playback-note">
-        공식 `고장 예상`은 장비별 센서 5개 이상이 6시간 지속될 때 확정합니다. Random Forest는 전조 진행 가능성을 보조하며 센서 경보를 취소하지 않습니다. 카카오 연동은 시연용 개인 전송 시험 상태로 유지합니다.
+        공식 `고장 예상`은 게이트 설비별 상태 지표 5개 이상이 6시간 지속될 때 확정합니다. Random Forest는 전조 진행 가능성을 보조하며 설비 경보를 취소하지 않습니다. 카카오 연동은 시연용 개인 전송 시험 상태로 유지합니다.
       </p>
     </template>
   </section>

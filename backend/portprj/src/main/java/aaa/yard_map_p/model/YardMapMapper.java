@@ -170,13 +170,8 @@ public interface YardMapMapper {
                 destination_sector.sector_name AS destinationSectorName,
                 CONCAT(
                     COALESCE(start_sector.sector_name, current_sector.sector_name, '출발 미정'),
-<<<<<<< HEAD
                     ' -> ',
                     COALESCE(destination_sector.sector_name, c.container_location, '목적 미정')
-=======
-                    ' → ',
-                    COALESCE(destination_sector.sector_name, '목적 미정')
->>>>>>> 7d3a4933ce2ffc830bc22fdf80b24cd81fe24306
                 ) AS routeSummary,
                 wo.reserved_time AS reservedTime
             FROM work_order wo

@@ -16,7 +16,7 @@ import {
   predictiveMaintenanceTypes,
 } from '@/config/predictiveMaintenance'
 
-const selectedType = ref('ANTENNA')
+const selectedType = ref('GATE_EQUIPMENT')
 const selectedSection = ref('dashboard')
 const kakaoAccessToken = ref('')
 const kakaoConfigured = ref(false)
@@ -157,18 +157,18 @@ const sectionDescriptions = {
           </div>
           <div class="data-basis">
             <span>현재 데이터 기준</span>
-            <strong>V3 운영 정책 기록 재생</strong>
+            <strong>게이트 설비 상태 기록 재생</strong>
           </div>
         </div>
       </section>
 
-      <AntennaHistoryPlayback v-if="selectedType === 'ANTENNA'" />
+      <AntennaHistoryPlayback v-if="selectedType === 'GATE_EQUIPMENT'" />
 
       <PredictiveDashboardSummary @open-maintenance="selectedSection = 'maintenance'" />
     </template>
 
     <MaintenanceRecordBoard
-      v-else-if="selectedSection === 'maintenance' && selectedType === 'ANTENNA'"
+      v-else-if="selectedSection === 'maintenance' && selectedType === 'GATE_EQUIPMENT'"
     />
 
     <section v-else class="panel feature-placeholder">
