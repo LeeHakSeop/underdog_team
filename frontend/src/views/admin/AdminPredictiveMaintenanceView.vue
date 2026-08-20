@@ -5,9 +5,9 @@ import MaintenanceRecordBoard from '@/components/predictive/MaintenanceRecordBoa
 import PredictiveDashboardSummary from '@/components/predictive/PredictiveDashboardSummary.vue'
 import PredictiveTypeSelector from '@/components/predictive/PredictiveTypeSelector.vue'
 import {
+  beginKakaoOAuth,
   predictiveDemoSession,
   clearKakaoRuntime,
-  configureKakaoRuntime,
   fetchKakaoRuntimeStatus,
   setKakaoNotificationsEnabled,
 } from '@/config/predictiveDemoSession'
@@ -16,18 +16,21 @@ import {
   predictiveMaintenanceTypes,
 } from '@/config/predictiveMaintenance'
 
-const selectedType = ref('ANTENNA')
+const selectedType = ref('PORT_EQUIPMENT')
 const selectedSection = ref('dashboard')
-const kakaoAccessToken = ref('')
 const kakaoConfigured = ref(false)
+const kakaoOauthReady = ref(false)
 const kakaoBusy = ref(false)
 const kakaoMessage = ref('연결 상태를 확인하는 중입니다.')
+const kakaoConnections = ref([])
 
 const refreshKakaoStatus = async () => {
   try {
     const status = await fetchKakaoRuntimeStatus()
     kakaoConfigured.value = status.configured
+    kakaoOauthReady.value = status.oauthReady
     kakaoMessage.value = status.message
+    kakaoConnections.value = status.connections || []
     if (!status.configured) setKakaoNotificationsEnabled(false)
   } catch (error) {
     kakaoMessage.value = error.message
@@ -35,29 +38,25 @@ const refreshKakaoStatus = async () => {
 }
 
 const connectKakao = async () => {
-  if (!kakaoAccessToken.value.trim() || kakaoBusy.value) return
+  if (!kakaoOauthReady.value || kakaoBusy.value) return
   kakaoBusy.value = true
   try {
-    const result = await configureKakaoRuntime(kakaoAccessToken.value)
-    kakaoAccessToken.value = ''
-    kakaoConfigured.value = true
-    kakaoMessage.value = result.message
-    setKakaoNotificationsEnabled(true)
+    const result = await beginKakaoOAuth()
+    window.location.assign(result.authorizationUrl)
   } catch (error) {
     kakaoMessage.value = error.message
-  } finally {
     kakaoBusy.value = false
   }
 }
 
-const disconnectKakao = async () => {
+const disconnectKakao = async (userId) => {
   if (kakaoBusy.value) return
   kakaoBusy.value = true
   try {
-    const result = await clearKakaoRuntime()
-    kakaoConfigured.value = false
+    const result = await clearKakaoRuntime(userId)
+    await refreshKakaoStatus()
     kakaoMessage.value = result.message
-    setKakaoNotificationsEnabled(false)
+    if (!kakaoConfigured.value) setKakaoNotificationsEnabled(false)
   } catch (error) {
     kakaoMessage.value = error.message
   } finally {
@@ -67,13 +66,30 @@ const disconnectKakao = async () => {
 
 const setKakaoEnabled = (enabled) => {
   if (enabled && !kakaoConfigured.value) {
-    kakaoMessage.value = '아래에 본인 액세스 토큰을 먼저 연결하세요.'
+    kakaoMessage.value = '카카오 계정을 먼저 연결하세요.'
     return
   }
   setKakaoNotificationsEnabled(enabled)
 }
 
-onMounted(refreshKakaoStatus)
+onMounted(async () => {
+  const url = new URL(window.location.href)
+  const oauthResult = url.searchParams.get('kakao')
+  if (oauthResult) {
+    url.searchParams.delete('kakao')
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  }
+
+  await refreshKakaoStatus()
+  if (oauthResult === 'connected' && kakaoConfigured.value) {
+    kakaoMessage.value = '카카오 계정이 추가되었습니다. 연결된 모든 계정에 알림을 보냅니다.'
+    setKakaoNotificationsEnabled(true)
+  } else if (oauthResult === 'denied') {
+    kakaoMessage.value = '카카오 연결이 취소되었습니다.'
+  } else if (oauthResult === 'failed') {
+    kakaoMessage.value = '카카오 연결에 실패했습니다. 서버 설정과 리다이렉트 URI를 확인하세요.'
+  }
+})
 
 const currentType = computed(() =>
   predictiveMaintenanceTypes.find((type) => type.code === selectedType.value),
@@ -109,7 +125,6 @@ const sectionDescriptions = {
         <div>
           <span class="eyebrow">PREDICTIVE MAINTENANCE</span>
           <h2>{{ currentType?.label }}</h2>
-          <p>{{ currentType?.description }}</p>
         </div>
         <div class="intro-actions">
           <div class="kakao-setting">
@@ -138,21 +153,29 @@ const sectionDescriptions = {
                 ? '시연용 고장 예상·고장 시 알림을 보냅니다.'
                 : '알림 API를 호출하지 않습니다.' }}
             </small>
-            <form v-if="!kakaoConfigured" class="kakao-connect" @submit.prevent="connectKakao">
-              <input
-                v-model="kakaoAccessToken"
-                type="password"
-                autocomplete="off"
-                placeholder="카카오 액세스 토큰"
-                aria-label="카카오 액세스 토큰"
-              />
-              <button type="submit" :disabled="kakaoBusy || !kakaoAccessToken.trim()">
-                이번 실행에 연결
-              </button>
-            </form>
-            <button v-else type="button" class="kakao-disconnect" :disabled="kakaoBusy" @click="disconnectKakao">
-              연결 해제
+            <button
+              type="button"
+              class="kakao-connect-button"
+              :disabled="kakaoBusy || !kakaoOauthReady"
+              @click="connectKakao"
+            >
+              {{ kakaoBusy
+                ? '처리 중'
+                : kakaoConfigured ? '다른 카카오 계정 추가' : '카카오 계정 연결' }}
             </button>
+            <ul v-if="kakaoConnections.length" class="kakao-account-list">
+              <li v-for="connection in kakaoConnections" :key="connection.userId">
+                <span>{{ connection.label }}</span>
+                <button
+                  type="button"
+                  class="kakao-disconnect"
+                  :disabled="kakaoBusy"
+                  @click="disconnectKakao(connection.userId)"
+                >
+                  해제
+                </button>
+              </li>
+            </ul>
             <small class="kakao-status">{{ kakaoMessage }}</small>
           </div>
           <div class="data-basis">
@@ -162,13 +185,13 @@ const sectionDescriptions = {
         </div>
       </section>
 
-      <AntennaHistoryPlayback v-if="selectedType === 'ANTENNA'" />
+      <AntennaHistoryPlayback v-if="selectedType === 'PORT_EQUIPMENT'" />
 
       <PredictiveDashboardSummary @open-maintenance="selectedSection = 'maintenance'" />
     </template>
 
     <MaintenanceRecordBoard
-      v-else-if="selectedSection === 'maintenance' && selectedType === 'ANTENNA'"
+      v-else-if="selectedSection === 'maintenance' && selectedType === 'PORT_EQUIPMENT'"
     />
 
     <section v-else class="panel feature-placeholder">
@@ -221,27 +244,22 @@ const sectionDescriptions = {
   background: linear-gradient(135deg, #ffffff, #e9f1f7);
 }
 
-.intro-panel h2,
-.intro-panel p {
+.intro-panel h2 {
   margin: 0;
 }
 
 .intro-panel h2 {
-  margin-top: 3px;
+  margin-top: 5px;
   color: #183b5d;
-  font-size: 21px;
-}
-
-.intro-panel p {
-  margin-top: 4px;
-  color: var(--ink-500);
+  font-size: 27px;
+  line-height: 1.2;
 }
 
 .eyebrow {
   color: var(--blue-700);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 }
 
 .data-basis {
@@ -258,7 +276,7 @@ const sectionDescriptions = {
 }
 
 .kakao-setting {
-  min-width: 250px;
+  min-width: 290px;
   padding: 7px 9px;
   background: #ffffff;
   border: 1px solid #aebdca;
@@ -303,27 +321,19 @@ const sectionDescriptions = {
   margin-top: 4px;
 }
 
-.kakao-connect {
-  display: grid;
-  grid-template-columns: minmax(150px, 1fr) auto;
-  gap: 4px;
+.kakao-connect-button {
+  width: 100%;
   margin-top: 6px;
 }
 
-.kakao-connect input,
-.kakao-connect button,
+.kakao-connect-button,
 .kakao-disconnect {
   min-height: 28px;
   border: 1px solid #aebdca;
   font-size: 11px;
 }
 
-.kakao-connect input {
-  min-width: 0;
-  padding: 0 7px;
-}
-
-.kakao-connect button,
+.kakao-connect-button,
 .kakao-disconnect {
   color: #ffffff;
   background: #28496d;
@@ -331,9 +341,28 @@ const sectionDescriptions = {
 }
 
 .kakao-disconnect {
-  width: 100%;
-  margin-top: 6px;
+  padding: 2px 9px;
   background: #596b7b;
+}
+
+.kakao-account-list {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kakao-account-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 5px 4px 8px;
+  color: #40566b;
+  background: #f4f7fa;
+  border: 1px solid #c8d3dc;
+  font-size: 10px;
 }
 
 .kakao-status {

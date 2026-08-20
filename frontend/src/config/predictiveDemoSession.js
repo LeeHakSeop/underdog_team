@@ -1,8 +1,8 @@
 import { reactive } from 'vue'
 import { request } from '@/api/apiClient'
 
-export const DEMO_EQUIPMENT_ID = 'DEMO-ANT'
-export const DEMO_SOURCE_EQUIPMENT_ID = 'ANT-018'
+export const DEMO_EQUIPMENT_ID = 'DEMO-TC'
+export const DEMO_SOURCE_EQUIPMENT_ID = 'TC-006'
 
 export const predictiveDemoSession = reactive({
   initialized: false,
@@ -30,16 +30,12 @@ export const fetchKakaoRuntimeStatus = async () => {
   return request('/api/predictive-maintenance/demo/notifications/kakao/config')
 }
 
-export const configureKakaoRuntime = async (accessToken) => {
-  return request('/api/predictive-maintenance/demo/notifications/kakao/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ accessToken }),
-  })
+export const beginKakaoOAuth = async () => {
+  return request('/api/predictive-maintenance/demo/notifications/kakao/oauth/authorize')
 }
 
-export const clearKakaoRuntime = async () => {
-  return request('/api/predictive-maintenance/demo/notifications/kakao/config', {
+export const clearKakaoRuntime = async (userId) => {
+  return request(`/api/predictive-maintenance/demo/notifications/kakao/config/${encodeURIComponent(userId)}`, {
     method: 'DELETE',
   })
 }
@@ -52,7 +48,7 @@ export const requestDemoNotification = async (eventType, occurredAt) => {
   const eventKey = `${eventType}-${occurredAt}`
   if (predictiveDemoSession.notificationRequests.some((item) => item.eventKey === eventKey)) return
 
-  const request = {
+  const notificationRequest = {
     eventKey,
     equipmentId: DEMO_EQUIPMENT_ID,
     eventType,
@@ -60,16 +56,16 @@ export const requestDemoNotification = async (eventType, occurredAt) => {
     requestedAt: Date.now(),
     status: 'DEMO_REQUESTED',
   }
-  predictiveDemoSession.notificationRequests.push(request)
+  predictiveDemoSession.notificationRequests.push(notificationRequest)
 
   try {
     const result = await request('/api/predictive-maintenance/demo/notifications/kakao', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
+      body: JSON.stringify(notificationRequest),
     })
-    request.status = result.status || 'SENT'
+    notificationRequest.status = result.status || 'SENT'
   } catch {
-    request.status = 'FAILED'
+    notificationRequest.status = 'FAILED'
   }
 }

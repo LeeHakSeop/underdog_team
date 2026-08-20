@@ -59,6 +59,7 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/signup",
                                 "/api/auth/login-id/check",
+                                "/api/predictive-maintenance/demo/notifications/kakao/oauth/callback",
                                 "/error"
                         ).permitAll()
 
@@ -68,7 +69,8 @@ public class SecurityConfig {
                          */
                         .requestMatchers(
                                 "/api/auth/users/**",
-                                "/api/auth/admin-init"
+                                "/api/auth/admin-init",
+                                "/api/predictive-maintenance/demo/notifications/**"
                         ).hasRole("ADMIN")
 
                         /* 로그인 이후 사용하는 업무 API는 유효한 JWT가 필요하다. */
