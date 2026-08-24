@@ -728,7 +728,10 @@ onBeforeUnmount(() => {
           </div>
           <div class="summary-content">
             <div class="operation-status">
-              <span>{{ operationRisk.label }}</span>
+              <div class="operation-alert-title">
+                <b>{{ operationRisk.tone === 'danger' ? '위험' : operationRisk.tone === 'warning' ? '주의' : '정상' }}</b>
+                <span>{{ operationRisk.label }}</span>
+              </div>
               <p>{{ operationRisk.message }}</p>
               <dl>
                 <div><dt>원인</dt><dd>{{ operationRisk.cause }}</dd></div>
@@ -1117,42 +1120,135 @@ onBeforeUnmount(() => {
 }
 
 .operation-brief {
-  border-left: 5px solid var(--green-600);
+  border-left: 0;
+  border-top: 6px solid var(--green-600);
+  background: #f2fbf5;
 }
 
 .operation-brief.warning {
-  border-left-color: var(--amber-500);
+  border-top-color: #d28a00;
+  background: #fff5dc;
 }
 
 .operation-brief.danger {
-  border-left-color: var(--red-500);
+  border-top-color: #c42f2a;
+  background: #fff0ef;
+}
+
+.operation-brief.warning .summary-heading {
+  color: #6c4300;
+  background: #ffe1a6;
+  border-bottom-color: #d9a53f;
+}
+
+.operation-brief.danger .summary-heading {
+  color: #ffffff;
+  background: #b52d28;
+  border-bottom-color: #91231f;
+}
+
+.operation-brief.danger .summary-heading small {
+  color: #ffe7e5;
 }
 
 .operation-status {
+  position: relative;
   display: grid;
-  gap: 8px;
-  padding: 9px;
-  background: #f8fafc;
-  border: 1px solid #c7d1dc;
+  gap: 10px;
+  padding: 12px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 2px solid #7fc59e;
+  box-shadow: 0 10px 24px rgba(23, 38, 54, 0.14);
 }
 
-.operation-status span {
-  color: #173b60;
-  font-size: 18px;
+.operation-status::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: #2f7d57;
+  content: '';
+}
+
+.operation-brief.warning .operation-status {
+  border-color: #d28a00;
+  background: #fffaf0;
+  box-shadow: 0 10px 24px rgba(154, 99, 13, 0.2);
+}
+
+.operation-brief.warning .operation-status::before {
+  background: #d28a00;
+}
+
+.operation-brief.danger .operation-status {
+  border-color: #c42f2a;
+  background: #fff6f5;
+  box-shadow: 0 12px 28px rgba(184, 64, 58, 0.28);
+}
+
+.operation-brief.danger .operation-status::before {
+  background: repeating-linear-gradient(
+    135deg,
+    #c42f2a 0,
+    #c42f2a 8px,
+    #7f1d1d 8px,
+    #7f1d1d 16px
+  );
+}
+
+.operation-alert-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 6px;
+}
+
+.operation-alert-title b {
+  display: inline-grid;
+  min-width: 42px;
+  min-height: 30px;
+  place-items: center;
+  color: #ffffff;
+  background: #2f7d57;
+  font-size: 13px;
   font-weight: 900;
+}
+
+.operation-brief.warning .operation-alert-title b {
+  color: #3d2700;
+  background: #f0b429;
+}
+
+.operation-brief.danger .operation-alert-title b {
+  background: #c42f2a;
+}
+
+.operation-alert-title span {
+  color: #173b60;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.operation-brief.warning .operation-alert-title span {
+  color: #7a4b00;
+}
+
+.operation-brief.danger .operation-alert-title span {
+  color: #9f1f1b;
 }
 
 .operation-status p {
   margin: 0;
-  color: var(--ink-700);
-  font-size: 12px;
-  font-weight: 800;
+  padding-left: 6px;
+  color: var(--ink-900);
+  font-size: 13px;
+  font-weight: 900;
   line-height: 1.45;
 }
 
 .operation-status dl {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   margin: 0;
 }
 
@@ -1160,6 +1256,9 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 6px;
+  padding: 6px 7px;
+  background: #f8fafc;
+  border: 1px solid #d8e1ea;
 }
 
 .operation-status dt {
@@ -1172,7 +1271,7 @@ onBeforeUnmount(() => {
   margin: 0;
   color: var(--ink-900);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 900;
   line-height: 1.35;
 }
 

@@ -1,14 +1,14 @@
 export const predictiveMaintenanceTypes = [
   {
-    code: 'ANTENNA',
-    label: '안테나 예지보전',
-    description: '안테나별 센서 이상과 지속시간을 바탕으로 운영 상태와 고장 전조를 확인합니다.',
+    code: 'GATE_EQUIPMENT',
+    label: '게이트 설비 예지보전',
+    description: 'OCR 카메라, 차단기, 키오스크, 계근·네트워크 장비의 상태 지표와 지속시간을 바탕으로 고장 전조를 확인합니다.',
     enabled: true,
   },
   {
-    code: 'TYPE_2',
-    label: '두 번째 설비',
-    description: '데이터 계약이 확정되면 같은 화면 구조에 연결합니다.',
+    code: 'YARD_EQUIPMENT',
+    label: '야드 장비',
+    description: '야드 장비 데이터 계약이 확정되면 같은 화면 구조에 연결합니다.',
     enabled: false,
   },
 ]

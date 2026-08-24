@@ -71,9 +71,9 @@ const handleSignupCompleted = () => {
 <style scoped>
 .auth-page {
   display: grid;
-  height: 100dvh;
+  min-height: 100dvh;
   grid-template-columns: minmax(390px, 42fr) minmax(620px, 58fr);
-  overflow: hidden;
+  overflow-x: hidden;
   background: #f4f7fa;
 }
 
@@ -154,9 +154,9 @@ const handleSignupCompleted = () => {
   display: flex;
   min-width: 0;
   min-height: 0;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  overflow: hidden;
+  overflow-y: auto;
   padding: 44px 56px;
   background: #f4f7fa;
 }
@@ -164,9 +164,9 @@ const handleSignupCompleted = () => {
 .auth-workspace {
   width: 100%;
   max-width: 760px;
-  height: min(680px, calc(100dvh - 56px));
+  min-height: min(680px, calc(100dvh - 88px));
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   gap: 30px;
 }
 

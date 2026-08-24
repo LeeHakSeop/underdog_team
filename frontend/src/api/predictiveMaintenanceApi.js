@@ -14,7 +14,7 @@ const requestJson = async (url, errorMessage) => {
 }
 
 export const fetchPredictiveEquipment = () =>
-  requestJson('/api/predictive-maintenance/equipment', '안테나 목록을 불러오지 못했습니다.')
+  requestJson('/api/predictive-maintenance/equipment', '게이트 설비 목록을 불러오지 못했습니다.')
 
 export const fetchPredictiveSensorData = (equipmentCode) =>
   requestJson(

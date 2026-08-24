@@ -47,6 +47,15 @@ const formatDateTime = (timestamp) => {
   }).format(new Date(timestamp))
 }
 
+const formatEquipmentLabel = (equipmentId) => {
+  if (equipmentId === DEMO_EQUIPMENT_ID) return '시연용 OCR 게이트 설비'
+
+  const number = String(equipmentId || '').match(/\d+$/)?.[0] || String(equipmentId || '').padStart(3, '0')
+  const types = ['OCR', 'BAR', 'KSK', 'WGT', 'NET']
+  const type = types[(Number(number) - 1) % types.length]
+  return `GT-${type}-${number}`
+}
+
 const filteredRecords = computed(() => {
   if (selectedEquipment.value === 'ALL') return records.value
   return records.value.filter((record) => record.equipmentId === selectedEquipment.value)
@@ -65,7 +74,7 @@ const timelineEvents = computed(() =>
           type: 'alert',
           label: '고장 예상',
           timestamp: record.alertAt,
-          note: record.isDemo ? '카카오 알림 요청 생성' : `이상 센서 ${record.alertAnomalyCount}개`,
+          note: record.isDemo ? '카카오 알림 요청 생성' : `이상 지표 ${record.alertAnomalyCount}개`,
         })
       }
       if (record.failureAt && eventReached(record, record.failureAt)) {
@@ -77,7 +86,7 @@ const timelineEvents = computed(() =>
           type: 'failure',
           label: '실제 고장',
           timestamp: record.failureAt,
-          note: record.isDemo ? '카카오 알림 요청 생성' : `이상 센서 ${record.failureAnomalyCount}개`,
+          note: record.isDemo ? '카카오 알림 요청 생성' : `이상 지표 ${record.failureAnomalyCount}개`,
         })
       }
       if (record.maintenanceAt && eventReached(record, record.maintenanceAt)) {
@@ -206,10 +215,10 @@ onMounted(async () => {
     <div class="board-header">
       <div>
         <span class="eyebrow">FAILURE & MAINTENANCE HISTORY</span>
-        <h2>안테나 고장·정비 기록</h2>
+        <h2>게이트 설비 고장·정비 기록</h2>
         <p>고장 예상 알림부터 실제 고장과 수리 완료까지의 사건을 시간순으로 확인합니다.</p>
       </div>
-      <span class="prototype-note">시연용 안테나는 그래프 재생 시점과 연동</span>
+      <span class="prototype-note">시연용 게이트 설비는 그래프 재생 시점과 연동</span>
     </div>
 
     <div v-if="loading" class="message-state">고장·정비 기록을 불러오는 중입니다.</div>
@@ -221,11 +230,11 @@ onMounted(async () => {
         <div><span>사전 알림 대상</span><strong>{{ alertedRecordCount }}건</strong></div>
         <div><span>급작 고장</span><strong>{{ suddenFailureCount }}건</strong></div>
         <label>
-          <span>안테나별 보기</span>
+          <span>설비별 보기</span>
           <select v-model="selectedEquipment" :disabled="viewMode === 'timeline'">
-            <option value="ALL">전체 안테나</option>
+            <option value="ALL">전체 설비</option>
             <option v-for="equipment in equipmentOptions" :key="equipment" :value="equipment">
-              {{ equipment === DEMO_EQUIPMENT_ID ? '시연용 안테나' : equipment }}
+              {{ formatEquipmentLabel(equipment) }}
             </option>
           </select>
         </label>
@@ -237,14 +246,14 @@ onMounted(async () => {
           :class="{ active: viewMode === 'equipment' }"
           @click="viewMode = 'equipment'"
         >
-          안테나별 기록
+          설비별 기록
         </button>
         <button
           type="button"
           :class="{ active: viewMode === 'timeline' }"
           @click="openAllRecords"
         >
-          모든 안테나 기록
+          모든 설비 기록
         </button>
       </div>
 
@@ -263,25 +272,25 @@ onMounted(async () => {
             @click="selectedRecordId = record.id"
           >
             <span class="record-item-top">
-              <strong>{{ record.isDemo ? '시연용 안테나' : record.equipmentId }}</strong>
+              <strong>{{ formatEquipmentLabel(record.equipmentId) }}</strong>
               <span v-if="record.isDemo" class="status-pill blue">{{ demoStage }}</span>
               <span v-else class="status-pill green">수리 완료</span>
             </span>
             <span v-if="record.isDemo">관찰 {{ formatDateTime(predictiveDemoSession.observationTime) }}</span>
             <span v-else>{{ formatDateTime(record.maintenanceAt) }}</span>
-            <small v-if="record.isDemo">ANT-018 고장 사례 실시간 재생</small>
+            <small v-if="record.isDemo">GT-OCR-018 고장 사례 실시간 재생</small>
             <small v-else-if="record.alertAt">사전 알림 {{ formatDateTime(record.alertAt) }}</small>
             <small v-else class="sudden-text">사전 알림 없음 · 급작 고장</small>
           </button>
           <div v-if="!filteredRecords.length" class="empty-list">
-            선택한 안테나에는 수리 기록이 없습니다.
+            선택한 게이트 설비에는 수리 기록이 없습니다.
           </div>
         </aside>
 
         <article v-if="selectedRecord" class="record-detail panel">
           <div class="detail-title">
             <div>
-              <span>{{ selectedRecord.isDemo ? '시연용 안테나' : selectedRecord.equipmentId }}</span>
+              <span>{{ formatEquipmentLabel(selectedRecord.equipmentId) }}</span>
               <h3>고장·수리 이력</h3>
             </div>
             <span v-if="selectedRecord.isDemo" class="status-pill blue">{{ demoStage }}</span>
@@ -303,7 +312,7 @@ onMounted(async () => {
                 <small v-if="selectedRecord.isDemo">
                   {{ demoNotificationText('FAILURE_EXPECTED') }}
                 </small>
-                <small v-else>과거 알림 시점 · 이상 센서 {{ selectedRecord.alertAnomalyCount }}개</small>
+                <small v-else>과거 알림 시점 · 이상 지표 {{ selectedRecord.alertAnomalyCount }}개</small>
               </template>
               <template v-else-if="selectedRecord.isDemo">
                 <span class="event-label">고장 예상</span>
@@ -327,7 +336,7 @@ onMounted(async () => {
                 <template v-if="selectedRecord.isDemo">
                   {{ demoNotificationText('FAILURE') }}
                 </template>
-                <template v-else>과거 고장 시점 · 이상 센서 {{ selectedRecord.failureAnomalyCount }}개</template>
+                <template v-else>과거 고장 시점 · 이상 지표 {{ selectedRecord.failureAnomalyCount }}개</template>
               </small>
             </section>
 
@@ -348,11 +357,11 @@ onMounted(async () => {
         </div>
       </div>
 
-      <section v-else class="timeline-history" aria-label="모든 안테나 고장·정비 기록">
+      <section v-else class="timeline-history" aria-label="모든 게이트 설비 고장·정비 기록">
         <div class="timeline-heading">
           <div>
-            <strong>모든 안테나 기록</strong>
-            <span>전체 안테나의 고장 예상·실제 고장·수리 완료를 최근순으로 표시합니다.</span>
+            <strong>모든 게이트 설비 기록</strong>
+            <span>전체 게이트 설비의 고장 예상·실제 고장·수리 완료를 최근순으로 표시합니다.</span>
           </div>
           <strong>{{ timelineEvents.length }}건</strong>
         </div>
@@ -367,7 +376,7 @@ onMounted(async () => {
           >
             <time>{{ formatDateTime(event.timestamp) }}</time>
             <span class="timeline-type" :class="event.type">{{ event.label }}</span>
-            <strong>{{ event.isDemo ? '시연용 안테나' : event.equipmentId }}</strong>
+            <strong>{{ formatEquipmentLabel(event.equipmentId) }}</strong>
             <span class="timeline-note">{{ event.note }}</span>
             <span class="timeline-link">상세 보기</span>
           </button>
