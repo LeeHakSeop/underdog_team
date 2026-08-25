@@ -6,7 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestClient;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class KakaoMessageServiceTest {
 
@@ -37,7 +41,11 @@ class KakaoMessageServiceTest {
     }
 
     private KakaoMessageService service(boolean enabled, boolean dryRun) {
-        KakaoMessageService service = new KakaoMessageService(RestClient.builder(), new ObjectMapper());
+        KakaoOAuthService oauthService = mock(KakaoOAuthService.class);
+        when(oauthService.validTokens()).thenReturn(List.of());
+        KakaoMessageService service = new KakaoMessageService(
+                RestClient.builder(), new ObjectMapper(), oauthService
+        );
         ReflectionTestUtils.setField(service, "enabled", enabled);
         ReflectionTestUtils.setField(service, "dryRun", dryRun);
         ReflectionTestUtils.setField(service, "accessToken", "");

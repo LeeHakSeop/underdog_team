@@ -1,12 +1,23 @@
--- 안테나 예지보전 최소 스키마 (PostgreSQL)
--- 구성: 장비 1개 + 센서 시계열 1개 + 사건/알림 이력 1개 = 총 3개 테이블
+-- 항만 운영장비 예지보전 스키마 (PostgreSQL)
+-- 운영 데이터 3개 테이블과 카카오 OAuth 다중 연결정보 테이블로 구성한다.
+
+-- 카카오 OAuth 토큰은 서버 암호화 후 계정별로 저장한다.
+CREATE TABLE IF NOT EXISTS kakao_oauth_connection (
+    user_id VARCHAR(100) PRIMARY KEY,
+    access_token_encrypted TEXT NOT NULL,
+    refresh_token_encrypted TEXT NOT NULL,
+    access_expires_at TIMESTAMP NOT NULL,
+    refresh_expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 -- 현재 프로젝트에서는 CSV를 pm_sensor_data에 적재하고, 판정 결과로 pm_event를 생성한다.
 
 CREATE TABLE IF NOT EXISTS pm_equipment (
     equipment_id BIGSERIAL PRIMARY KEY,
     equipment_code VARCHAR(50) NOT NULL UNIQUE,
     equipment_name VARCHAR(100) NOT NULL,
-    equipment_type VARCHAR(30) NOT NULL DEFAULT 'ANTENNA',
+    equipment_type VARCHAR(30) NOT NULL DEFAULT 'PORT_EQUIPMENT',
     location_code VARCHAR(50),
     operation_status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     installed_at DATE,
@@ -131,7 +142,11 @@ CREATE INDEX IF NOT EXISTS idx_pm_event_notification
     ON pm_event(notification_status, occurred_at)
     WHERE notification_status IN ('PENDING', 'FAILED');
 
--- 현재 V3 CSV의 24개 안테나 기본정보.
+-- 기존 안테나 코드로 구축된 DB라면 센서·이벤트 FK를 유지한 채 새 장비 코드로 전환한다.
+-- psql의 현재 스크립트 위치 기준으로 실행되므로 다른 컴퓨터에서도 같은 폴더 구조를 사용한다.
+\ir 20260819_reframe_predictive_equipment.sql
+
+-- 프로젝트에서 관찰하는 항만 운영장비 24대의 기본정보.
 -- 같은 코드를 다시 실행해도 중복 생성되지 않는다.
 INSERT INTO pm_equipment (
     equipment_code,
@@ -139,12 +154,32 @@ INSERT INTO pm_equipment (
     equipment_type,
     location_code
 )
-SELECT
-    'ANT-' || LPAD(number::TEXT, 3, '0'),
-    '안테나 ' || LPAD(number::TEXT, 3, '0'),
-    'ANTENNA',
-    'TG-' || LPAD((((number - 1) / 4) + 1)::TEXT, 2, '0')
-FROM generate_series(1, 24) AS number
+SELECT * FROM (VALUES
+    ('GAT-001', '게이트 자동인식 장치 01', 'GATE_RECOGNITION', 'GATE-01'),
+    ('GAT-002', '게이트 자동인식 장치 02', 'GATE_RECOGNITION', 'GATE-02'),
+    ('GAT-003', '게이트 자동인식 장치 03', 'GATE_RECOGNITION', 'GATE-03'),
+    ('GAT-004', '게이트 자동인식 장치 04', 'GATE_RECOGNITION', 'GATE-04'),
+    ('QC-001', '안벽 컨테이너 크레인 제어장치 01', 'QUAY_CRANE', 'QUAY-01'),
+    ('QC-002', '안벽 컨테이너 크레인 제어장치 02', 'QUAY_CRANE', 'QUAY-02'),
+    ('QC-003', '안벽 컨테이너 크레인 제어장치 03', 'QUAY_CRANE', 'QUAY-03'),
+    ('QC-004', '안벽 컨테이너 크레인 제어장치 04', 'QUAY_CRANE', 'QUAY-04'),
+    ('QC-005', '안벽 컨테이너 크레인 제어장치 05', 'QUAY_CRANE', 'QUAY-05'),
+    ('QC-006', '안벽 컨테이너 크레인 제어장치 06', 'QUAY_CRANE', 'QUAY-06'),
+    ('QC-007', '안벽 컨테이너 크레인 제어장치 07', 'QUAY_CRANE', 'QUAY-07'),
+    ('QC-008', '안벽 컨테이너 크레인 제어장치 08', 'QUAY_CRANE', 'QUAY-08'),
+    ('TC-001', '트랜스퍼 크레인 제어장치 01', 'TRANSFER_CRANE', 'YARD-TC-01'),
+    ('TC-002', '트랜스퍼 크레인 제어장치 02', 'TRANSFER_CRANE', 'YARD-TC-02'),
+    ('TC-003', '트랜스퍼 크레인 제어장치 03', 'TRANSFER_CRANE', 'YARD-TC-03'),
+    ('TC-004', '트랜스퍼 크레인 제어장치 04', 'TRANSFER_CRANE', 'YARD-TC-04'),
+    ('TC-005', '트랜스퍼 크레인 제어장치 05', 'TRANSFER_CRANE', 'YARD-TC-05'),
+    ('TC-006', '트랜스퍼 크레인 제어장치 06', 'TRANSFER_CRANE', 'YARD-TC-06'),
+    ('TC-007', '트랜스퍼 크레인 제어장치 07', 'TRANSFER_CRANE', 'YARD-TC-07'),
+    ('TC-008', '트랜스퍼 크레인 제어장치 08', 'TRANSFER_CRANE', 'YARD-TC-08'),
+    ('YT-001', '야드 트랙터 운행 제어장치 01', 'YARD_TRACTOR', 'YARD-YT-01'),
+    ('YT-002', '야드 트랙터 운행 제어장치 02', 'YARD_TRACTOR', 'YARD-YT-02'),
+    ('YT-003', '야드 트랙터 운행 제어장치 03', 'YARD_TRACTOR', 'YARD-YT-03'),
+    ('YT-004', '야드 트랙터 운행 제어장치 04', 'YARD_TRACTOR', 'YARD-YT-04')
+) AS seed(equipment_code, equipment_name, equipment_type, location_code)
 ON CONFLICT (equipment_code) DO UPDATE SET
     equipment_name = EXCLUDED.equipment_name,
     equipment_type = EXCLUDED.equipment_type,
@@ -155,7 +190,7 @@ ON CONFLICT (equipment_code) DO UPDATE SET
 -- SELECT e.equipment_code, s.collected_at, s.success_rate, s.operational_state
 -- FROM pm_sensor_data s
 -- JOIN pm_equipment e ON e.equipment_id = s.equipment_id
--- WHERE e.equipment_code = 'ANT-018'
+-- WHERE e.equipment_code = 'TC-006'
 -- ORDER BY s.collected_at;
 
 -- 점검·정비 화면 조회 예시

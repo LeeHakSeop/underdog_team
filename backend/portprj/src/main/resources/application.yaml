@@ -56,6 +56,12 @@ weather:
       danger: ${WEATHER_RISK_VISIBILITY_DANGER:1000}
 
 kakao:
+  oauth:
+    client-id: ${KAKAO_CLIENT_ID:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost/api/predictive-maintenance/demo/notifications/kakao/oauth/callback}
+    frontend-return-url: ${KAKAO_FRONTEND_RETURN_URL:http://localhost:5173/admin/predictive-maintenance}
+    token-encryption-key: ${KAKAO_TOKEN_ENCRYPTION_KEY:}
   message:
     enabled: ${KAKAO_MESSAGE_ENABLED:false}
     dry-run: ${KAKAO_MESSAGE_DRY_RUN:true}

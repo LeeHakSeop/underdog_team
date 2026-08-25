@@ -14,6 +14,7 @@ import org.springframework.web.client.RestClientResponseException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -24,6 +25,7 @@ public class KakaoMessageService {
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
+    private final KakaoOAuthService kakaoOAuthService;
 
     @Value("${kakao.message.enabled:false}")
     private boolean enabled;
@@ -40,32 +42,41 @@ public class KakaoMessageService {
     @Value("${kakao.message.dashboard-url:http://localhost:5173}")
     private String dashboardUrl;
 
-    private volatile String runtimeAccessToken = "";
-    private volatile String runtimeUserId = "";
-
-    public KakaoMessageService(RestClient.Builder restClientBuilder, ObjectMapper objectMapper) {
+    public KakaoMessageService(
+            RestClient.Builder restClientBuilder,
+            ObjectMapper objectMapper,
+            KakaoOAuthService kakaoOAuthService
+    ) {
         this.restClient = restClientBuilder.baseUrl("https://kapi.kakao.com").build();
         this.objectMapper = objectMapper;
+        this.kakaoOAuthService = kakaoOAuthService;
     }
 
     public SendResult sendDemoAlert(DemoKakaoNotificationRequest request) {
-        String effectiveAccessToken = runtimeAccessToken.isBlank() ? accessToken : runtimeAccessToken;
-        String effectiveUserId = runtimeUserId.isBlank() ? allowedUserId : runtimeUserId;
-        boolean runtimeConfigured = !runtimeAccessToken.isBlank();
+        List<KakaoTokenStore.StoredToken> oauthTokens;
+        int connectedAccountCount;
+        try {
+            connectedAccountCount = kakaoOAuthService.connectionCount();
+            oauthTokens = kakaoOAuthService.validTokens();
+        } catch (IllegalStateException error) {
+            return new SendResult("FAILED", error.getMessage());
+        }
 
-        if (!enabled && !runtimeConfigured) {
+        boolean oauthConfigured = connectedAccountCount > 0;
+
+        if (!enabled && !oauthConfigured) {
             return new SendResult("NOT_CONFIGURED", "카카오 발송 기능이 비활성화되어 있습니다.");
         }
-        if (dryRun && !runtimeConfigured) {
+        if (dryRun && !oauthConfigured) {
             return new SendResult("DRY_RUN", "모의 발송 상태이므로 실제 카카오톡은 전송하지 않았습니다.");
         }
-        if (effectiveAccessToken.isBlank() || effectiveUserId.isBlank()) {
+        if (!oauthConfigured && (accessToken.isBlank() || allowedUserId.isBlank())) {
             return new SendResult("NOT_CONFIGURED", "카카오 토큰 또는 허용된 본인 사용자 ID가 없습니다.");
         }
 
         String title = switch (request.eventType()) {
-            case "FAILURE_EXPECTED" -> "[안테나 고장 예상]";
-            case "FAILURE" -> "[안테나 실제 고장]";
+            case "FAILURE_EXPECTED" -> "[항만 운영장비 고장 예상]";
+            case "FAILURE" -> "[항만 운영장비 실제 고장]";
             default -> throw new IllegalArgumentException("지원하지 않는 카카오 알림 유형입니다.");
         };
         String occurredAt = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(request.occurredAt()));
@@ -88,6 +99,36 @@ public class KakaoMessageService {
                 "button_title", "예지보전 화면 확인"
         );
 
+        final String templateJson;
+        try {
+            templateJson = objectMapper.writeValueAsString(template);
+        } catch (JsonProcessingException error) {
+            return new SendResult("FAILED", "카카오 메시지 생성에 실패했습니다.");
+        }
+
+        if (!oauthConfigured) {
+            return sendToAccount(accessToken, allowedUserId, templateJson);
+        }
+
+        int sent = 0;
+        for (KakaoTokenStore.StoredToken token : oauthTokens) {
+            SendResult result = sendToAccount(token.accessToken(), token.userId(), templateJson);
+            if ("SENT".equals(result.status())) sent++;
+        }
+
+        if (sent == connectedAccountCount) {
+            return new SendResult("SENT", "카카오톡 " + sent + "개 계정에 발송했습니다.");
+        }
+        if (sent > 0) {
+            return new SendResult(
+                    "PARTIAL",
+                    "카카오톡 " + sent + "/" + connectedAccountCount + "개 계정에 발송했습니다."
+            );
+        }
+        return new SendResult("FAILED", "연결된 카카오 계정에 발송하지 못했습니다.");
+    }
+
+    private SendResult sendToAccount(String effectiveAccessToken, String effectiveUserId, String templateJson) {
         try {
             Map<?, ?> tokenOwner = restClient.get()
                     .uri("/v1/user/access_token_info")
@@ -100,7 +141,7 @@ public class KakaoMessageService {
             }
 
             MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-            form.add("template_object", objectMapper.writeValueAsString(template));
+            form.add("template_object", templateJson);
 
             Map<?, ?> response = restClient.post()
                     .uri("/v2/api/talk/memo/default/send")
@@ -114,55 +155,11 @@ public class KakaoMessageService {
                 return new SendResult("SENT", "카카오톡 나에게 보내기가 완료되었습니다.");
             }
             return new SendResult("FAILED", "카카오 응답을 확인할 수 없습니다.");
-        } catch (JsonProcessingException error) {
-            return new SendResult("FAILED", "카카오 메시지 생성에 실패했습니다.");
         } catch (RestClientResponseException error) {
             return new SendResult("FAILED", "카카오 발송 실패: HTTP " + error.getStatusCode().value());
         }
     }
 
-    public SendResult configureRuntime(String token) {
-        String candidate = token == null ? "" : token.trim();
-        if (candidate.isBlank()) {
-            return new SendResult("REJECTED", "액세스 토큰을 입력해야 합니다.");
-        }
-
-        try {
-            Map<?, ?> tokenOwner = restClient.get()
-                    .uri("/v1/user/access_token_info")
-                    .header("Authorization", "Bearer " + candidate)
-                    .retrieve()
-                    .body(Map.class);
-            String ownerId = tokenOwner == null ? "" : String.valueOf(tokenOwner.get("id"));
-            if (ownerId.isBlank() || "null".equals(ownerId)) {
-                return new SendResult("FAILED", "토큰 소유자 정보를 확인할 수 없습니다.");
-            }
-            runtimeAccessToken = candidate;
-            runtimeUserId = ownerId;
-            return new SendResult("READY", "현재 백엔드 실행에만 본인 카카오 계정이 연결되었습니다.");
-        } catch (RestClientResponseException error) {
-            return new SendResult("FAILED", "카카오 토큰 확인 실패: HTTP " + error.getStatusCode().value());
-        }
-    }
-
-    public ConfigStatus configStatus() {
-        if (!runtimeAccessToken.isBlank()) {
-            return new ConfigStatus(true, "MEMORY", "현재 실행에만 연결됨 · 백엔드 종료 시 삭제");
-        }
-        if (enabled && !accessToken.isBlank() && !allowedUserId.isBlank()) {
-            return new ConfigStatus(true, "ENVIRONMENT", "환경변수로 연결됨");
-        }
-        return new ConfigStatus(false, "NONE", "카카오 계정이 연결되지 않았습니다.");
-    }
-
-    public void clearRuntime() {
-        runtimeAccessToken = "";
-        runtimeUserId = "";
-    }
-
     public record SendResult(String status, String message) {
-    }
-
-    public record ConfigStatus(boolean configured, String source, String message) {
     }
 }
