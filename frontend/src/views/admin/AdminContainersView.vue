@@ -87,7 +87,8 @@ onMounted(() => {
 
 .table-tools input {
   min-height: 38px;
-  width: 220px;
+  width: min(100%, 220px);
+  min-width: 0;
   color: var(--ink-900);
   background: #ffffff;
   border: 1px solid #c8d5e7;

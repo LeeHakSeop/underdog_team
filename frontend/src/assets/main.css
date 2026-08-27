@@ -74,6 +74,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   min-height: 42px;
   margin: -12px -12px 12px;
@@ -86,10 +87,12 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   margin: 0;
   color: #20364f;
   font-size: 17px;
   font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .section-title h2::before {
@@ -229,6 +232,7 @@ a {
 
 .status-pill {
   display: inline-flex;
+  max-width: 100%;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -241,7 +245,8 @@ a {
   border-radius: 999px;
   font-size: 14px;
   font-weight: 800;
-  white-space: nowrap;
+  text-align: center;
+  white-space: normal;
 }
 
 .status-pill::before {

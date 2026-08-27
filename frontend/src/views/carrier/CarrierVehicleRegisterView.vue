@@ -711,12 +711,14 @@ onUnmounted(() => {
 .section-title-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .summary-toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 10px;
   padding: 8px;
@@ -731,7 +733,9 @@ onUnmounted(() => {
 }
 
 .summary-toolbar input {
-  width: min(320px, 100%);
+  flex: 1 1 240px;
+  width: auto;
+  min-width: 0;
   min-height: 34px;
   padding: 0 9px;
   background: #ffffff;
@@ -812,6 +816,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 5px;
   margin-top: 10px;
 }

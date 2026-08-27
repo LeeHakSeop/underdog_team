@@ -366,6 +366,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
 }
@@ -374,6 +375,7 @@ onMounted(() => {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -389,7 +391,7 @@ onMounted(() => {
 .gate-event-head {
   display: grid;
   min-width: 0;
-  grid-template-columns: max-content 350px max-content;
+  grid-template-columns: max-content minmax(180px, 350px) max-content;
   grid-template-areas: 'direction vehicles result';
   align-items: center;
   gap: 8px;
@@ -427,6 +429,8 @@ onMounted(() => {
 
 .vehicle-tag strong {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ink-900);
   font-size: 14px;

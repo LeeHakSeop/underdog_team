@@ -40,7 +40,7 @@ export const fetchPredictiveEquipment = () =>
 export const fetchPredictiveSensorData = (equipmentCode) =>
   requestJson(
     `/api/predictive-maintenance/sensor-data?equipmentCode=${encodeURIComponent(equipmentCode)}`,
-    `${equipmentCode} 센서 데이터를 불러오지 못했습니다.`,
+    `${equipmentCode} 상태 지표 데이터를 불러오지 못했습니다.`,
   )
 
 export const fetchPredictiveEvents = (equipmentCode = '') => {
