@@ -8,9 +8,11 @@ import {
   DEMO_EQUIPMENT_ID,
   predictiveDemoSession,
 } from '@/config/predictiveDemoSession'
+import { formatPortEquipment } from '@/config/portEquipmentProfiles'
 
 const historicalRecords = ref([])
 const equipmentOptions = ref([])
+const equipmentLabels = ref({})
 const loading = ref(true)
 const loadError = ref('')
 const selectedEquipment = ref(predictiveDemoSession.selectedEquipmentId || DEMO_EQUIPMENT_ID)
@@ -48,12 +50,7 @@ const formatDateTime = (timestamp) => {
 }
 
 const formatEquipmentLabel = (equipmentId) => {
-  if (equipmentId === DEMO_EQUIPMENT_ID) return '시연용 OCR 게이트 설비'
-
-  const number = String(equipmentId || '').match(/\d+$/)?.[0] || String(equipmentId || '').padStart(3, '0')
-  const types = ['OCR', 'BAR', 'KSK', 'WGT', 'NET']
-  const type = types[(Number(number) - 1) % types.length]
-  return `GT-${type}-${number}`
+  return equipmentLabels.value[equipmentId] || formatPortEquipment(equipmentId)
 }
 
 const filteredRecords = computed(() => {
@@ -142,6 +139,12 @@ const buildMaintenanceRecords = (equipment, events) => {
   const result = []
   const equipmentIds = equipment.map((item) => item.equipmentCode).sort()
   equipmentOptions.value = [DEMO_EQUIPMENT_ID, ...equipmentIds]
+  equipmentLabels.value = Object.fromEntries(
+    equipment.map((item) => [
+      item.equipmentCode,
+      `${item.equipmentCode} · ${item.equipmentName || formatPortEquipment(item.equipmentCode).split(' · ')[1]}`,
+    ]),
+  )
 
   equipmentIds.forEach((equipmentId) => {
     const equipmentEvents = events
@@ -215,7 +218,7 @@ onMounted(async () => {
     <div class="board-header">
       <div>
         <span class="eyebrow">FAILURE & MAINTENANCE HISTORY</span>
-        <h2>게이트 설비 고장·정비 기록</h2>
+        <h2>항만 장비 고장·정비 기록</h2>
         <p>고장 예상 알림부터 실제 고장과 수리 완료까지의 사건을 시간순으로 확인합니다.</p>
       </div>
       <span class="prototype-note">시연용 게이트 설비는 그래프 재생 시점과 연동</span>
@@ -278,7 +281,7 @@ onMounted(async () => {
             </span>
             <span v-if="record.isDemo">관찰 {{ formatDateTime(predictiveDemoSession.observationTime) }}</span>
             <span v-else>{{ formatDateTime(record.maintenanceAt) }}</span>
-            <small v-if="record.isDemo">GT-OCR-018 고장 사례 실시간 재생</small>
+            <small v-if="record.isDemo">트랜스퍼 크레인 고장 사례 실시간 재생</small>
             <small v-else-if="record.alertAt">사전 알림 {{ formatDateTime(record.alertAt) }}</small>
             <small v-else class="sudden-text">사전 알림 없음 · 급작 고장</small>
           </button>

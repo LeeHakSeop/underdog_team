@@ -1,6 +1,27 @@
 import { request } from '@/api/apiClient'
 import predictiveMaintenanceMetadata from '@/data/predictive-maintenance-metadata.json'
 
+const mapLegacyEquipmentCode = (equipmentCode) => {
+  const match = /^ANT-(\d{3})$/.exec(equipmentCode)
+  if (!match) return equipmentCode
+
+  const number = Number(match[1])
+  if (number <= 4) return `GAT-${String(number).padStart(3, '0')}`
+  if (number <= 12) return `QC-${String(number - 4).padStart(3, '0')}`
+  if (number <= 20) return `TC-${String(number - 12).padStart(3, '0')}`
+  return `YT-${String(number - 20).padStart(3, '0')}`
+}
+
+const normalizedPredictiveMetadata = {
+  ...predictiveMaintenanceMetadata,
+  sensorLimits: Object.fromEntries(
+    Object.entries(predictiveMaintenanceMetadata.sensorLimits || {}).map(([equipmentCode, limits]) => [
+      mapLegacyEquipmentCode(equipmentCode),
+      limits,
+    ]),
+  ),
+}
+
 const requestJson = async (url, errorMessage) => {
   try {
     return await request(url)
@@ -14,7 +35,7 @@ const requestJson = async (url, errorMessage) => {
 }
 
 export const fetchPredictiveEquipment = () =>
-  requestJson('/api/predictive-maintenance/equipment', '게이트 설비 목록을 불러오지 못했습니다.')
+  requestJson('/api/predictive-maintenance/equipment', '항만 장비 목록을 불러오지 못했습니다.')
 
 export const fetchPredictiveSensorData = (equipmentCode) =>
   requestJson(
@@ -32,4 +53,4 @@ export const fetchPredictiveEvents = (equipmentCode = '') => {
   )
 }
 
-export const fetchPredictiveMetadata = async () => predictiveMaintenanceMetadata
+export const fetchPredictiveMetadata = async () => normalizedPredictiveMetadata

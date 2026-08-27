@@ -1,9 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import AntennaHistoryPlayback from '@/components/predictive/AntennaHistoryPlayback.vue'
 import MaintenanceRecordBoard from '@/components/predictive/MaintenanceRecordBoard.vue'
 import PredictiveDashboardSummary from '@/components/predictive/PredictiveDashboardSummary.vue'
-import PredictiveTypeSelector from '@/components/predictive/PredictiveTypeSelector.vue'
 import {
   beginKakaoOAuth,
   predictiveDemoSession,
@@ -13,10 +12,8 @@ import {
 } from '@/config/predictiveDemoSession'
 import {
   predictiveMaintenanceSections,
-  predictiveMaintenanceTypes,
 } from '@/config/predictiveMaintenance'
 
-const selectedType = ref('PORT_EQUIPMENT')
 const selectedSection = ref('dashboard')
 const kakaoConfigured = ref(false)
 const kakaoOauthReady = ref(false)
@@ -91,10 +88,6 @@ onMounted(async () => {
   }
 })
 
-const currentType = computed(() =>
-  predictiveMaintenanceTypes.find((type) => type.code === selectedType.value),
-)
-
 const sectionDescriptions = {
   equipment: '설비 기본 정보와 현재 상태를 조회하고 등록·수정·사용 중지합니다.',
   readings: '설비별 시간 순서 센서 데이터를 조회하고 관리합니다.',
@@ -106,8 +99,6 @@ const sectionDescriptions = {
 
 <template>
   <div class="page-stack predictive-page">
-    <PredictiveTypeSelector v-model="selectedType" />
-
     <nav class="section-tabs" aria-label="예지보전 하위 메뉴">
       <button
         v-for="section in predictiveMaintenanceSections"
@@ -121,78 +112,69 @@ const sectionDescriptions = {
     </nav>
 
     <template v-if="selectedSection === 'dashboard'">
-      <section class="panel intro-panel">
-        <div>
-          <span class="eyebrow">PREDICTIVE MAINTENANCE</span>
-          <h2>{{ currentType?.label }}</h2>
+      <section class="kakao-toolbar" aria-label="카카오 알림 설정">
+        <div class="kakao-toolbar-heading">
+          <strong>카카오 알림</strong>
+          <small>
+            {{ predictiveDemoSession.kakaoNotificationsEnabled
+              ? '고장 예상·고장 시 발송'
+              : '알림 발송 중지' }}
+          </small>
         </div>
-        <div class="intro-actions">
-          <div class="kakao-setting">
-            <span>카카오 알림 연동</span>
-            <div class="kakao-options" role="group" aria-label="카카오 알림 연동 설정">
-              <button
-                type="button"
-                :class="{ active: !predictiveDemoSession.kakaoNotificationsEnabled }"
-                :aria-pressed="!predictiveDemoSession.kakaoNotificationsEnabled"
-                @click="setKakaoEnabled(false)"
-              >
-                사용 안 함
-              </button>
-              <button
-                type="button"
-                class="enable"
-                :class="{ active: predictiveDemoSession.kakaoNotificationsEnabled }"
-                :aria-pressed="predictiveDemoSession.kakaoNotificationsEnabled"
-                @click="setKakaoEnabled(true)"
-              >
-                사용
-              </button>
-            </div>
-            <small>
-              {{ predictiveDemoSession.kakaoNotificationsEnabled
-                ? '시연용 고장 예상·고장 시 알림을 보냅니다.'
-                : '알림 API를 호출하지 않습니다.' }}
-            </small>
+        <div class="kakao-options" role="group" aria-label="카카오 알림 사용 설정">
+          <button
+            type="button"
+            :class="{ active: !predictiveDemoSession.kakaoNotificationsEnabled }"
+            :aria-pressed="!predictiveDemoSession.kakaoNotificationsEnabled"
+            @click="setKakaoEnabled(false)"
+          >
+            사용 안 함
+          </button>
+          <button
+            type="button"
+            class="enable"
+            :class="{ active: predictiveDemoSession.kakaoNotificationsEnabled }"
+            :aria-pressed="predictiveDemoSession.kakaoNotificationsEnabled"
+            @click="setKakaoEnabled(true)"
+          >
+            사용
+          </button>
+        </div>
+        <button
+          type="button"
+          class="kakao-connect-button"
+          :disabled="kakaoBusy || !kakaoOauthReady"
+          @click="connectKakao"
+        >
+          {{ kakaoBusy
+            ? '처리 중'
+            : kakaoConfigured ? '다른 계정 추가' : '카카오 계정 연결' }}
+        </button>
+        <ul class="kakao-account-list">
+          <li v-for="connection in kakaoConnections" :key="connection.userId">
+            <span>{{ connection.label }}</span>
             <button
               type="button"
-              class="kakao-connect-button"
-              :disabled="kakaoBusy || !kakaoOauthReady"
-              @click="connectKakao"
+              class="kakao-disconnect"
+              :disabled="kakaoBusy"
+              @click="disconnectKakao(connection.userId)"
             >
-              {{ kakaoBusy
-                ? '처리 중'
-                : kakaoConfigured ? '다른 카카오 계정 추가' : '카카오 계정 연결' }}
+              해제
             </button>
-            <ul v-if="kakaoConnections.length" class="kakao-account-list">
-              <li v-for="connection in kakaoConnections" :key="connection.userId">
-                <span>{{ connection.label }}</span>
-                <button
-                  type="button"
-                  class="kakao-disconnect"
-                  :disabled="kakaoBusy"
-                  @click="disconnectKakao(connection.userId)"
-                >
-                  해제
-                </button>
-              </li>
-            </ul>
-            <small class="kakao-status">{{ kakaoMessage }}</small>
-          </div>
-          <div class="data-basis">
-            <span>현재 데이터 기준</span>
-            <strong>게이트 설비 상태 기록 재생</strong>
-          </div>
+          </li>
+        </ul>
+        <div class="kakao-status-panel">
+          <strong>연동 상태</strong>
+          <small>{{ kakaoMessage }}</small>
         </div>
       </section>
 
-      <AntennaHistoryPlayback v-if="selectedType === 'PORT_EQUIPMENT'" />
+      <AntennaHistoryPlayback />
 
       <PredictiveDashboardSummary @open-maintenance="selectedSection = 'maintenance'" />
     </template>
 
-    <MaintenanceRecordBoard
-      v-else-if="selectedSection === 'maintenance' && selectedType === 'PORT_EQUIPMENT'"
-    />
+    <MaintenanceRecordBoard v-else-if="selectedSection === 'maintenance'" />
 
     <section v-else class="panel feature-placeholder">
       <div class="section-title">
@@ -236,67 +218,44 @@ const sectionDescriptions = {
   background: #28496d;
 }
 
-.intro-panel {
+.kakao-toolbar {
   display: flex;
+  min-width: 0;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  background: linear-gradient(135deg, #ffffff, #e9f1f7);
-}
-
-.intro-panel h2 {
-  margin: 0;
-}
-
-.intro-panel h2 {
-  margin-top: 5px;
-  color: #183b5d;
-  font-size: 27px;
-  line-height: 1.2;
-}
-
-.eyebrow {
-  color: var(--blue-700);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-}
-
-.data-basis {
-  min-width: 220px;
-  padding: 8px 10px;
+  gap: 5px;
+  padding: 4px 6px;
   background: #ffffff;
   border: 1px solid #aebdca;
 }
 
-.intro-actions {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
+.kakao-toolbar-heading {
+  flex: 0 0 100px;
 }
 
-.kakao-setting {
-  min-width: 290px;
-  padding: 7px 9px;
-  background: #ffffff;
-  border: 1px solid #aebdca;
-}
-
-.kakao-setting > span,
-.kakao-setting small {
+.kakao-toolbar-heading strong,
+.kakao-toolbar-heading small {
   display: block;
+}
+
+.kakao-toolbar-heading strong {
+  color: #29445f;
+  font-size: 11px;
+}
+
+.kakao-toolbar-heading small {
+  margin-top: 2px;
   color: var(--ink-500);
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .kakao-options {
   display: grid;
+  flex: 0 0 185px;
   grid-template-columns: 1fr 1fr;
-  margin-top: 4px;
 }
 
 .kakao-options button {
-  min-height: 28px;
+  min-height: 24px;
   color: #40566b;
   background: #f4f7fa;
   border: 1px solid #aebdca;
@@ -317,18 +276,14 @@ const sectionDescriptions = {
   background: #2f7d57;
 }
 
-.kakao-setting small {
-  margin-top: 4px;
-}
-
 .kakao-connect-button {
-  width: 100%;
-  margin-top: 6px;
+  flex: 0 0 auto;
+  padding: 2px 12px;
 }
 
 .kakao-connect-button,
 .kakao-disconnect {
-  min-height: 28px;
+  min-height: 24px;
   border: 1px solid #aebdca;
   font-size: 11px;
 }
@@ -341,47 +296,57 @@ const sectionDescriptions = {
 }
 
 .kakao-disconnect {
-  padding: 2px 9px;
+  min-height: 22px;
+  padding: 1px 7px;
   background: #596b7b;
 }
 
 .kakao-account-list {
-  display: grid;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
   gap: 4px;
-  margin: 6px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .kakao-account-list li {
   display: flex;
+  min-width: 155px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 4px 5px 4px 8px;
+  padding: 2px 4px 2px 7px;
   color: #40566b;
   background: #f4f7fa;
   border: 1px solid #c8d3dc;
   font-size: 10px;
 }
 
-.kakao-status {
-  color: #755713 !important;
+.kakao-status-panel {
+  display: flex;
+  min-width: 235px;
+  flex: 0 0 235px;
+  align-self: stretch;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3px 8px;
+  margin-left: auto;
+  background: #fffaf0;
+  border: 1px solid #dbc98e;
 }
 
-.data-basis span,
-.data-basis strong {
-  display: block;
+.kakao-status-panel strong {
+  color: #6d5315;
+  font-size: 9px;
 }
 
-.data-basis span {
-  color: var(--ink-500);
-  font-size: 11px;
-}
-
-.data-basis strong {
-  margin-top: 3px;
-  color: #29445f;
+.kakao-status-panel small {
+  margin-top: 1px;
+  color: #755713;
+  font-size: 9px;
 }
 
 .dashboard-panels .panel {
@@ -408,21 +373,22 @@ const sectionDescriptions = {
 }
 
 @media (max-width: 700px) {
-  .intro-panel {
+  .kakao-toolbar {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .data-basis {
-    min-width: 0;
+  .kakao-toolbar-heading,
+  .kakao-options,
+  .kakao-connect-button,
+  .kakao-status-panel {
+    flex-basis: auto;
+    width: 100%;
   }
 
-  .intro-actions {
-    flex-direction: column;
-  }
-
-  .kakao-setting {
-    min-width: 0;
+  .kakao-account-list {
+    flex-wrap: wrap;
+    width: 100%;
   }
 }
 </style>

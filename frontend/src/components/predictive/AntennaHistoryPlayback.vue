@@ -13,17 +13,16 @@ import {
   requestDemoNotification,
   resetDemoNotifications,
 } from '@/config/predictiveDemoSession'
+import { formatPortEquipment } from '@/config/portEquipmentProfiles'
 
 const HOUR_MS = 60 * 60 * 1000
 const WINDOW_MS = 14 * 24 * HOUR_MS
-const PROGRESSION_THRESHOLD = 0.4564690824
 
-const metrics = {
+const metricDefinitions = {
   successRate: { sensor: 'success_rate', label: 'OCR 인식률', unit: '%', color: '#23639c', decimals: 2, range: [60, 100] },
   responseTimeMs: { sensor: 'response_time_ms', label: '차단기 응답', unit: 'ms', color: '#b47c1c', decimals: 1, range: [30, 230] },
   packetLossRate: { sensor: 'packet_loss_rate', label: '영상 손실률', unit: '%', color: '#b8403a', decimals: 2, range: [0, 15] },
   trafficLoad: { sensor: 'traffic_load', label: '차로 부하', unit: '', color: '#2b8d9c', decimals: 3, range: [0, 1], comparison: 'context' },
-  temperatureC: { sensor: 'temperature_c', label: '장비 온도', unit: '℃', color: '#d16a32', decimals: 1, range: [10, 45], comparison: 'context' },
   voltageV: { sensor: 'voltage_v', label: '전원 전압', unit: 'V', color: '#6a7f36', decimals: 2, range: [11, 13] },
   signalStrengthDbm: { sensor: 'signal_strength_dbm', label: '조명·렌즈 상태', unit: '점', color: '#4277a8', decimals: 1, range: [50, 100] },
   retryCount: { sensor: 'retry_count', label: '재인식 횟수', unit: '회', color: '#8d6b3f', decimals: 0, range: [0, 20] },
@@ -31,8 +30,56 @@ const metrics = {
   errorCount: { sensor: 'error_count', label: '처리 오류', unit: '회', color: '#6c5c91', decimals: 0, range: [0, 25] },
 }
 
+const equipmentMetricProfiles = {
+  GAT: {
+    successRate: 'OCR 인식률',
+    responseTimeMs: '차단기 응답',
+    packetLossRate: '영상 손실률',
+    trafficLoad: '차로 부하',
+    voltageV: '전원 전압',
+    signalStrengthDbm: '조명·렌즈 상태',
+    retryCount: '재인식 횟수',
+    disconnectCount: '장비 끊김',
+    errorCount: '인식 처리 오류',
+  },
+  QC: {
+    successRate: '제어 명령 성공률',
+    responseTimeMs: '호이스트 제어 응답',
+    packetLossRate: '제어 통신 손실률',
+    trafficLoad: '인양 부하 지수',
+    voltageV: '제어 전원 전압',
+    signalStrengthDbm: '제어 신호 품질',
+    retryCount: '제어 명령 재시도',
+    disconnectCount: '제어 통신 끊김',
+    errorCount: '크레인 제어 오류',
+  },
+  TC: {
+    successRate: '위치 제어 성공률',
+    responseTimeMs: '주행 제어 응답',
+    packetLossRate: '제어 통신 손실률',
+    trafficLoad: '야드 작업 부하',
+    voltageV: '제어 전원 전압',
+    signalStrengthDbm: '위치 제어 신호 품질',
+    retryCount: '위치 보정 재시도',
+    disconnectCount: '제어 통신 끊김',
+    errorCount: '위치 제어 오류',
+  },
+  YT: {
+    successRate: '운행 데이터 전송 성공률',
+    responseTimeMs: '운행 단말 응답',
+    packetLossRate: '운행 단말 통신 손실률',
+    trafficLoad: '운행 부하 지수',
+    voltageV: '운행 단말 전압',
+    signalStrengthDbm: 'GPS 수신 품질',
+    retryCount: '데이터 전송 재시도',
+    disconnectCount: '운행 단말 연결 끊김',
+    errorCount: '차량 제어 오류',
+  },
+}
+
 const equipmentData = ref({})
 const equipmentCodes = ref([])
+const equipmentLabels = ref({})
 const loading = ref(true)
 const loadError = ref('')
 const selectedEquipment = ref(predictiveDemoSession.selectedEquipmentId || DEMO_EQUIPMENT_ID)
@@ -42,7 +89,6 @@ const isPlaying = ref(false)
 const playbackHours = ref(6)
 const maintenancePlaybackMode = ref(false)
 const axisMode = ref('operational')
-const datasetVersion = ref('CSV')
 const sensorLimits = ref({})
 const alertEvents = ref([])
 const canvas = ref(null)
@@ -56,13 +102,22 @@ const parseCollectedAt = (value) => {
 }
 
 const formatEquipmentLabel = (equipmentId) => {
-  if (equipmentId === DEMO_EQUIPMENT_ID) return '시연용 OCR 게이트 설비 (GT-OCR-018)'
-
-  const number = String(equipmentId || '').match(/\d+$/)?.[0] || String(equipmentId || '').padStart(3, '0')
-  const types = ['OCR', 'BAR', 'KSK', 'WGT', 'NET']
-  const type = types[(Number(number) - 1) % types.length]
-  return `GT-${type}-${number}`
+  return equipmentLabels.value[equipmentId] || formatPortEquipment(equipmentId)
 }
+
+const selectedEquipmentType = computed(() => {
+  if (selectedEquipment.value === DEMO_EQUIPMENT_ID) return 'TC'
+  return String(selectedEquipment.value || '').split('-')[0]
+})
+const activeMetrics = computed(() => {
+  const profile = equipmentMetricProfiles[selectedEquipmentType.value] || equipmentMetricProfiles.GAT
+  return Object.fromEntries(
+    Object.entries(profile).map(([key, label]) => [
+      key,
+      { ...metricDefinitions[key], label },
+    ]),
+  )
+})
 
 const equipmentOptions = computed(() => [DEMO_EQUIPMENT_ID, ...equipmentCodes.value].sort((a, b) => {
   if (a === DEMO_EQUIPMENT_ID) return -1
@@ -85,7 +140,8 @@ const visibleRecords = computed(() => {
 const currentRecord = computed(() => visibleRecords.value.at(-1))
 const selectedEquipmentLimits = computed(() => sensorLimits.value[selectedEquipment.value] ?? {})
 const selectedMetricLimit = computed(() => {
-  const metric = metrics[selectedMetric.value]
+  const metric = activeMetrics.value[selectedMetric.value]
+  if (!metric) return null
   return selectedEquipmentLimits.value[metric.sensor] ?? null
 })
 const previous24HourRecords = computed(() => {
@@ -98,13 +154,13 @@ const previous24HourRecords = computed(() => {
 
 const metricComparisons = computed(() =>
   Object.fromEntries(
-    Object.entries(metrics).map(([key, metric]) => {
+    Object.entries(activeMetrics.value).map(([key, metric]) => {
       if (!currentRecord.value) {
         return [key, { status: 'normal', text: '비교할 데이터 없음' }]
       }
 
       if (metric.comparison === 'context') {
-        return [key, { status: 'reference', text: '일중 변동 참고 · 경보 판단 제외' }]
+        return [key, { status: 'reference', text: '작업량 참고 지표 · 고장 판정 제외' }]
       }
 
       const baselineValues = previous24HourRecords.value.map((item) => item[key])
@@ -131,12 +187,20 @@ const metricComparisons = computed(() =>
         : ''
 
       const text = status === 'normal'
-        ? `24시간 평균 ${baselineText} · 특이 변화 없음${limitText}`
-        : `24시간 평균 ${baselineText} · 대비 ${deltaText}${limitText}`
+        ? `최근 24시간 평균 ${baselineText} · 장비 한계 이내${limitText}`
+        : `최근 24시간 평균 ${baselineText} · 평균 대비 ${deltaText}${limitText}`
 
       return [key, { status, text }]
     }),
   ),
+)
+const visibleAnomalyCount = computed(() =>
+  Object.values(metricComparisons.value).filter((comparison) => comparison.status === 'danger').length,
+)
+const monitoredMetricCount = computed(() =>
+  Object.values(activeMetrics.value).filter(
+    (metric) => selectedEquipmentLimits.value[metric.sensor],
+  ).length,
 )
 
 const firstFailureTime = computed(
@@ -173,54 +237,39 @@ const activeMaxTime = computed(() =>
   maintenancePlaybackMode.value ? maintenanceEndTime.value : maxTime.value,
 )
 
+const lastFailureAtObservation = computed(() =>
+  equipmentRecords.value
+    .filter((item) => item.failureEvent === 1 && item.timestamp <= observationTime.value)
+    .at(-1)?.timestamp ?? 0,
+)
+const lastMaintenanceAtObservation = computed(() =>
+  equipmentRecords.value
+    .filter((item) => item.maintenanceEvent === 1 && item.timestamp <= observationTime.value)
+    .at(-1)?.timestamp ?? 0,
+)
+const isAwaitingMaintenance = computed(() =>
+  Boolean(
+    lastFailureAtObservation.value
+      && lastFailureAtObservation.value > lastMaintenanceAtObservation.value,
+  ),
+)
+const isMaintenanceCompletedNow = computed(() => currentRecord.value?.maintenanceEvent === 1)
+
 const riskClass = computed(() => {
+  if (isAwaitingMaintenance.value) return 'red'
+  if (isMaintenanceCompletedNow.value) return 'green'
   const state = currentRecord.value?.operationalState
-  if (state === 'failure' || state === 'failure_expected') return 'red'
-  if (state === 'suspect' || state === 'risk' || state === 'post_failure_recovery') return 'amber'
+  if (state === 'failure' || state === 'failure_expected' || state === 'post_failure_recovery') return 'red'
+  if (state === 'suspect' || state === 'risk') return 'amber'
   return state ? 'green' : 'blue'
 })
 
 const operationalDecision = computed(() => {
   if (!currentRecord.value) return '기록 없음'
+  if (isAwaitingMaintenance.value) return '고장'
+  if (isMaintenanceCompletedNow.value) return '정비 완료'
+  if (currentRecord.value.operationalState === 'post_failure_recovery') return '고장'
   return currentRecord.value.operationalStateKo
-})
-
-const sensorWarningConfirmed = computed(() =>
-  ['failure_expected', 'failure'].includes(currentRecord.value?.operationalState),
-)
-
-const progressionAdvisory = computed(() => {
-  const probability = currentRecord.value?.progressionProbability
-  if (probability === undefined || probability === null) {
-    return {
-      label: '보조 모델 미연결',
-      detail: '설비 상태 규칙만으로 공식 상태를 판정합니다.',
-      className: 'blue',
-    }
-  }
-
-  const supportsWarning = probability >= PROGRESSION_THRESHOLD
-  const percentage = `${(probability * 100).toFixed(1)}%`
-  const modelName = currentRecord.value?.progressionModel || 'Random Forest'
-
-  if (sensorWarningConfirmed.value && supportsWarning) {
-    return { label: '모델 동의', detail: `${modelName} ${percentage}`, className: 'red' }
-  }
-  if (sensorWarningConfirmed.value) {
-    return {
-      label: '모델 이견 · 경보 유지',
-      detail: `${modelName} ${percentage} · 설비 경보를 취소하지 않음`,
-      className: 'amber',
-    }
-  }
-  if (supportsWarning) {
-    return {
-      label: '집중 관찰',
-      detail: `${modelName} ${percentage} · 공식 고장 예상 전 단계`,
-      className: 'amber',
-    }
-  }
-  return { label: '모델 특이사항 없음', detail: `${modelName} ${percentage}`, className: 'green' }
 })
 
 const toDateTimeLocal = (timestamp) => {
@@ -250,7 +299,7 @@ const formatAxisDate = (timestamp) =>
 
 const formatValue = (value, metricKey = selectedMetric.value) => {
   if (value === undefined || value === null) return '-'
-  const metric = metrics[metricKey]
+  const metric = activeMetrics.value[metricKey] || metricDefinitions[metricKey]
   return `${Number(value).toFixed(metric.decimals)}${metric.unit}`
 }
 
@@ -350,7 +399,8 @@ const drawChart = () => {
     return
   }
 
-  const metric = metrics[selectedMetric.value]
+  const metric = activeMetrics.value[selectedMetric.value]
+  if (!metric) return
   const values = visibleRecords.value.map((item) => item[selectedMetric.value])
   let low
   let high
@@ -470,6 +520,12 @@ const drawChart = () => {
 
 watch([visibleRecords, selectedMetric, axisMode], () => nextTick(drawChart))
 
+watch(activeMetrics, (nextMetrics) => {
+  if (!nextMetrics[selectedMetric.value]) {
+    selectedMetric.value = Object.keys(nextMetrics)[0]
+  }
+}, { immediate: true })
+
 watch(observationTime, (nextTime, previousTime) => {
   predictiveDemoSession.observationTime = nextTime
 
@@ -514,7 +570,12 @@ onMounted(async () => {
       fetchPredictiveMetadata(),
     ])
     equipmentCodes.value = equipment.map((item) => item.equipmentCode)
-    datasetVersion.value = `${metadata.datasetVersion || 'CSV'} · DB API`
+    equipmentLabels.value = Object.fromEntries(
+      equipment.map((item) => [
+        item.equipmentCode,
+        `${item.equipmentCode} · ${item.equipmentName || formatPortEquipment(item.equipmentCode).split(' · ')[1]}`,
+      ]),
+    )
     sensorLimits.value = metadata.sensorLimits || {}
 
     await loadEquipmentRows(DEMO_SOURCE_EQUIPMENT_ID)
@@ -590,8 +651,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="panel playback-panel">
     <div class="section-title playback-heading">
-      <h2>게이트 설비 상태 기록 재생</h2>
-      <span class="status-pill blue">{{ datasetVersion }} · 최근 14일</span>
+      <h2>항만 장비 상태 기록 재생</h2>
     </div>
 
     <div v-if="loading" class="message-state">데이터를 불러오는 중입니다.</div>
@@ -600,7 +660,7 @@ onBeforeUnmount(() => {
     <template v-else>
       <div class="playback-toolbar">
         <label>
-          <span>게이트 설비</span>
+          <span>항만 장비</span>
           <select v-model="selectedEquipment">
             <option v-for="equipment in equipmentOptions" :key="equipment" :value="equipment">
               {{ formatEquipmentLabel(equipment) }}
@@ -625,13 +685,8 @@ onBeforeUnmount(() => {
             <button type="button" class="maintenance-play-button" @click="startMaintenancePlayback">
               정비 구간 재생
             </button>
-            <small>{{ formatDateTime(maintenanceStartTime) }} ~ {{ formatDateTime(maintenanceEndTime) }}</small>
-            <span v-if="currentAlertEvent" class="alert-badge available">
-              카카오 알림 기준 {{ formatDateTime(parseCollectedAt(currentAlertEvent.occurredAt)) }}
-            </span>
-            <span v-else class="alert-badge unavailable">사전 알림 없음 · 급작 고장</span>
           </div>
-          <div v-else class="no-maintenance">이 게이트 설비는 고장·정비 기록이 없습니다.</div>
+          <div v-else class="no-maintenance">이 항만 장비는 고장·정비 기록이 없습니다.</div>
         </div>
       </div>
 
@@ -643,23 +698,17 @@ onBeforeUnmount(() => {
         <div>
           <span>운영 상태</span>
           <strong><span class="status-pill" :class="riskClass">{{ operationalDecision }}</span></strong>
-          <small>상태 지표 5개 이상 6시간 지속 시 고장 예상</small>
         </div>
         <div>
           <span>이상 지표</span>
-          <strong>{{ currentRecord?.anomalyCount ?? 0 }} / 8개</strong>
+          <strong>{{ visibleAnomalyCount }} / {{ monitoredMetricCount }}개</strong>
           <small>L2 현재고장 확률 {{ ((currentRecord?.currentFaultProbability ?? 0) * 100).toFixed(1) }}%</small>
-        </div>
-        <div>
-          <span>전조 진행 보조판단</span>
-          <strong><span class="status-pill" :class="progressionAdvisory.className">{{ progressionAdvisory.label }}</span></strong>
-          <small>{{ progressionAdvisory.detail }}</small>
         </div>
       </div>
 
       <div class="metric-tabs" aria-label="그래프 지표 선택">
         <button
-          v-for="(metric, key) in metrics"
+          v-for="(metric, key) in activeMetrics"
           :key="key"
           type="button"
           :class="[{ active: selectedMetric === key }, metricComparisons[key]?.status]"
@@ -694,8 +743,8 @@ onBeforeUnmount(() => {
         <div class="axis-guide">
           <span v-if="axisMode === 'operational'">
             표시 범위
-            {{ formatValue(metrics[selectedMetric].range[0], selectedMetric) }} ~
-            {{ formatValue(metrics[selectedMetric].range[1], selectedMetric) }}
+            {{ formatValue(activeMetrics[selectedMetric].range[0], selectedMetric) }} ~
+            {{ formatValue(activeMetrics[selectedMetric].range[1], selectedMetric) }}
           </span>
           <span v-else>현재 표시 데이터의 최솟값·최댓값에 맞춤</span>
           <template v-if="axisMode === 'operational' && selectedMetricLimit">
@@ -712,7 +761,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div ref="chartWrap" class="chart-wrap">
-        <canvas ref="canvas" aria-label="선택한 관찰 시점까지의 최근 14일 게이트 설비 상태 그래프"></canvas>
+        <canvas ref="canvas" aria-label="선택한 관찰 시점까지의 최근 14일 항만 장비 상태 그래프"></canvas>
       </div>
 
       <div class="timeline-controls">
@@ -744,7 +793,7 @@ onBeforeUnmount(() => {
       </div>
 
       <p class="playback-note">
-        공식 `고장 예상`은 게이트 설비별 상태 지표 5개 이상이 6시간 지속될 때 확정합니다. Random Forest는 전조 진행 가능성을 보조하며 설비 경보를 취소하지 않습니다. 카카오 연동은 시연용 개인 전송 시험 상태로 유지합니다.
+        공식 `고장 예상`은 장비 종류별 상태 지표와 지속시간 기준으로 판정합니다. Random Forest는 전조 진행 가능성을 보조하며 설비 경보를 취소하지 않습니다. 카카오 연동은 시연용 개인 전송 시험 상태로 유지합니다.
       </p>
     </template>
   </section>
@@ -831,38 +880,9 @@ onBeforeUnmount(() => {
   padding: 5px 10px;
 }
 
-.maintenance-range-row small,
 .no-maintenance {
   color: var(--ink-500);
   font-size: 11px;
-}
-
-.maintenance-range-row small {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.alert-badge {
-  display: inline-flex;
-  max-width: 100%;
-  min-height: 24px;
-  align-items: center;
-  padding: 3px 7px;
-  border: 1px solid;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.alert-badge.available {
-  color: #7a5400;
-  background: #fff7d6;
-  border-color: #e2c35d;
-}
-
-.alert-badge.unavailable {
-  color: #a23a35;
-  background: #fff0ef;
-  border-color: #dfaaa6;
 }
 
 .no-maintenance {
@@ -912,7 +932,7 @@ onBeforeUnmount(() => {
 
 .metric-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   margin-top: 10px;
 }
@@ -1103,8 +1123,7 @@ onBeforeUnmount(() => {
     grid-column: 1 / -1;
   }
 
-  .playback-summary,
-  .metric-tabs {
+  .playback-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
