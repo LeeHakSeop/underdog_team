@@ -1,23 +1,9 @@
-export const predictiveMaintenanceTypes = [
-  {
-    code: 'GATE_EQUIPMENT',
-    label: '게이트 설비 예지보전',
-    description: 'OCR 카메라, 차단기, 키오스크, 계근·네트워크 장비의 상태 지표와 지속시간을 바탕으로 고장 전조를 확인합니다.',
-    enabled: true,
-  },
-  {
-    code: 'YARD_EQUIPMENT',
-    label: '야드 장비',
-    description: '야드 장비 데이터 계약이 확정되면 같은 화면 구조에 연결합니다.',
-    enabled: false,
-  },
-]
-
 export const predictiveMaintenanceSections = [
   { code: 'dashboard', label: '대시보드' },
   { code: 'maintenance', label: '점검·정비' },
 ]
 
+<<<<<<< HEAD
 // VMS와 실제 모델이 연결되는 베타 단계에서 다시 활성화할 메뉴입니다.
 export const predictiveMaintenanceFutureSections = [
   { code: 'equipment', label: '설비 현황' },
@@ -26,6 +12,8 @@ export const predictiveMaintenanceFutureSections = [
   { code: 'models', label: '모델 정보' },
 ]
 
+=======
+>>>>>>> 221cdfd20489fb600d5c209bdaa48c3dad7ecde6
 export const predictiveRiskLabels = {
   NORMAL: '정상',
   CAUTION: '주의',
