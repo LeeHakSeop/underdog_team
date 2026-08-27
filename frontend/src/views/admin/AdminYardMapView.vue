@@ -140,6 +140,12 @@ const statusCounts = computed(() => yardSectors.value.reduce((counts, sector) =>
   return counts
 }, { NORMAL: 0, WARNING: 0, DANGER: 0 }))
 
+const mapLegendItems = computed(() => [
+  { level: 'DANGER', label: '위험', count: statusCounts.value.DANGER || 0, hint: '포화·병목 우선 확인' },
+  { level: 'WARNING', label: '주의', count: statusCounts.value.WARNING || 0, hint: '사용률 상승 구간' },
+  { level: 'NORMAL', label: '정상', count: statusCounts.value.NORMAL || 0, hint: '운영 가능' },
+])
+
 const selectedSectorMetrics = computed(() => {
   const sector = selectedSector.value
 
@@ -300,6 +306,23 @@ function statusLabel(statusLevel) {
   if (statusLevel === 'DANGER') return '위험'
   if (statusLevel === 'WARNING') return '주의'
   return '정상'
+}
+
+function sectorRiskReason(sector) {
+  if (!sector) return '상태 정보 없음'
+
+  const reasons = []
+  const usageRate = Number(sector.usageRate || 0)
+  const waitingVehicleCount = Number(sector.waitingVehicleCount || 0)
+  const workOrderCount = Number(sector.workOrderCount || 0)
+
+  if (usageRate >= 80) reasons.push(`사용률 ${formatPercent(usageRate)}`)
+  else if (usageRate >= 50) reasons.push(`사용률 ${formatPercent(usageRate)}`)
+  if (waitingVehicleCount >= 3) reasons.push(`대기 ${formatCount(waitingVehicleCount)}`)
+  if (workOrderCount >= 1) reasons.push(`작업 ${formatCount(workOrderCount)}`)
+  if (sector.guideMessage) reasons.push(sector.guideMessage)
+
+  return reasons.slice(0, 3).join(' · ') || '정상 범위'
 }
 
 function environmentTypeLabel(environmentType) {
@@ -466,6 +489,18 @@ const sectorPopupHtml = (sector) => `
   </div>
 `
 
+const sectorLabelHtml = (sector) => {
+  const level = sector?.statusLevel || 'NORMAL'
+  const usage = formatPercent(sector?.usageRate)
+
+  return `
+    <span class="yard-sector-label ${statusClass(level)}">
+      <b>${escapeHtml(sector?.sectorName)}</b>
+      <small>${escapeHtml(statusLabel(level))} · ${escapeHtml(usage)}</small>
+    </span>
+  `
+}
+
 const getBlockBounds = ({ center, widthMeters, heightMeters }) => {
   const [latitude, longitude] = center
   const latitudeOffset = (heightMeters / 2) / 111_320
@@ -590,6 +625,15 @@ const renderOperations = () => {
         })
       sectorLayers.set(yardSector.sectorId, cell)
       operationLayer.addLayer(cell)
+      operationLayer.addLayer(L.marker(sectorCenter, {
+        interactive: false,
+        icon: L.divIcon({
+          className: 'yard-sector-label-icon',
+          html: sectorLabelHtml(yardSector),
+          iconSize: [58, 34],
+          iconAnchor: [29, 17],
+        }),
+      }))
     })
 
     operationLayer.addLayer(L.marker(block.center, {
@@ -718,6 +762,25 @@ onBeforeUnmount(() => {
           title="부산항 날씨"
           mode="map"
         />
+        <div class="map-risk-panel" aria-label="야드 섹터 위험도 범례">
+          <div class="map-risk-heading">
+            <strong>지도 색상 기준</strong>
+          </div>
+          <div class="map-risk-legend">
+            <button
+              v-for="item in mapLegendItems"
+              :key="item.level"
+              type="button"
+              class="map-risk-item"
+              :class="statusClass(item.level)"
+              @click="statusFilter = item.level"
+            >
+              <i></i>
+              <span>{{ item.label }}</span>
+              <b>{{ item.count }}개</b>
+            </button>
+          </div>
+        </div>
         <div ref="mapElement" class="yard-map" aria-label="감만부두 운영 지도"></div>
       </article>
       <aside class="panel summary-panel">
@@ -766,7 +829,7 @@ onBeforeUnmount(() => {
             >
               <strong>{{ sector.sectorName }}</strong>
               <span>{{ statusLabel(sector.statusLevel) }}</span>
-              <small>사용률 {{ formatPercent(sector.usageRate) }} · 대기 {{ formatCount(sector.waitingVehicleCount) }} · 작업 {{ formatCount(sector.workOrderCount) }}</small>
+              <small>{{ sectorRiskReason(sector) }}</small>
             </button>
             <button
               v-if="hiddenPriorityCount > 0 || showAllPrioritySectors"
@@ -829,6 +892,7 @@ onBeforeUnmount(() => {
                 <small>
                   {{ sector.blockName }} 구역 / 차량 {{ vehicleCountBySectorId.get(sector.sectorId) || 0 }}대 / 작업 {{ sector.workOrderCount || 0 }}건
                 </small>
+                <small class="sector-risk-reason">{{ sectorRiskReason(sector) }}</small>
                 <div class="usage-line">
                   <i :style="{ width: usageWidth(sector.usageRate) }"></i>
                 </div>
@@ -979,6 +1043,7 @@ onBeforeUnmount(() => {
 }
 
 .map-toolbar,
+.map-risk-panel,
 .map-notice,
 .map-loading {
   position: absolute;
@@ -990,9 +1055,9 @@ onBeforeUnmount(() => {
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
-  grid-template-columns: minmax(220px, 1fr) 130px auto auto;
+  grid-template-columns: minmax(200px, 1fr) minmax(112px, 130px) minmax(108px, 126px) minmax(72px, 78px) minmax(84px, 92px);
   gap: 8px;
-  align-items: center;
+  align-items: end;
   width: min(760px, calc(100% - 120px));
   padding: 8px;
   background: #ffffff;
@@ -1003,6 +1068,7 @@ onBeforeUnmount(() => {
 .map-toolbar label {
   display: grid;
   gap: 3px;
+  min-width: 0;
   color: #5d6875;
   font-size: 11px;
   font-weight: 700;
@@ -1010,7 +1076,9 @@ onBeforeUnmount(() => {
 
 .map-toolbar input,
 .map-toolbar select {
-  min-width: 118px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   height: 30px;
   padding: 4px 7px;
   color: #1f2933;
@@ -1041,10 +1109,94 @@ onBeforeUnmount(() => {
   top: 112px;
 }
 
+.map-risk-panel {
+  left: 12px;
+  bottom: 12px;
+  display: grid;
+  width: min(330px, calc(100% - 380px));
+  gap: 6px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #b9c5d1;
+  box-shadow: 0 2px 8px #1726361a;
+}
+
+.map-risk-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.map-risk-heading strong {
+  color: #20364f;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.map-risk-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.map-risk-item {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 5px;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 6px;
+  text-align: left;
+  background: #f8fafc;
+  border: 1px solid #c7d1dc;
+}
+
+.map-risk-item i {
+  width: 10px;
+  height: 10px;
+  border: 1px solid currentColor;
+}
+
+.map-risk-item span,
+.map-risk-item b {
+  color: #1f2933;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.map-risk-item.normal {
+  color: #2d7a55;
+}
+
+.map-risk-item.warning {
+  color: #a66b0e;
+}
+
+.map-risk-item.danger {
+  color: #a63733;
+}
+
+.map-risk-item.normal i {
+  background: #87d0ae;
+}
+
+.map-risk-item.warning i {
+  background: #f0c75e;
+}
+
+.map-risk-item.danger i {
+  background: #e56f67;
+}
+
 .toolbar-refresh {
   display: grid;
+  align-content: center;
   gap: 1px;
+  box-sizing: border-box;
   min-width: 104px;
+  min-height: 44px;
   padding: 5px 7px;
   color: #1f2933;
   background: #f8fafc;
@@ -1070,13 +1222,23 @@ onBeforeUnmount(() => {
 }
 
 .toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   min-width: 74px;
-  height: 30px;
+  min-height: 44px;
+  padding: 0 10px;
   color: #ffffff;
   background: #23639c;
   border: 1px solid #23639c;
+  cursor: pointer;
+  font-family: inherit;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  text-decoration: none;
 }
 
 .toolbar-button:disabled {
@@ -1139,6 +1301,10 @@ onBeforeUnmount(() => {
   color: #6c4300;
   background: #ffe1a6;
   border-bottom-color: #d9a53f;
+}
+
+.operation-brief.warning .summary-heading small {
+  color: #7a4b00;
 }
 
 .operation-brief.danger .summary-heading {
@@ -1254,7 +1420,7 @@ onBeforeUnmount(() => {
 
 .operation-status dl div {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: 68px minmax(0, 1fr);
   gap: 6px;
   padding: 6px 7px;
   background: #f8fafc;
@@ -1292,15 +1458,29 @@ onBeforeUnmount(() => {
 }
 
 .operation-metrics div.normal {
+  color: #235f42;
+  background: #edf8f3;
+  border-color: #a8d1bc;
   border-top-color: var(--green-600);
 }
 
 .operation-metrics div.warning {
-  border-top-color: var(--amber-500);
+  color: #7a5300;
+  background: #fff7e6;
+  border-color: #e3bf73;
+  border-top-color: #d28a00;
 }
 
 .operation-metrics div.danger {
-  border-top-color: var(--red-500);
+  color: #9f1f1b;
+  background: #fff0ef;
+  border-color: #e2a19d;
+  border-top-color: #c42f2a;
+}
+
+.operation-metrics div.warning strong,
+.operation-metrics div.danger strong {
+  color: currentColor;
 }
 
 .operation-metrics span {
@@ -1566,6 +1746,11 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
+.sector-risk-reason {
+  color: #3f5368 !important;
+  font-weight: 800 !important;
+}
+
 .sector-row.normal {
   border-left: 5px solid #2d7a55;
 }
@@ -1803,9 +1988,50 @@ onBeforeUnmount(() => {
   opacity: 0.92;
 }
 :global(.yard-gate-icon),
-:global(.yard-vehicle-icon) {
+:global(.yard-vehicle-icon),
+:global(.yard-sector-label-icon) {
   background: transparent;
   border: 0;
+}
+
+:global(.yard-sector-label) {
+  display: grid;
+  min-width: 54px;
+  gap: 1px;
+  padding: 3px 5px;
+  color: #1f2933;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid #7f8b97;
+  box-shadow: 0 1px 3px rgba(23, 38, 54, 0.18);
+  text-align: center;
+}
+
+:global(.yard-sector-label b) {
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+:global(.yard-sector-label small) {
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+:global(.yard-sector-label.normal) {
+  border-color: #2d7a55;
+}
+
+:global(.yard-sector-label.warning) {
+  color: #7a5300;
+  background: rgba(255, 246, 220, 0.92);
+  border-color: #a66b0e;
+}
+
+:global(.yard-sector-label.danger) {
+  color: #9b2f2b;
+  background: rgba(253, 236, 234, 0.94);
+  border-color: #a63733;
 }
 
 :global(.yard-gate) {
@@ -2054,6 +2280,12 @@ onBeforeUnmount(() => {
     width: auto;
     max-width: none;
     grid-template-columns: 1fr 120px;
+  }
+
+  .map-risk-panel {
+    position: static;
+    width: auto;
+    margin: 10px;
   }
 
   .toolbar-refresh,

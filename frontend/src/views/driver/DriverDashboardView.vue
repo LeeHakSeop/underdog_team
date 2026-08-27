@@ -981,6 +981,8 @@ onUnmounted(() => {
 .workflow-step span {
   font-size: 12px;
   font-weight: 800;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .workflow-step.done {
@@ -1048,7 +1050,7 @@ onUnmounted(() => {
 
 .driver-action-bar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, auto);
   gap: 12px;
   align-items: center;
   margin-top: 12px;
@@ -1079,6 +1081,8 @@ onUnmounted(() => {
 .action-buttons {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -1209,6 +1213,7 @@ onUnmounted(() => {
   display: flex;
   min-width: 0;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-left: auto;
 }
@@ -1238,7 +1243,8 @@ onUnmounted(() => {
 }
 
 .history-tools input {
-  min-width: 280px;
+  width: min(100%, 280px);
+  min-width: 180px;
 }
 
 .work-list-count {
@@ -1265,6 +1271,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 10px;
 }
@@ -1294,7 +1301,8 @@ onUnmounted(() => {
   }
 
   .history-tools input {
-    min-width: 100%;
+    width: 100%;
+    min-width: 0;
   }
 
   .action-buttons {

@@ -445,7 +445,7 @@ onMounted(loadData)
 
 .dispatch-weather-banner {
   display: grid;
-  grid-template-columns: minmax(240px, 0.7fr) minmax(0, 1.3fr);
+  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
   gap: 10px;
   align-items: stretch;
   padding: 12px;
@@ -578,6 +578,7 @@ onMounted(loadData)
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -673,6 +674,7 @@ onMounted(loadData)
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 12px;
   background: #f6f9fd;
@@ -693,6 +695,7 @@ onMounted(loadData)
   color: var(--ink-500);
   font-size: 13px;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .empty-box {
@@ -709,16 +712,24 @@ onMounted(loadData)
   border-color: #fecaca;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .carrier-identity,
+  .dispatch-weather-banner,
   .carrier-dispatch-grid,
   .exception-card-list {
     grid-template-columns: 1fr;
   }
+}
 
+@media (max-width: 640px) {
   .identity-item + .identity-item {
     border-top: 1px solid #c4d0dc;
     border-left: 0;
+  }
+
+  .driver-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

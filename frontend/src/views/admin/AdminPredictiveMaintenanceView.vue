@@ -97,7 +97,7 @@ const currentType = computed(() =>
 
 const sectionDescriptions = {
   equipment: '설비 기본 정보와 현재 상태를 조회하고 등록·수정·사용 중지합니다.',
-  readings: '설비별 시간 순서 센서 데이터를 조회하고 관리합니다.',
+  readings: '설비별 시간 순서 상태 지표 데이터를 조회하고 관리합니다.',
   alerts: '예측 경보를 접수하고 담당자와 처리 상태를 기록합니다.',
   maintenance: '점검·예방정비·수리·교체 일정과 처리 결과를 관리합니다.',
   models: '적용 모델, 버전, 임계값과 검증 지표를 확인합니다.',
@@ -125,6 +125,7 @@ const sectionDescriptions = {
         <div>
           <span class="eyebrow">PREDICTIVE MAINTENANCE</span>
           <h2>{{ currentType?.label }}</h2>
+          <p>{{ currentType?.description }}</p>
         </div>
         <div class="intro-actions">
           <div class="kakao-setting">
@@ -240,6 +241,7 @@ const sectionDescriptions = {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 16px;
   background: linear-gradient(135deg, #ffffff, #e9f1f7);
 }
@@ -253,6 +255,14 @@ const sectionDescriptions = {
   color: #183b5d;
   font-size: 27px;
   line-height: 1.2;
+}
+
+.intro-panel p {
+  max-width: 560px;
+  margin: 6px 0 0;
+  color: #49657c;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .eyebrow {
@@ -272,11 +282,13 @@ const sectionDescriptions = {
 .intro-actions {
   display: flex;
   align-items: stretch;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .kakao-setting {
-  min-width: 290px;
+  flex: 1 1 260px;
+  min-width: 0;
   padding: 7px 9px;
   background: #ffffff;
   border: 1px solid #aebdca;

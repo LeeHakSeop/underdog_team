@@ -412,6 +412,7 @@ onUnmounted(() => {
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
   margin-left: auto;
 }
@@ -424,7 +425,8 @@ onUnmounted(() => {
 }
 
 .work-status-tools select {
-  min-width: 150px;
+  width: min(100%, 150px);
+  min-width: 0;
   min-height: 32px;
   padding: 4px 8px;
   color: var(--ink-900);
@@ -464,7 +466,7 @@ onUnmounted(() => {
 .completed-work-tools input {
   flex: 1 1 240px;
   width: auto;
-  min-width: 180px;
+  min-width: 0;
 }
 
 .completed-work-tools select {
@@ -479,6 +481,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 10px;
   color: var(--ink-500);
@@ -522,6 +525,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -574,6 +578,7 @@ onUnmounted(() => {
 
 .driver-work-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
 }
 

@@ -712,6 +712,7 @@ onUnmounted(() => {
 .section-title-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -719,6 +720,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 5px;
   margin-top: 10px;
 }
@@ -793,6 +795,7 @@ onUnmounted(() => {
 .auto-vehicle-value {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 8px;
   min-height: 36px;
   padding: 8px 10px;
