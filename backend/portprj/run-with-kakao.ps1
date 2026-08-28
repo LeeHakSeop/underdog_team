@@ -2,10 +2,19 @@ $ErrorActionPreference = 'Stop'
 
 $requiredVariables = @(
     'KAKAO_CLIENT_ID',
-    'KAKAO_CLIENT_SECRET',
     'KAKAO_REDIRECT_URI',
     'KAKAO_TOKEN_ENCRYPTION_KEY'
 )
+
+foreach ($variableName in $requiredVariables) {
+    $processValue = [Environment]::GetEnvironmentVariable($variableName, 'Process')
+    if ([string]::IsNullOrWhiteSpace($processValue)) {
+        $userValue = [Environment]::GetEnvironmentVariable($variableName, 'User')
+        if (-not [string]::IsNullOrWhiteSpace($userValue)) {
+            Set-Item -Path "Env:$variableName" -Value $userValue
+        }
+    }
+}
 
 $missingVariables = $requiredVariables | Where-Object {
     [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_, 'Process'))

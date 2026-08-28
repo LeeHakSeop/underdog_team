@@ -35,6 +35,32 @@ public class PredictiveMaintenanceImportService {
     private static final int BATCH_SIZE = 500;
     private static final DateTimeFormatter CSV_DATE_TIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final Map<String, EquipmentDefinition> LEGACY_EQUIPMENT_MAPPING = Map.ofEntries(
+            Map.entry("ANT-001", new EquipmentDefinition("GAT-001", "게이트 자동인식 장치 01", "GATE_RECOGNITION", "GATE-01")),
+            Map.entry("ANT-002", new EquipmentDefinition("GAT-002", "게이트 자동인식 장치 02", "GATE_RECOGNITION", "GATE-02")),
+            Map.entry("ANT-003", new EquipmentDefinition("GAT-003", "게이트 자동인식 장치 03", "GATE_RECOGNITION", "GATE-03")),
+            Map.entry("ANT-004", new EquipmentDefinition("GAT-004", "게이트 자동인식 장치 04", "GATE_RECOGNITION", "GATE-04")),
+            Map.entry("ANT-005", new EquipmentDefinition("QC-001", "안벽 컨테이너 크레인 제어장치 01", "QUAY_CRANE", "QUAY-01")),
+            Map.entry("ANT-006", new EquipmentDefinition("QC-002", "안벽 컨테이너 크레인 제어장치 02", "QUAY_CRANE", "QUAY-02")),
+            Map.entry("ANT-007", new EquipmentDefinition("QC-003", "안벽 컨테이너 크레인 제어장치 03", "QUAY_CRANE", "QUAY-03")),
+            Map.entry("ANT-008", new EquipmentDefinition("QC-004", "안벽 컨테이너 크레인 제어장치 04", "QUAY_CRANE", "QUAY-04")),
+            Map.entry("ANT-009", new EquipmentDefinition("QC-005", "안벽 컨테이너 크레인 제어장치 05", "QUAY_CRANE", "QUAY-05")),
+            Map.entry("ANT-010", new EquipmentDefinition("QC-006", "안벽 컨테이너 크레인 제어장치 06", "QUAY_CRANE", "QUAY-06")),
+            Map.entry("ANT-011", new EquipmentDefinition("QC-007", "안벽 컨테이너 크레인 제어장치 07", "QUAY_CRANE", "QUAY-07")),
+            Map.entry("ANT-012", new EquipmentDefinition("QC-008", "안벽 컨테이너 크레인 제어장치 08", "QUAY_CRANE", "QUAY-08")),
+            Map.entry("ANT-013", new EquipmentDefinition("TC-001", "트랜스퍼 크레인 제어장치 01", "TRANSFER_CRANE", "YARD-TC-01")),
+            Map.entry("ANT-014", new EquipmentDefinition("TC-002", "트랜스퍼 크레인 제어장치 02", "TRANSFER_CRANE", "YARD-TC-02")),
+            Map.entry("ANT-015", new EquipmentDefinition("TC-003", "트랜스퍼 크레인 제어장치 03", "TRANSFER_CRANE", "YARD-TC-03")),
+            Map.entry("ANT-016", new EquipmentDefinition("TC-004", "트랜스퍼 크레인 제어장치 04", "TRANSFER_CRANE", "YARD-TC-04")),
+            Map.entry("ANT-017", new EquipmentDefinition("TC-005", "트랜스퍼 크레인 제어장치 05", "TRANSFER_CRANE", "YARD-TC-05")),
+            Map.entry("ANT-018", new EquipmentDefinition("TC-006", "트랜스퍼 크레인 제어장치 06", "TRANSFER_CRANE", "YARD-TC-06")),
+            Map.entry("ANT-019", new EquipmentDefinition("TC-007", "트랜스퍼 크레인 제어장치 07", "TRANSFER_CRANE", "YARD-TC-07")),
+            Map.entry("ANT-020", new EquipmentDefinition("TC-008", "트랜스퍼 크레인 제어장치 08", "TRANSFER_CRANE", "YARD-TC-08")),
+            Map.entry("ANT-021", new EquipmentDefinition("YT-001", "야드 트랙터 운행 제어장치 01", "YARD_TRACTOR", "YARD-YT-01")),
+            Map.entry("ANT-022", new EquipmentDefinition("YT-002", "야드 트랙터 운행 제어장치 02", "YARD_TRACTOR", "YARD-YT-02")),
+            Map.entry("ANT-023", new EquipmentDefinition("YT-003", "야드 트랙터 운행 제어장치 03", "YARD_TRACTOR", "YARD-YT-03")),
+            Map.entry("ANT-024", new EquipmentDefinition("YT-004", "야드 트랙터 운행 제어장치 04", "YARD_TRACTOR", "YARD-YT-04"))
+    );
 
     private static final String UPSERT_SENSOR_SQL = """
             INSERT INTO pm_sensor_data (
@@ -184,12 +210,17 @@ public class PredictiveMaintenanceImportService {
                 if (line.isBlank()) continue;
                 String[] values = line.split(",", -1);
                 try {
-                    String equipmentCode = requiredText(value(indexes, values, "equipment_id"), "equipment_id");
+                    String rawEquipmentCode = requiredText(value(indexes, values, "equipment_id"), "equipment_id");
+                    EquipmentDefinition equipmentDefinition = equipmentDefinition(
+                            rawEquipmentCode,
+                            nullableText(value(indexes, values, "location_id")),
+                            nullableText(value(indexes, values, "equipment_type"))
+                    );
+                    String equipmentCode = equipmentDefinition.code();
                     LocalDateTime collectedAt = parseDateTime(value(indexes, values, "collected_at"));
-                    String locationCode = nullableText(value(indexes, values, "location_id"));
-                    String equipmentType = nullableText(value(indexes, values, "equipment_type"));
                     equipment.putIfAbsent(equipmentCode,
-                            new EquipmentSeed(equipmentCode, locationCode, equipmentType));
+                            new EquipmentSeed(equipmentCode, equipmentDefinition.name(),
+                                    equipmentDefinition.locationCode(), equipmentDefinition.type()));
 
                     String state = normalizeState(value(indexes, values, "operational_state"));
                     boolean currentFailure = bool(value(indexes, values, "current_failure"));
@@ -249,11 +280,12 @@ public class PredictiveMaintenanceImportService {
                         equipment_code, equipment_name, equipment_type, location_code
                     ) VALUES (?, ?, ?, ?)
                     ON CONFLICT (equipment_code) DO UPDATE SET
+                        equipment_name = EXCLUDED.equipment_name,
                         equipment_type = EXCLUDED.equipment_type,
                         location_code = COALESCE(EXCLUDED.location_code, pm_equipment.location_code),
                         updated_at = CURRENT_TIMESTAMP
                     """,
-                    seed.code(), "안테나 " + seed.code().replace("ANT-", ""),
+                    seed.code(), seed.name(),
                     normalizeEquipmentType(seed.type()), seed.locationCode());
         }
         Map<String, Long> result = new HashMap<>();
@@ -408,8 +440,14 @@ public class PredictiveMaintenanceImportService {
     }
 
     private static String normalizeEquipmentType(String value) {
-        if (value == null || value.isBlank() || "hipass_antenna".equalsIgnoreCase(value)) return "ANTENNA";
+        if (value == null || value.isBlank() || "hipass_antenna".equalsIgnoreCase(value)) return "PORT_EQUIPMENT";
         return value.toUpperCase(Locale.ROOT);
+    }
+
+    private static EquipmentDefinition equipmentDefinition(String rawCode, String locationCode, String type) {
+        EquipmentDefinition mapped = LEGACY_EQUIPMENT_MAPPING.get(rawCode);
+        if (mapped != null) return mapped;
+        return new EquipmentDefinition(rawCode, rawCode, normalizeEquipmentType(type), locationCode);
     }
 
     private static Long requiredEquipmentId(Map<String, Long> equipmentIds, String code) {
@@ -419,7 +457,8 @@ public class PredictiveMaintenanceImportService {
     }
 
     private record ParsedCsv(List<SensorRow> rows, Map<String, EquipmentSeed> equipment) {}
-    private record EquipmentSeed(String code, String locationCode, String type) {}
+    private record EquipmentSeed(String code, String name, String locationCode, String type) {}
+    private record EquipmentDefinition(String code, String name, String type, String locationCode) {}
 
     private record SensorRow(
             Long equipmentId, String equipmentCode, LocalDateTime collectedAt,

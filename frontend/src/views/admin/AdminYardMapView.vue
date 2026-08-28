@@ -9,6 +9,14 @@ import { useYardMapStore } from '@/stores/adminStore/yardMapStore'
 import { useNotificationStore } from '@/stores/adminStore/notificationStore'
 import { useWeatherStore } from '@/stores/weatherStore'
 import WeatherCard from '@/components/WeatherCard.vue'
+import {
+  fetchLatestPredictiveSensorData,
+  fetchPredictiveEquipment,
+} from '@/api/predictiveMaintenanceApi'
+import {
+  DEMO_EQUIPMENT_ID,
+  predictiveDemoSession,
+} from '@/config/predictiveDemoSession'
 
 const mapElement = ref(null)
 const mapReady = ref(false)
@@ -54,6 +62,39 @@ const statusOptions = [
   { value: 'DANGER', label: '위험' },
 ]
 
+const predictiveEquipmentLayout = {
+  'GAT-001': { position: [35.10847, 129.07886], label: 'GAT 1', type: 'gate' },
+  'GAT-002': { position: [35.10837, 129.07899], label: 'GAT 2', type: 'gate' },
+  'GAT-003': { position: [35.10813, 129.07891], label: 'GAT 3', type: 'gate' },
+  'GAT-004': { position: [35.10803, 129.07904], label: 'GAT 4', type: 'gate' },
+  'QC-001': { position: [35.10433, 129.07945], label: 'QC 1', type: 'quay' },
+  'QC-002': { position: [35.10432, 129.08055], label: 'QC 2', type: 'quay' },
+  'QC-003': { position: [35.10432, 129.08165], label: 'QC 3', type: 'quay' },
+  'QC-004': { position: [35.10431, 129.08275], label: 'QC 4', type: 'quay' },
+  'QC-005': { position: [35.10431, 129.08385], label: 'QC 5', type: 'quay' },
+  'QC-006': { position: [35.10430, 129.08495], label: 'QC 6', type: 'quay' },
+  'QC-007': { position: [35.10430, 129.08605], label: 'QC 7', type: 'quay' },
+  'QC-008': { position: [35.10429, 129.08715], label: 'QC 8', type: 'quay' },
+  'TC-001': { position: [35.10588, 129.08010], label: 'TC 1', type: 'yard' },
+  'TC-002': { position: [35.10534, 129.08098], label: 'TC 2', type: 'yard' },
+  'TC-003': { position: [35.10482, 129.08178], label: 'TC 3', type: 'yard' },
+  'TC-004': { position: [35.10587, 129.08380], label: 'TC 4', type: 'yard' },
+  'TC-005': { position: [35.10533, 129.08465], label: 'TC 5', type: 'yard' },
+  'TC-006': { position: [35.10480, 129.08542], label: 'TC 6', type: 'yard' },
+  'TC-007': { position: [35.10586, 129.08735], label: 'TC 7', type: 'yard' },
+  'TC-008': { position: [35.10528, 129.08815], label: 'TC 8', type: 'yard' },
+  'YT-001': { position: [35.10655, 129.08020], label: 'YT 1', type: 'tractor' },
+  'YT-002': { position: [35.10645, 129.08365], label: 'YT 2', type: 'tractor' },
+  'YT-003': { position: [35.10643, 129.08675], label: 'YT 3', type: 'tractor' },
+  'YT-004': { position: [35.10742, 129.07970], label: 'YT 4', type: 'tractor' },
+  [DEMO_EQUIPMENT_ID]: { position: [35.10502, 129.08556], label: 'DEMO TC', type: 'demo' },
+}
+
+const predictiveEquipment = ref([])
+const latestPredictiveRows = ref([])
+const predictiveLoadError = ref('')
+const selectedMaintenanceEquipmentId = ref(null)
+
 const error = computed(() => mapError.value || storeError.value)
 const normalizedSearch = computed(() => searchQuery.value.trim().toLowerCase())
 const selectedSector = computed(() => yardSectors.value.find((sector) => sector.sectorId === selectedSectorId.value) || null)
@@ -62,6 +103,102 @@ const selectedWorkVehicle = computed(() => {
   const selectedFromId = vehicles.value.find((vehicle) => vehicle.workOrderId === selectedWorkOrderId.value)
   return selectedFromId || selectedSectorVehicles.value[0] || null
 })
+const latestPredictiveByCode = computed(() => new Map(
+  latestPredictiveRows.value.map((row) => [row.equipmentId, row]),
+))
+const demoMaintenanceStatus = computed(() => {
+  const observedAt = Number(predictiveDemoSession.observationTime || 0)
+  if (!predictiveDemoSession.initialized || !observedAt) return null
+
+  if (predictiveDemoSession.maintenanceAt && observedAt >= predictiveDemoSession.maintenanceAt) {
+    return {
+      collectedAt: observedAt,
+      currentFaultProbability: null,
+      abnormalSensors: [],
+      currentFailure: false,
+      failureEvent: 0,
+      operationalStateKo: predictiveDemoSession.maintenanceState || '정상',
+      stateLevel: 0,
+      needsAttention: false,
+      precursorEntryCondition: false,
+    }
+  }
+
+  if (predictiveDemoSession.failureAt && observedAt >= predictiveDemoSession.failureAt) {
+    return {
+      collectedAt: observedAt,
+      currentFaultProbability: 0.92,
+      abnormalSensors: ['제어 통신 손실률', '주행 제어 응답', '위치 제어 오류'],
+      currentFailure: true,
+      failureEvent: 1,
+      operationalStateKo: '고장',
+      stateLevel: 4,
+      needsAttention: true,
+      precursorEntryCondition: true,
+    }
+  }
+
+  if (predictiveDemoSession.alertAt && observedAt >= predictiveDemoSession.alertAt) {
+    return {
+      collectedAt: observedAt,
+      currentFaultProbability: 0.74,
+      abnormalSensors: ['제어 통신 손실률', '주행 제어 응답'],
+      currentFailure: false,
+      failureEvent: 0,
+      operationalStateKo: '고장 예상',
+      stateLevel: 3,
+      needsAttention: true,
+      precursorEntryCondition: true,
+    }
+  }
+
+  return {
+    collectedAt: observedAt,
+    currentFaultProbability: 0.08,
+    abnormalSensors: [],
+    currentFailure: false,
+    failureEvent: 0,
+    operationalStateKo: '정상',
+    stateLevel: 0,
+    needsAttention: false,
+    precursorEntryCondition: false,
+  }
+})
+const demoMaintenanceEquipment = computed(() => ({
+  equipmentCode: DEMO_EQUIPMENT_ID,
+  equipmentName: '시연용 트랜스퍼 크레인 제어장치',
+  equipmentType: 'TRANSFER_CRANE',
+  locationCode: 'YARD-TC-DEMO',
+  operationStatus: 'ACTIVE',
+  isDemo: true,
+}))
+const maintenanceEquipmentSource = computed(() => [
+  demoMaintenanceEquipment.value,
+  ...predictiveEquipment.value,
+])
+const maintenanceEquipmentMarkers = computed(() => maintenanceEquipmentSource.value
+  .map((equipment) => {
+    const layout = predictiveEquipmentLayout[equipment.equipmentCode]
+    if (!layout) return null
+    const status = equipment.equipmentCode === DEMO_EQUIPMENT_ID
+      ? demoMaintenanceStatus.value
+      : latestPredictiveByCode.value.get(equipment.equipmentCode)
+    return {
+      ...equipment,
+      ...layout,
+      status,
+      tone: predictiveStatusClass(status, equipment),
+    }
+  })
+  .filter(Boolean))
+const selectedMaintenanceEquipment = computed(() => maintenanceEquipmentMarkers.value
+  .find((equipment) => equipment.equipmentCode === selectedMaintenanceEquipmentId.value)
+  || maintenanceEquipmentMarkers.value[0]
+  || null)
+const maintenanceStatusCounts = computed(() => maintenanceEquipmentMarkers.value.reduce((counts, equipment) => {
+  counts[equipment.tone] = (counts[equipment.tone] || 0) + 1
+  return counts
+}, { normal: 0, warning: 0, danger: 0, unknown: 0 }))
 
 watch(selectedSector, (sector) => {
   capacityInput.value = sector?.capacity ?? ''
@@ -139,12 +276,6 @@ const statusCounts = computed(() => yardSectors.value.reduce((counts, sector) =>
   counts[level] = (counts[level] || 0) + 1
   return counts
 }, { NORMAL: 0, WARNING: 0, DANGER: 0 }))
-
-const mapLegendItems = computed(() => [
-  { level: 'DANGER', label: '위험', count: statusCounts.value.DANGER || 0, hint: '포화·병목 우선 확인' },
-  { level: 'WARNING', label: '주의', count: statusCounts.value.WARNING || 0, hint: '사용률 상승 구간' },
-  { level: 'NORMAL', label: '정상', count: statusCounts.value.NORMAL || 0, hint: '운영 가능' },
-])
 
 const selectedSectorMetrics = computed(() => {
   const sector = selectedSector.value
@@ -281,7 +412,14 @@ const operationRisk = computed(() => {
 })
 
 function formatDateTime(value) {
-  return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
+  if (!value) return '-'
+  if (typeof value === 'number') {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return '-'
+    const pad = (number) => String(number).padStart(2, '0')
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+  }
+  return String(value).replace('T', ' ').slice(0, 16)
 }
 
 function formatCount(value) {
@@ -372,6 +510,43 @@ function statusClass(statusLevel) {
   if (statusLevel === 'DANGER') return 'danger'
   if (statusLevel === 'WARNING') return 'warning'
   return 'normal'
+}
+
+function predictiveStatusClass(status, equipment) {
+  if (equipment?.operationStatus && equipment.operationStatus !== 'ACTIVE') return 'warning'
+  if (!status) return 'unknown'
+  if (status.currentFailure || status.failureEvent || Number(status.stateLevel || 0) >= 4) return 'danger'
+  if (
+    status.needsAttention ||
+    status.precursorEntryCondition ||
+    Number(status.stateLevel || 0) >= 2 ||
+    Number(status.currentFaultProbability || 0) >= 0.65
+  ) return 'warning'
+  return 'normal'
+}
+
+function predictiveStatusLabel(status, equipment) {
+  const tone = predictiveStatusClass(status, equipment)
+  if (!status) return '데이터 확인'
+  if (tone === 'danger') return '정비 위험'
+  if (tone === 'warning') return status.operationalStateKo || '주의 관찰'
+  return status.operationalStateKo || '정상'
+}
+
+function equipmentTypeLabel(type) {
+  return {
+    GATE_RECOGNITION: '게이트 인식',
+    QUAY_CRANE: '안벽 크레인',
+    TRANSFER_CRANE: '트랜스퍼 크레인',
+    DEMO: '시연 장비',
+    YARD_TRACTOR: '야드 트랙터',
+    PORT_EQUIPMENT: '항만 설비',
+  }[type] || type || '항만 설비'
+}
+
+function formatProbability(value) {
+  if (value === null || value === undefined || value === '') return '-'
+  return `${(Number(value) * 100).toFixed(1)}%`
 }
 
 function gateTone(gate) {
@@ -492,11 +667,13 @@ const sectorPopupHtml = (sector) => `
 const sectorLabelHtml = (sector) => {
   const level = sector?.statusLevel || 'NORMAL'
   const usage = formatPercent(sector?.usageRate)
+  const vehicleCount = vehicleCountBySectorId.value.get(sector?.sectorId) || 0
 
   return `
     <span class="yard-sector-label ${statusClass(level)}">
       <b>${escapeHtml(sector?.sectorName)}</b>
-      <small>${escapeHtml(statusLabel(level))} · ${escapeHtml(usage)}</small>
+      <small>혼잡 ${escapeHtml(statusLabel(level))} · ${escapeHtml(usage)}</small>
+      <small>작업 ${escapeHtml(sector?.workOrderCount || 0)} / 차량 ${escapeHtml(vehicleCount)}</small>
     </span>
   `
 }
@@ -572,6 +749,26 @@ const vehiclePopupHtml = (sectorVehicles) => {
   return `<div class="vehicle-popup"><b>작업 차량 ${sectorVehicles.length}대</b>${rows}</div>`
 }
 
+const predictiveEquipmentPopupHtml = (equipment) => {
+  const status = equipment.status
+  const abnormalSensors = status?.abnormalSensors?.length
+    ? status.abnormalSensors.join(', ')
+    : '특이 센서 없음'
+
+  return `
+    <div class="equipment-popup">
+      <b>${escapeHtml(equipment.equipmentCode)} · ${escapeHtml(equipment.equipmentName)}</b>
+      ${equipment.isDemo ? '<p>예지보전 재생 시나리오와 연동되는 시연용 장비입니다.</p>' : ''}
+      <div><span>설비 구분</span><strong>${escapeHtml(equipmentTypeLabel(equipment.equipmentType))}</strong></div>
+      <div><span>위치</span><strong>${escapeHtml(equipment.locationCode)}</strong></div>
+      <div><span>상태</span><strong>${escapeHtml(predictiveStatusLabel(status, equipment))}</strong></div>
+      <div><span>${equipment.isDemo ? '시연 시각' : '최근 수집'}</span><strong>${escapeHtml(formatDateTime(status?.collectedAt))}</strong></div>
+      <div><span>고장 확률</span><strong>${escapeHtml(formatProbability(status?.currentFaultProbability))}</strong></div>
+      <div><span>이상 센서</span><strong>${escapeHtml(abnormalSensors)}</strong></div>
+    </div>
+  `
+}
+
 const renderOperations = () => {
   if (!mapReady.value) return
   operationLayer?.clearLayers()
@@ -630,8 +827,8 @@ const renderOperations = () => {
         icon: L.divIcon({
           className: 'yard-sector-label-icon',
           html: sectorLabelHtml(yardSector),
-          iconSize: [58, 34],
-          iconAnchor: [29, 17],
+          iconSize: [82, 46],
+          iconAnchor: [41, 23],
         }),
       }))
     })
@@ -668,6 +865,27 @@ const renderOperations = () => {
     }).bindPopup(vehiclePopupHtml(sectorVehicles)))
   })
 
+  maintenanceEquipmentMarkers.value.forEach((equipment) => {
+    const icon = L.divIcon({
+      className: 'predictive-equipment-icon',
+      html: `
+        <span class="predictive-equipment-marker ${equipment.type} ${equipment.tone}">
+          <i></i>
+          <b>${escapeHtml(equipment.label)}</b>
+        </span>
+      `,
+      iconSize: [62, 34],
+      iconAnchor: [31, 17],
+    })
+
+    operationLayer.addLayer(L.marker(equipment.position, { icon })
+      .bindTooltip(`${equipment.equipmentCode} / ${predictiveStatusLabel(equipment.status, equipment)}`, { sticky: true })
+      .bindPopup(predictiveEquipmentPopupHtml(equipment))
+      .on('click', () => {
+        selectedMaintenanceEquipmentId.value = equipment.equipmentCode
+      }))
+  })
+
   gateSummary.value.filter((gate) => gate.position).forEach((gate) => {
     const laneClass = ['G03', 'G04'].includes(String(gate.gateNumber)) ? 'lane-secondary' : 'lane-primary'
     const icon = L.divIcon({
@@ -687,10 +905,21 @@ const renderOperations = () => {
 }
 
 const refreshData = async () => {
-  await Promise.allSettled([
+  const results = await Promise.allSettled([
     yardMapStore.loadYardMap(),
     weatherStore.fetchWeather(),
+    fetchPredictiveEquipment(),
+    fetchLatestPredictiveSensorData(),
   ])
+  let nextPredictiveLoadError = ''
+
+  if (results[2].status === 'fulfilled') predictiveEquipment.value = results[2].value || []
+  else nextPredictiveLoadError = results[2].reason?.message || '예지보전 장비 목록을 불러오지 못했습니다.'
+
+  if (results[3].status === 'fulfilled') latestPredictiveRows.value = results[3].value || []
+  else nextPredictiveLoadError = results[3].reason?.message || '최신 장비 상태를 불러오지 못했습니다.'
+  predictiveLoadError.value = nextPredictiveLoadError
+
   await nextTick()
   renderOperations()
 }
@@ -699,7 +928,7 @@ const manualRefresh = async () => {
   await refreshData()
 }
 
-watch([blockSummary, gateSummary, yardSectors, vehicles, selectedSectorId, searchQuery, statusFilter], renderOperations, { deep: true })
+watch([blockSummary, gateSummary, yardSectors, vehicles, selectedSectorId, searchQuery, statusFilter, maintenanceEquipmentMarkers], renderOperations, { deep: true })
 
 onMounted(async () => {
   try {
@@ -762,25 +991,6 @@ onBeforeUnmount(() => {
           title="부산항 날씨"
           mode="map"
         />
-        <div class="map-risk-panel" aria-label="야드 섹터 위험도 범례">
-          <div class="map-risk-heading">
-            <strong>지도 색상 기준</strong>
-          </div>
-          <div class="map-risk-legend">
-            <button
-              v-for="item in mapLegendItems"
-              :key="item.level"
-              type="button"
-              class="map-risk-item"
-              :class="statusClass(item.level)"
-              @click="statusFilter = item.level"
-            >
-              <i></i>
-              <span>{{ item.label }}</span>
-              <b>{{ item.count }}개</b>
-            </button>
-          </div>
-        </div>
         <div ref="mapElement" class="yard-map" aria-label="감만부두 운영 지도"></div>
       </article>
       <aside class="panel summary-panel">
@@ -869,6 +1079,35 @@ onBeforeUnmount(() => {
             >
               {{ showNormalGates ? '정상 게이트 접기' : `정상 게이트 ${normalGates.length}개 보기` }}
             </button>
+          </div>
+        </section>
+
+        <section class="summary-group">
+          <div class="summary-heading">
+            <strong>예지보전 장비</strong>
+            <small>지도 장비 클릭 시 상태 확인</small>
+          </div>
+          <div class="summary-content maintenance-summary">
+            <div class="operation-metrics compact">
+              <div class="danger"><span>위험</span><strong>{{ maintenanceStatusCounts.danger || 0 }}</strong></div>
+              <div class="warning"><span>주의</span><strong>{{ maintenanceStatusCounts.warning || 0 }}</strong></div>
+              <div class="unknown"><span>확인</span><strong>{{ maintenanceStatusCounts.unknown || 0 }}</strong></div>
+              <div class="normal"><span>정상</span><strong>{{ maintenanceStatusCounts.normal || 0 }}</strong></div>
+            </div>
+            <p v-if="predictiveLoadError" class="sector-exception-note warning">{{ predictiveLoadError }}</p>
+            <dl class="selected-detail">
+              <div><dt>장비</dt><dd>{{ selectedMaintenanceEquipment?.equipmentCode || '-' }}</dd></div>
+              <div><dt>이름</dt><dd>{{ selectedMaintenanceEquipment?.equipmentName || '-' }}</dd></div>
+              <div v-if="selectedMaintenanceEquipment?.isDemo"><dt>구성</dt><dd>예지보전 재생 시나리오 연동</dd></div>
+              <div><dt>구분</dt><dd>{{ equipmentTypeLabel(selectedMaintenanceEquipment?.equipmentType) }}</dd></div>
+              <div><dt>위치</dt><dd>{{ selectedMaintenanceEquipment?.locationCode || '-' }}</dd></div>
+              <div><dt>상태</dt><dd>{{ predictiveStatusLabel(selectedMaintenanceEquipment?.status, selectedMaintenanceEquipment) }}</dd></div>
+              <div>
+                <dt>{{ selectedMaintenanceEquipment?.isDemo ? '시연 시각' : '최근 수집' }}</dt>
+                <dd>{{ formatDateTime(selectedMaintenanceEquipment?.status?.collectedAt) }}</dd>
+              </div>
+              <div><dt>고장 확률</dt><dd>{{ formatProbability(selectedMaintenanceEquipment?.status?.currentFaultProbability) }}</dd></div>
+            </dl>
           </div>
         </section>
 
@@ -1043,7 +1282,6 @@ onBeforeUnmount(() => {
 }
 
 .map-toolbar,
-.map-risk-panel,
 .map-notice,
 .map-loading {
   position: absolute;
@@ -1107,87 +1345,6 @@ onBeforeUnmount(() => {
 
 .map-loading {
   top: 112px;
-}
-
-.map-risk-panel {
-  left: 12px;
-  bottom: 12px;
-  display: grid;
-  width: min(330px, calc(100% - 380px));
-  gap: 6px;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid #b9c5d1;
-  box-shadow: 0 2px 8px #1726361a;
-}
-
-.map-risk-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.map-risk-heading strong {
-  color: #20364f;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.map-risk-legend {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.map-risk-item {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
-  gap: 5px;
-  align-items: center;
-  min-height: 30px;
-  padding: 5px 6px;
-  text-align: left;
-  background: #f8fafc;
-  border: 1px solid #c7d1dc;
-}
-
-.map-risk-item i {
-  width: 10px;
-  height: 10px;
-  border: 1px solid currentColor;
-}
-
-.map-risk-item span,
-.map-risk-item b {
-  color: #1f2933;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.map-risk-item.normal {
-  color: #2d7a55;
-}
-
-.map-risk-item.warning {
-  color: #a66b0e;
-}
-
-.map-risk-item.danger {
-  color: #a63733;
-}
-
-.map-risk-item.normal i {
-  background: #87d0ae;
-}
-
-.map-risk-item.warning i {
-  background: #f0c75e;
-}
-
-.map-risk-item.danger i {
-  background: #e56f67;
 }
 
 .toolbar-refresh {
@@ -1478,8 +1635,16 @@ onBeforeUnmount(() => {
   border-top-color: #c42f2a;
 }
 
+.operation-metrics div.unknown {
+  color: #4f5f6f;
+  background: #f4f7fa;
+  border-color: #c7d1dc;
+  border-top-color: #7b8794;
+}
+
 .operation-metrics div.warning strong,
-.operation-metrics div.danger strong {
+.operation-metrics div.danger strong,
+.operation-metrics div.unknown strong {
   color: currentColor;
 }
 
@@ -1494,6 +1659,16 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 900;
   overflow-wrap: anywhere;
+}
+
+.operation-metrics.compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 0;
+}
+
+.maintenance-summary {
+  display: grid;
+  gap: 9px;
 }
 
 .priority-list,
@@ -1989,14 +2164,15 @@ onBeforeUnmount(() => {
 }
 :global(.yard-gate-icon),
 :global(.yard-vehicle-icon),
-:global(.yard-sector-label-icon) {
+:global(.yard-sector-label-icon),
+:global(.predictive-equipment-icon) {
   background: transparent;
   border: 0;
 }
 
 :global(.yard-sector-label) {
   display: grid;
-  min-width: 54px;
+  min-width: 78px;
   gap: 1px;
   padding: 3px 5px;
   color: #1f2933;
@@ -2016,6 +2192,7 @@ onBeforeUnmount(() => {
   font-size: 9px;
   font-weight: 900;
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 :global(.yard-sector-label.normal) {
@@ -2210,6 +2387,88 @@ onBeforeUnmount(() => {
   font-size: 10px;
 }
 
+:global(.predictive-equipment-marker) {
+  position: relative;
+  display: grid;
+  min-width: 54px;
+  min-height: 30px;
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  color: #20364f;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #2d7a55;
+  box-shadow: 0 6px 14px rgba(23, 38, 54, 0.2);
+  font-weight: 900;
+}
+
+:global(.predictive-equipment-marker i) {
+  display: block;
+  width: 10px;
+  height: 10px;
+  background: #2d7a55;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+}
+
+:global(.predictive-equipment-marker b) {
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+:global(.predictive-equipment-marker.gate) {
+  border-radius: 2px;
+}
+
+:global(.predictive-equipment-marker.quay) {
+  border-radius: 999px;
+}
+
+:global(.predictive-equipment-marker.yard) {
+  border-radius: 4px;
+}
+
+:global(.predictive-equipment-marker.tractor) {
+  border-radius: 10px 2px 10px 2px;
+}
+
+:global(.predictive-equipment-marker.demo) {
+  border-width: 3px;
+  border-style: double;
+}
+
+:global(.predictive-equipment-marker.warning) {
+  color: #7a5300;
+  border-color: #d28a00;
+  background: #fff7e6;
+}
+
+:global(.predictive-equipment-marker.warning i) {
+  background: #d28a00;
+}
+
+:global(.predictive-equipment-marker.unknown) {
+  color: #4f5f6f;
+  border-color: #7b8794;
+  background: #f4f7fa;
+}
+
+:global(.predictive-equipment-marker.unknown i) {
+  background: #7b8794;
+}
+
+:global(.predictive-equipment-marker.danger) {
+  color: #9f1f1b;
+  border-color: #c42f2a;
+  background: #fff0ef;
+}
+
+:global(.predictive-equipment-marker.danger i) {
+  background: #c42f2a;
+}
+
 :global(.yard-zone-label) {
   display: grid;
   place-items: center;
@@ -2222,7 +2481,8 @@ onBeforeUnmount(() => {
 
 :global(.gate-popup),
 :global(.sector-popup),
-:global(.vehicle-popup) {
+:global(.vehicle-popup),
+:global(.equipment-popup) {
   display: grid;
   gap: 4px;
   min-width: 220px;
@@ -2230,13 +2490,25 @@ onBeforeUnmount(() => {
 
 :global(.gate-popup b),
 :global(.sector-popup b),
-:global(.vehicle-popup b) {
+:global(.vehicle-popup b),
+:global(.equipment-popup b) {
   margin-bottom: 3px;
+}
+
+:global(.equipment-popup p) {
+  margin: 0 0 4px;
+  padding: 5px 7px;
+  color: #1f4f7a;
+  background: #eef6ff;
+  border: 1px solid #bad4ec;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 :global(.gate-popup div),
 :global(.sector-popup div),
-:global(.vehicle-popup div) {
+:global(.vehicle-popup div),
+:global(.equipment-popup div) {
   display: grid;
   grid-template-columns: 86px minmax(0, 1fr);
   gap: 6px;
@@ -2244,14 +2516,16 @@ onBeforeUnmount(() => {
 
 :global(.gate-popup span),
 :global(.sector-popup span),
-:global(.vehicle-popup span) {
+:global(.vehicle-popup span),
+:global(.equipment-popup span) {
   color: #5d6875;
   font-size: 11px;
 }
 
 :global(.gate-popup strong),
 :global(.sector-popup strong),
-:global(.vehicle-popup strong) {
+:global(.vehicle-popup strong),
+:global(.equipment-popup strong) {
   overflow-wrap: anywhere;
   font-size: 11px;
 }
