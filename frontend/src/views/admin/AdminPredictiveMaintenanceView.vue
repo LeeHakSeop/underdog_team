@@ -14,10 +14,6 @@ import {
   predictiveMaintenanceSections,
 } from '@/config/predictiveMaintenance'
 
-<<<<<<< HEAD
-const selectedType = ref('GATE_EQUIPMENT')
-=======
->>>>>>> 221cdfd20489fb600d5c209bdaa48c3dad7ecde6
 const selectedSection = ref('dashboard')
 const kakaoConfigured = ref(false)
 const kakaoOauthReady = ref(false)
@@ -116,13 +112,6 @@ const sectionDescriptions = {
     </nav>
 
     <template v-if="selectedSection === 'dashboard'">
-<<<<<<< HEAD
-      <section class="panel intro-panel">
-        <div>
-          <span class="eyebrow">PREDICTIVE MAINTENANCE</span>
-          <h2>{{ currentType?.label }}</h2>
-          <p>{{ currentType?.description }}</p>
-=======
       <section class="kakao-toolbar" aria-label="카카오 알림 설정">
         <div class="kakao-toolbar-heading">
           <strong>카카오 알림</strong>
@@ -131,7 +120,6 @@ const sectionDescriptions = {
               ? '고장 예상·고장 시 발송'
               : '알림 발송 중지' }}
           </small>
->>>>>>> 221cdfd20489fb600d5c209bdaa48c3dad7ecde6
         </div>
         <div class="kakao-options" role="group" aria-label="카카오 알림 사용 설정">
           <button
@@ -181,22 +169,12 @@ const sectionDescriptions = {
         </div>
       </section>
 
-<<<<<<< HEAD
-      <AntennaHistoryPlayback v-if="selectedType === 'GATE_EQUIPMENT'" />
-=======
       <AntennaHistoryPlayback />
->>>>>>> 221cdfd20489fb600d5c209bdaa48c3dad7ecde6
 
       <PredictiveDashboardSummary @open-maintenance="selectedSection = 'maintenance'" />
     </template>
 
-<<<<<<< HEAD
-    <MaintenanceRecordBoard
-      v-else-if="selectedSection === 'maintenance' && selectedType === 'GATE_EQUIPMENT'"
-    />
-=======
     <MaintenanceRecordBoard v-else-if="selectedSection === 'maintenance'" />
->>>>>>> 221cdfd20489fb600d5c209bdaa48c3dad7ecde6
 
     <section v-else class="panel feature-placeholder">
       <div class="section-title">
@@ -244,76 +222,18 @@ const sectionDescriptions = {
   display: flex;
   min-width: 0;
   align-items: center;
-<<<<<<< HEAD
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  background: linear-gradient(135deg, #ffffff, #e9f1f7);
-}
-
-.intro-panel h2 {
-  margin: 0;
-}
-
-.intro-panel h2 {
-  margin-top: 5px;
-  color: #183b5d;
-  font-size: 27px;
-  line-height: 1.2;
-}
-
-.intro-panel p {
-  max-width: 560px;
-  margin: 6px 0 0;
-  color: #49657c;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.eyebrow {
-  color: var(--blue-700);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-}
-
-.data-basis {
-  min-width: 220px;
-  padding: 8px 10px;
-=======
   gap: 5px;
   padding: 4px 6px;
->>>>>>> 221cdfd20489fb600d5c209bdaa48c3dad7ecde6
   background: #ffffff;
   border: 1px solid #aebdca;
 }
 
-<<<<<<< HEAD
-.intro-actions {
-  display: flex;
-  align-items: stretch;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.kakao-setting {
-  flex: 1 1 260px;
-  min-width: 0;
-  padding: 7px 9px;
-  background: #ffffff;
-  border: 1px solid #aebdca;
-}
-
-.kakao-setting > span,
-.kakao-setting small {
-=======
 .kakao-toolbar-heading {
   flex: 0 0 100px;
 }
 
 .kakao-toolbar-heading strong,
 .kakao-toolbar-heading small {
->>>>>>> 221cdfd20489fb600d5c209bdaa48c3dad7ecde6
   display: block;
 }
 

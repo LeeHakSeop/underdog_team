@@ -1,13 +1,8 @@
 import { reactive } from 'vue'
 import { request } from '@/api/apiClient'
 
-<<<<<<< HEAD
-export const DEMO_EQUIPMENT_ID = 'DEMO-GATE'
-export const DEMO_SOURCE_EQUIPMENT_ID = 'ANT-018'
-=======
 export const DEMO_EQUIPMENT_ID = 'DEMO-TC'
 export const DEMO_SOURCE_EQUIPMENT_ID = 'TC-006'
->>>>>>> 221cdfd20489fb600d5c209bdaa48c3dad7ecde6
 
 export const predictiveDemoSession = reactive({
   initialized: false,

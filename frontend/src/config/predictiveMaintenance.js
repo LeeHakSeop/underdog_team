@@ -3,7 +3,6 @@ export const predictiveMaintenanceSections = [
   { code: 'maintenance', label: '점검·정비' },
 ]
 
-<<<<<<< HEAD
 // VMS와 실제 모델이 연결되는 베타 단계에서 다시 활성화할 메뉴입니다.
 export const predictiveMaintenanceFutureSections = [
   { code: 'equipment', label: '설비 현황' },
@@ -12,8 +11,6 @@ export const predictiveMaintenanceFutureSections = [
   { code: 'models', label: '모델 정보' },
 ]
 
-=======
->>>>>>> 221cdfd20489fb600d5c209bdaa48c3dad7ecde6
 export const predictiveRiskLabels = {
   NORMAL: '정상',
   CAUTION: '주의',
