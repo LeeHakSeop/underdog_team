@@ -1,3 +1,8 @@
+[CmdletBinding()]
+param(
+    [switch]$UseExistingTokenDatabase
+)
+
 $ErrorActionPreference = 'Stop'
 
 Write-Host 'One-time Kakao OAuth setup' -ForegroundColor Cyan
@@ -24,7 +29,18 @@ if ([string]::IsNullOrWhiteSpace($frontendReturnUrl)) {
 }
 
 $encryptionKey = [Environment]::GetEnvironmentVariable('KAKAO_TOKEN_ENCRYPTION_KEY', 'User')
-if ([string]::IsNullOrWhiteSpace($encryptionKey)) {
+if ($UseExistingTokenDatabase) {
+    Write-Host ''
+    Write-Host 'This computer will use a database that already contains encrypted Kakao tokens.' -ForegroundColor Yellow
+    $secureEncryptionKey = Read-Host 'Existing KAKAO_TOKEN_ENCRYPTION_KEY' -AsSecureString
+    $encryptionKey = [System.Net.NetworkCredential]::new('', $secureEncryptionKey).Password
+    $secureEncryptionKey = $null
+
+    if ([string]::IsNullOrWhiteSpace($encryptionKey)) {
+        throw 'The existing token encryption key is required when -UseExistingTokenDatabase is specified.'
+    }
+}
+elseif ([string]::IsNullOrWhiteSpace($encryptionKey)) {
     $keyBytes = New-Object byte[] 48
     $randomGenerator = [Security.Cryptography.RandomNumberGenerator]::Create()
     try {
@@ -41,12 +57,16 @@ if ([string]::IsNullOrWhiteSpace($encryptionKey)) {
 [Environment]::SetEnvironmentVariable('KAKAO_REDIRECT_URI', $redirectUri, 'User')
 [Environment]::SetEnvironmentVariable('KAKAO_FRONTEND_RETURN_URL', $frontendReturnUrl, 'User')
 [Environment]::SetEnvironmentVariable('KAKAO_TOKEN_ENCRYPTION_KEY', $encryptionKey, 'User')
+[Environment]::SetEnvironmentVariable('KAKAO_MESSAGE_ENABLED', 'true', 'User')
+[Environment]::SetEnvironmentVariable('KAKAO_MESSAGE_DRY_RUN', 'false', 'User')
+[Environment]::SetEnvironmentVariable('KAKAO_DASHBOARD_URL', $frontendReturnUrl, 'User')
 
 $clientSecret = $null
 $secureClientSecret = $null
 $encryptionKey = $null
 
 Write-Host ''
-Write-Host 'Setup complete. Close this terminal and open a new terminal before starting the backend.' -ForegroundColor Green
+Write-Host 'Setup complete.' -ForegroundColor Green
+Write-Host 'Close every IntelliJ window and start IntelliJ again before running PortprjApplication.' -ForegroundColor Yellow
 Write-Host 'Register this exact redirect URI in Kakao Developers:'
 Write-Host $redirectUri -ForegroundColor Yellow
