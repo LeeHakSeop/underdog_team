@@ -10,16 +10,13 @@ Write-Host 'Values are saved in the current Windows user environment, not in the
 Write-Host ''
 
 $clientId = Read-Host 'Kakao REST API key'
-$secureClientSecret = Read-Host 'Kakao client secret' -AsSecureString
+$secureClientSecret = Read-Host 'Kakao client secret [press Enter if disabled]' -AsSecureString
 $clientSecret = [System.Net.NetworkCredential]::new('', $secureClientSecret).Password
 $redirectUri = Read-Host 'Redirect URI [http://localhost/api/predictive-maintenance/demo/notifications/kakao/oauth/callback]'
 $frontendReturnUrl = Read-Host 'Frontend return URL [http://localhost:5173/admin/predictive-maintenance]'
 
 if ([string]::IsNullOrWhiteSpace($clientId)) {
     throw 'The Kakao REST API key is required.'
-}
-if ([string]::IsNullOrWhiteSpace($clientSecret)) {
-    throw 'The Kakao client secret is required.'
 }
 if ([string]::IsNullOrWhiteSpace($redirectUri)) {
     $redirectUri = 'http://localhost/api/predictive-maintenance/demo/notifications/kakao/oauth/callback'
@@ -53,7 +50,12 @@ elseif ([string]::IsNullOrWhiteSpace($encryptionKey)) {
 }
 
 [Environment]::SetEnvironmentVariable('KAKAO_CLIENT_ID', $clientId, 'User')
-[Environment]::SetEnvironmentVariable('KAKAO_CLIENT_SECRET', $clientSecret, 'User')
+if ([string]::IsNullOrWhiteSpace($clientSecret)) {
+    [Environment]::SetEnvironmentVariable('KAKAO_CLIENT_SECRET', $null, 'User')
+}
+else {
+    [Environment]::SetEnvironmentVariable('KAKAO_CLIENT_SECRET', $clientSecret, 'User')
+}
 [Environment]::SetEnvironmentVariable('KAKAO_REDIRECT_URI', $redirectUri, 'User')
 [Environment]::SetEnvironmentVariable('KAKAO_FRONTEND_RETURN_URL', $frontendReturnUrl, 'User')
 [Environment]::SetEnvironmentVariable('KAKAO_TOKEN_ENCRYPTION_KEY', $encryptionKey, 'User')

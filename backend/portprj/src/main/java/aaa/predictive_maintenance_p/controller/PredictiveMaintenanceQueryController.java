@@ -46,4 +46,9 @@ public class PredictiveMaintenanceQueryController {
     ) {
         return queryService.sensorData(equipmentCode, from, to);
     }
+
+    @GetMapping("/sensor-data/latest")
+    public List<PredictiveSensorDataResponse> latestSensorData() {
+        return queryService.latestSensorData();
+    }
 }

@@ -43,6 +43,9 @@ export const fetchPredictiveSensorData = (equipmentCode) =>
     `${equipmentCode} 상태 지표 데이터를 불러오지 못했습니다.`,
   )
 
+export const fetchLatestPredictiveSensorData = () =>
+  requestJson('/api/predictive-maintenance/sensor-data/latest', '최신 장비 상태를 불러오지 못했습니다.')
+
 export const fetchPredictiveEvents = (equipmentCode = '') => {
   const query = equipmentCode
     ? `?equipmentCode=${encodeURIComponent(equipmentCode)}`

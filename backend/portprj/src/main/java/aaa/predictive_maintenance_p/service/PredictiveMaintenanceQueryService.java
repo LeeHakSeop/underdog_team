@@ -146,6 +146,65 @@ public class PredictiveMaintenanceQueryService {
         }, parameters.toArray());
     }
 
+    public List<PredictiveSensorDataResponse> latestSensorData() {
+        return jdbcTemplate.query("""
+                WITH latest_rows AS (
+                    SELECT DISTINCT ON (s.equipment_id)
+                           s.*, e.equipment_code
+                    FROM pm_sensor_data s
+                    JOIN pm_equipment e ON e.equipment_id = s.equipment_id
+                    ORDER BY s.equipment_id, s.collected_at DESC
+                )
+                SELECT s.*,
+                       EXISTS (
+                           SELECT 1 FROM pm_event v
+                           WHERE v.equipment_id = s.equipment_id
+                             AND v.occurred_at = s.collected_at
+                             AND v.event_type = 'FAILURE'
+                       ) AS failure_event,
+                       EXISTS (
+                           SELECT 1 FROM pm_event v
+                           WHERE v.equipment_id = s.equipment_id
+                             AND v.occurred_at = s.collected_at
+                             AND v.event_type = 'MAINTENANCE_COMPLETED'
+                       ) AS maintenance_event
+                FROM latest_rows s
+                ORDER BY s.equipment_code
+                """, (rs, rowNum) -> {
+            String state = rs.getString("operational_state").toUpperCase(Locale.ROOT);
+            return new PredictiveSensorDataResponse(
+                    rs.getLong("sensor_data_id"),
+                    rs.getString("equipment_code"),
+                    rs.getTimestamp("collected_at").toLocalDateTime(),
+                    nullableDouble(rs, "traffic_load"),
+                    nullableDouble(rs, "temperature_c"),
+                    nullableDouble(rs, "voltage_v"),
+                    nullableDouble(rs, "signal_strength_dbm"),
+                    nullableDouble(rs, "success_rate"),
+                    nullableDouble(rs, "response_time_ms"),
+                    nullableInteger(rs, "retry_count"),
+                    nullableInteger(rs, "disconnect_count"),
+                    nullableDouble(rs, "packet_loss_rate"),
+                    nullableInteger(rs, "error_count"),
+                    nullableInteger(rs, "days_since_maintenance"),
+                    nullableDouble(rs, "current_fault_probability"),
+                    optionalDouble(rs, "progression_probability"),
+                    optionalString(rs, "progression_model"),
+                    rs.getInt("anomaly_count"),
+                    jsonStringList(rs.getString("abnormal_sensors")),
+                    rs.getBoolean("current_failure"),
+                    state.toLowerCase(Locale.ROOT),
+                    rs.getBoolean("precursor_entry_condition"),
+                    false,
+                    STATE_LABELS.getOrDefault(state, state),
+                    STATE_LEVELS.getOrDefault(state, 0),
+                    rs.getBoolean("needs_attention"),
+                    rs.getBoolean("failure_event") ? 1 : 0,
+                    rs.getBoolean("maintenance_event") ? 1 : 0
+            );
+        });
+    }
+
     public List<PredictiveEventResponse> events(String equipmentCode, String eventType) {
         StringBuilder sql = new StringBuilder("""
                 SELECT v.*, e.equipment_code
