@@ -1,5 +1,5 @@
 export const predictiveMaintenanceSections = [
-  { code: 'dashboard', label: '대시보드' },
+  { code: 'dashboard', label: '장비 상태' },
   { code: 'maintenance', label: '점검·정비' },
 ]
 
