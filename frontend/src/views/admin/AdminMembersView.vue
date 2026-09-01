@@ -12,6 +12,7 @@ const loading = ref(false)
 const errorMessage = ref('')
 const message = ref('')
 const deletingCarrierId = ref(null)
+const selectedDetail = ref(null)
 
 const users = ref([])
 const CARRIER_DELETE_LOG_KEY = 'adminCarrierDeleteTimeline'
@@ -70,6 +71,81 @@ const getCarrier = (carrierId) => {
   return carriers.value.find((carrier) => carrier.carrierId === carrierId)
 }
 
+const getUser = (userId) => {
+  return users.value.find((user) => user.userId === userId)
+}
+
+const getCarrierDrivers = (carrierId) => {
+  return drivers.value.filter((driver) => driver.carrierId === carrierId)
+}
+
+const getCarrierVehicles = (carrierId) => {
+  return vehicles.value.filter((vehicle) => vehicle.carrierId === carrierId)
+}
+
+const getDriverVehicles = (driverId) => {
+  return vehicles.value.filter((vehicle) => vehicle.driverId === driverId)
+}
+
+const openCarrierDetail = (carrier) => {
+  selectedDetail.value = {
+    type: 'carrier',
+    item: carrier,
+  }
+}
+
+const openDriverDetail = (driver) => {
+  selectedDetail.value = {
+    type: 'driver',
+    item: driver,
+  }
+}
+
+const closeDetail = () => {
+  selectedDetail.value = null
+}
+
+const detailTitle = computed(() => {
+  if (!selectedDetail.value) return ''
+  if (selectedDetail.value.type === 'carrier') {
+    return selectedDetail.value.item.carrierName || '운송사 상세'
+  }
+  return selectedDetail.value.item.driverName || '기사 상세'
+})
+
+const selectedCarrierDetail = computed(() => {
+  if (selectedDetail.value?.type !== 'carrier') return null
+
+  const carrier = selectedDetail.value.item
+  const carrierDrivers = getCarrierDrivers(carrier.carrierId)
+  const carrierVehicles = getCarrierVehicles(carrier.carrierId)
+
+  return {
+    carrier,
+    user: getUser(carrier.userId),
+    drivers: carrierDrivers,
+    vehicles: carrierVehicles,
+    approvedDrivers: carrierDrivers.filter((driver) => driver.isRegistered),
+    enterableDrivers: carrierDrivers.filter((driver) => driver.canEnter),
+    waitingVehicles: carrierVehicles.filter(
+      (vehicle) => vehicle.vehicleStatus === '승인대기' || vehicle.vehicleStatus === 'PENDING',
+    ),
+  }
+})
+
+const selectedDriverDetail = computed(() => {
+  if (selectedDetail.value?.type !== 'driver') return null
+
+  const driver = selectedDetail.value.item
+
+  return {
+    driver,
+    user: getUser(driver.userId),
+    carrier: getCarrier(driver.carrierId),
+    vehicles: getDriverVehicles(driver.driverId),
+  }
+})
+
 const recentCarrierDeleteLogs = computed(() => carrierDeleteLogs.value.slice(0, 20))
 
 const formatDateTime = (value) => {
@@ -126,6 +202,18 @@ const loadData = async () => {
       driverStore.loadDrivers(),
       vehicleStore.loadVehicles(),
     ])
+    if (selectedDetail.value?.type === 'carrier') {
+      const updatedCarrier = getCarrier(selectedDetail.value.item.carrierId)
+      selectedDetail.value = updatedCarrier
+        ? { type: 'carrier', item: updatedCarrier }
+        : null
+    }
+    if (selectedDetail.value?.type === 'driver') {
+      const updatedDriver = getDriver(selectedDetail.value.item.driverId)
+      selectedDetail.value = updatedDriver
+        ? { type: 'driver', item: updatedDriver }
+        : null
+    }
   } catch (error) {
     errorMessage.value =
       error.message || '관리자 승인 데이터를 불러오지 못했습니다.'
@@ -345,7 +433,11 @@ onUnmounted(() => {
           <tbody>
             <tr v-for="carrier in carriers" :key="carrier.carrierId">
               <td>{{ carrier.carrierId }}</td>
-              <td>{{ carrier.carrierName }}</td>
+              <td>
+                <button class="link-button" type="button" @click="openCarrierDetail(carrier)">
+                  {{ carrier.carrierName }}
+                </button>
+              </td>
               <td>{{ carrier.carrierContact || '-' }}</td>
               <td>{{ carrier.managerName || '-' }}</td>
               <td>
@@ -363,14 +455,23 @@ onUnmounted(() => {
                 </span>
               </td>
               <td>
-                <button
-                  class="ghost-button reject"
-                  type="button"
-                  :disabled="deletingCarrierId === carrier.carrierId"
-                  @click="removeCarrier(carrier)"
-                >
-                  {{ deletingCarrierId === carrier.carrierId ? '삭제 중...' : '삭제' }}
-                </button>
+                <div class="action-row">
+                  <button
+                    class="ghost-button"
+                    type="button"
+                    @click="openCarrierDetail(carrier)"
+                  >
+                    상세
+                  </button>
+                  <button
+                    class="ghost-button reject"
+                    type="button"
+                    :disabled="deletingCarrierId === carrier.carrierId"
+                    @click="removeCarrier(carrier)"
+                  >
+                    {{ deletingCarrierId === carrier.carrierId ? '삭제 중...' : '삭제' }}
+                  </button>
+                </div>
               </td>
             </tr>
 
@@ -426,13 +527,18 @@ onUnmounted(() => {
               <th>운송사 승인</th>
               <th>운송사 ID</th>
               <th>출입 가능</th>
+              <th>상세</th>
             </tr>
           </thead>
 
           <tbody>
             <tr v-for="driver in drivers" :key="driver.driverId">
               <td>{{ driver.driverId }}</td>
-              <td>{{ driver.driverName }}</td>
+              <td>
+                <button class="link-button" type="button" @click="openDriverDetail(driver)">
+                  {{ driver.driverName }}
+                </button>
+              </td>
               <td>{{ driver.driverContact || '-' }}</td>
               <td>
                 <span
@@ -455,10 +561,19 @@ onUnmounted(() => {
                   {{ driver.canEnter ? '가능' : '불가' }}
                 </span>
               </td>
+              <td>
+                <button
+                  class="ghost-button"
+                  type="button"
+                  @click="openDriverDetail(driver)"
+                >
+                  상세
+                </button>
+              </td>
             </tr>
 
             <tr v-if="drivers.length === 0">
-              <td colspan="6">등록된 기사가 없습니다.</td>
+              <td colspan="7">등록된 기사가 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -543,6 +658,201 @@ onUnmounted(() => {
         </table>
       </div>
     </section>
+
+    <div
+      v-if="selectedDetail"
+      class="detail-backdrop"
+      role="presentation"
+      @click.self="closeDetail"
+    >
+      <aside class="detail-panel" role="dialog" aria-modal="true" :aria-label="detailTitle">
+        <header class="detail-head">
+          <div>
+            <p>{{ selectedDetail.type === 'carrier' ? '운송사 상세' : '기사 상세' }}</p>
+            <h2>{{ detailTitle }}</h2>
+          </div>
+          <button class="close-button" type="button" aria-label="상세 닫기" @click="closeDetail">
+            닫기
+          </button>
+        </header>
+
+        <template v-if="selectedCarrierDetail">
+          <section class="detail-section">
+            <h3>기본 정보</h3>
+            <dl class="detail-list">
+              <div>
+                <dt>운송사 ID</dt>
+                <dd>{{ selectedCarrierDetail.carrier.carrierId }}</dd>
+              </div>
+              <div>
+                <dt>담당자</dt>
+                <dd>{{ selectedCarrierDetail.carrier.managerName || '-' }}</dd>
+              </div>
+              <div>
+                <dt>연락처</dt>
+                <dd>{{ selectedCarrierDetail.carrier.carrierContact || '-' }}</dd>
+              </div>
+              <div>
+                <dt>가입 상태</dt>
+                <dd>{{ selectedCarrierDetail.carrier.carrierStatus || '-' }}</dd>
+              </div>
+              <div>
+                <dt>계정 ID</dt>
+                <dd>{{ selectedCarrierDetail.user?.loginId || '-' }}</dd>
+              </div>
+              <div>
+                <dt>계정 상태</dt>
+                <dd>{{ selectedCarrierDetail.user?.status || '-' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="detail-metrics">
+            <div>
+              <span>소속 기사</span>
+              <strong>{{ selectedCarrierDetail.drivers.length }}</strong>
+            </div>
+            <div>
+              <span>운송사 승인</span>
+              <strong>{{ selectedCarrierDetail.approvedDrivers.length }}</strong>
+            </div>
+            <div>
+              <span>출입 가능</span>
+              <strong>{{ selectedCarrierDetail.enterableDrivers.length }}</strong>
+            </div>
+            <div>
+              <span>승인 대기 차량</span>
+              <strong>{{ selectedCarrierDetail.waitingVehicles.length }}</strong>
+            </div>
+          </section>
+
+          <section class="detail-section">
+            <h3>소속 기사</h3>
+            <div v-if="selectedCarrierDetail.drivers.length === 0" class="empty-box compact">
+              소속 기사가 없습니다.
+            </div>
+            <div v-else class="mini-table-wrap">
+              <table class="mini-table">
+                <thead>
+                  <tr>
+                    <th>기사</th>
+                    <th>연락처</th>
+                    <th>운송사 승인</th>
+                    <th>출입</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="driver in selectedCarrierDetail.drivers" :key="driver.driverId">
+                    <td>{{ driver.driverName }}</td>
+                    <td>{{ driver.driverContact || '-' }}</td>
+                    <td>{{ driver.isRegistered ? '완료' : '대기' }}</td>
+                    <td>{{ driver.canEnter ? '가능' : '불가' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="detail-section">
+            <h3>등록 차량</h3>
+            <div v-if="selectedCarrierDetail.vehicles.length === 0" class="empty-box compact">
+              등록 차량이 없습니다.
+            </div>
+            <div v-else class="mini-table-wrap">
+              <table class="mini-table">
+                <thead>
+                  <tr>
+                    <th>차량번호</th>
+                    <th>유형</th>
+                    <th>기사</th>
+                    <th>상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="vehicle in selectedCarrierDetail.vehicles" :key="vehicle.vehicleId">
+                    <td>{{ vehicle.plateNumber }}</td>
+                    <td>{{ vehicleTypeLabel(vehicle.vehicleType) }}</td>
+                    <td>{{ getDriver(vehicle.driverId)?.driverName || '-' }}</td>
+                    <td>{{ vehicle.vehicleStatus || '-' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <p class="detail-note">
+            운송사 삭제는 관리자 권한이며, 소속 기사 정보 수정과 탈퇴 처리는 운송사 페이지에서 담당합니다.
+          </p>
+        </template>
+
+        <template v-if="selectedDriverDetail">
+          <section class="detail-section">
+            <h3>기본 정보</h3>
+            <dl class="detail-list">
+              <div>
+                <dt>기사 ID</dt>
+                <dd>{{ selectedDriverDetail.driver.driverId }}</dd>
+              </div>
+              <div>
+                <dt>연락처</dt>
+                <dd>{{ selectedDriverDetail.driver.driverContact || '-' }}</dd>
+              </div>
+              <div>
+                <dt>소속 운송사</dt>
+                <dd>{{ selectedDriverDetail.carrier?.carrierName || '-' }}</dd>
+              </div>
+              <div>
+                <dt>계정 ID</dt>
+                <dd>{{ selectedDriverDetail.user?.loginId || '-' }}</dd>
+              </div>
+              <div>
+                <dt>계정 상태</dt>
+                <dd>{{ selectedDriverDetail.user?.status || selectedDriverDetail.driver.userStatus || '-' }}</dd>
+              </div>
+              <div>
+                <dt>운송사 승인</dt>
+                <dd>{{ selectedDriverDetail.driver.isRegistered ? '완료' : '대기' }}</dd>
+              </div>
+              <div>
+                <dt>관리자 최종 승인</dt>
+                <dd>{{ selectedDriverDetail.driver.canEnter ? '출입 가능' : '출입 불가' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="detail-section">
+            <h3>차량 정보</h3>
+            <div v-if="selectedDriverDetail.vehicles.length === 0" class="empty-box compact">
+              등록 차량이 없습니다.
+            </div>
+            <div v-else class="mini-table-wrap">
+              <table class="mini-table">
+                <thead>
+                  <tr>
+                    <th>차량번호</th>
+                    <th>유형</th>
+                    <th>톤수</th>
+                    <th>상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="vehicle in selectedDriverDetail.vehicles" :key="vehicle.vehicleId">
+                    <td>{{ vehicle.plateNumber }}</td>
+                    <td>{{ vehicleTypeLabel(vehicle.vehicleType) }}</td>
+                    <td>{{ vehicle.tonnage || '-' }}</td>
+                    <td>{{ vehicle.vehicleStatus || '-' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <p class="detail-note">
+            기사 정보 수정, 탈퇴 및 재활성화는 소속 운송사 페이지에서 처리합니다. 관리자는 현재 상태와 연결 정보를 조회합니다.
+          </p>
+        </template>
+      </aside>
+    </div>
   </div>
 </template>
 
@@ -580,6 +890,21 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.link-button {
+  padding: 0;
+  color: var(--blue-700);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
 }
 
 .form-message.error {
@@ -738,8 +1063,167 @@ onUnmounted(() => {
   border-color: #fecaca;
 }
 
+.detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.34);
+}
+
+.detail-panel {
+  width: min(560px, 100%);
+  height: 100%;
+  overflow-y: auto;
+  padding: 22px;
+  background: #ffffff;
+  box-shadow: -18px 0 42px rgba(15, 23, 42, 0.22);
+}
+
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.detail-head p,
+.detail-head h2,
+.detail-section h3,
+.detail-note {
+  margin: 0;
+}
+
+.detail-head p {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.detail-head h2 {
+  margin-top: 4px;
+  color: var(--ink-900);
+  font-size: 22px;
+}
+
+.close-button {
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--ink-700);
+  background: #f8fbfe;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.detail-section {
+  display: grid;
+  gap: 10px;
+  padding-top: 18px;
+}
+
+.detail-section h3 {
+  color: var(--ink-900);
+  font-size: 16px;
+}
+
+.detail-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.detail-list div,
+.detail-metrics div {
+  min-width: 0;
+  padding: 10px;
+  background: #f8fbfe;
+  border: 1px solid var(--line);
+}
+
+.detail-list dt,
+.detail-metrics span {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.detail-list dd {
+  margin: 4px 0 0;
+  color: var(--ink-900);
+  font-weight: 800;
+  word-break: break-word;
+}
+
+.detail-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 18px;
+}
+
+.detail-metrics strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-900);
+  font-size: 20px;
+}
+
+.mini-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+}
+
+.mini-table {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.mini-table th,
+.mini-table td {
+  padding: 8px 9px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.mini-table th {
+  color: var(--ink-500);
+  background: #f6f9fd;
+  font-size: 12px;
+}
+
+.mini-table td {
+  color: var(--ink-700);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.detail-note {
+  margin-top: 18px;
+  padding: 12px;
+  color: var(--ink-600);
+  background: #fff8e6;
+  border: 1px solid #f3d28c;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 @media (max-width: 760px) {
   .delete-timeline li {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-list,
+  .detail-metrics {
     grid-template-columns: 1fr;
   }
 }
