@@ -310,6 +310,10 @@ public class AuthService {
         if (dto.getCarrierId() == null) {
             throw error(HttpStatus.BAD_REQUEST, "소속 운송사는 필수입니다.");
         }
+
+        if (carrierMapper.countApprovedForSignup(dto.getCarrierId()) == 0) {
+            throw error(HttpStatus.BAD_REQUEST, "승인된 운송사만 선택할 수 있습니다.");
+        }
     }
 
     private void validateDriverTractor(RegisterDTO dto) {

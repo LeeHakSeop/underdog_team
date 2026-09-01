@@ -13,6 +13,7 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 .tools/
+.codex*/
 .codex_wbs_work/
 architecture-diagram-texts.json
 simple-architecture-texts.json

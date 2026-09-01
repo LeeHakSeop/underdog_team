@@ -24,6 +24,24 @@ public interface CarrierMapper {
     @Select("""
             SELECT
                 carrier_id AS carrierId,
+                carrier_name AS carrierName
+            FROM carrier
+            WHERE UPPER(TRIM(COALESCE(carrier_status, ''))) IN ('APPROVED', 'ACTIVE')
+            ORDER BY carrier_name ASC, carrier_id ASC
+            """)
+    List<CarrierSignupOptionDTO> signupOptions();
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM carrier
+            WHERE carrier_id = #{carrierId}
+              AND UPPER(TRIM(COALESCE(carrier_status, ''))) IN ('APPROVED', 'ACTIVE')
+            """)
+    int countApprovedForSignup(@Param("carrierId") Long carrierId);
+
+    @Select("""
+            SELECT
+                carrier_id AS carrierId,
                 carrier_name AS carrierName,
                 carrier_contact AS carrierContact,
                 manager_name AS managerName,

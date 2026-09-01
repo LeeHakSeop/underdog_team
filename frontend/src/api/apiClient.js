@@ -14,6 +14,7 @@ const isPublicPath = (path) => {
     '/api/auth/signup',
     '/api/auth/login-id/check',
     '/api/auth/admin-init',
+    '/api/carrier/signup-options',
   ].includes(pathname)
 }
 

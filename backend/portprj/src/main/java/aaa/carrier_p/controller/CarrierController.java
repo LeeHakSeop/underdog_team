@@ -1,6 +1,7 @@
 package aaa.carrier_p.controller;
 
 import aaa.carrier_p.model.CarrierDTO;
+import aaa.carrier_p.model.CarrierSignupOptionDTO;
 import aaa.carrier_p.service.CarrierService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,11 @@ public class CarrierController {
     @GetMapping("/list")
     public List<CarrierDTO> list(){
         return carrierService.list();
+    }
+
+    @GetMapping("/signup-options")
+    public List<CarrierSignupOptionDTO> signupOptions() {
+        return carrierService.signupOptions();
     }
 
     @GetMapping("/detail/{carrierId}")

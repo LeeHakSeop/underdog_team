@@ -2,6 +2,7 @@ package aaa.carrier_p.service;
 
 import aaa.carrier_p.model.CarrierDTO;
 import aaa.carrier_p.model.CarrierMapper;
+import aaa.carrier_p.model.CarrierSignupOptionDTO;
 import aaa.user_p.model.UserMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,10 @@ public class CarrierService {
 
     public List<CarrierDTO> list() {
         return carrierMapper.list();
+    }
+
+    public List<CarrierSignupOptionDTO> signupOptions() {
+        return carrierMapper.signupOptions();
     }
 
     public CarrierDTO detail(Long carrierId) {

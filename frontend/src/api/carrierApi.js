@@ -10,6 +10,13 @@ export const fetchCarriers = () => {
 }
 
 /**
+ * 기사 회원가입용 승인 운송사 선택지 조회
+ */
+export const fetchCarrierSignupOptions = () => {
+  return request('/api/carrier/signup-options')
+}
+
+/**
  * 운송사 상세조회
  */
 export const fetchCarrierById = (carrierId) => {

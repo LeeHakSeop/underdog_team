@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { fetchCarriers } from '@/api/carrierApi'
+import { fetchCarrierSignupOptions } from '@/api/carrierApi'
 
 const props = defineProps({
   modelValue: {
@@ -16,11 +16,7 @@ const loading = ref(false)
 const errorMessage = ref('')
 
 const axleOptions = ['4x2', '6x2', '6x4']
-const approvedCarriers = computed(() =>
-  carriers.value.filter((carrier) =>
-    carrier.carrierStatus === 'APPROVED' || carrier.carrierStatus === 'ACTIVE',
-  ),
-)
+const approvedCarriers = computed(() => carriers.value)
 
 const selectedCarrier = computed(() =>
   approvedCarriers.value.find(
@@ -47,7 +43,7 @@ const loadCarriers = async () => {
   errorMessage.value = ''
 
   try {
-    carriers.value = (await fetchCarriers()) || []
+    carriers.value = (await fetchCarrierSignupOptions()) || []
   } catch (error) {
     errorMessage.value = error.message || '운송사 목록을 불러오지 못했습니다.'
   } finally {
@@ -115,7 +111,7 @@ onMounted(() => {
               :key="carrier.carrierId"
               :value="carrier.carrierId"
             >
-              {{ carrier.carrierName }} · 담당 {{ carrier.managerName || '-' }}
+              {{ carrier.carrierName }}
             </option>
           </select>
           <small v-if="selectedCarrier">운송사 승인 후 관리자 최종 승인이 진행됩니다.</small>
@@ -123,7 +119,7 @@ onMounted(() => {
       </div>
 
       <div v-if="loading" class="loading">운송사 목록을 불러오는 중입니다.</div>
-      <div v-else-if="approvedCarriers.length === 0" class="empty-message">
+      <div v-else-if="!errorMessage && approvedCarriers.length === 0" class="empty-message">
         승인된 운송사가 없습니다. 운송사 승인 후 기사 가입을 진행할 수 있습니다.
       </div>
     </div>

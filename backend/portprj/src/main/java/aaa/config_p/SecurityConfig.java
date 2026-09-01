@@ -59,6 +59,7 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/signup",
                                 "/api/auth/login-id/check",
+                                "/api/carrier/signup-options",
                                 "/api/predictive-maintenance/demo/notifications/kakao/oauth/callback",
                                 "/error"
                         ).permitAll()
