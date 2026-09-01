@@ -347,6 +347,9 @@ public class AuthService {
         vehicle.setUserId(dto.getUserId());
 
         vehicleMapper.insert(vehicle);
+        if (vehicle.getVehicleId() != null) {
+            vehicleMapper.insertTractorSubtype(vehicle.getVehicleId());
+        }
     }
 
     private String normalizeSystemChassisNo(RegisterDTO dto) {

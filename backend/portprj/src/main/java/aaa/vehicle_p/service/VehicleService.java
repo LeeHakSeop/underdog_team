@@ -91,7 +91,12 @@ public class VehicleService {
             dto.setUserId(driver.getUserId());
         }
 
-        return vehicleMapper.insert(dto);
+        int inserted = vehicleMapper.insert(dto);
+        if (inserted == 1 && dto.getVehicleId() != null) {
+            vehicleMapper.insertTrailerSubtype(dto.getVehicleId());
+        }
+
+        return inserted;
     }
 
     @Transactional
@@ -143,12 +148,12 @@ public class VehicleService {
 
         if (vehicle.getVehicleType() != null
                 && !vehicle.getVehicleType().isBlank()
-                && !isTrailer(vehicle.getVehicleType())) {
-            throw new IllegalArgumentException("관리자 최종 승인은 배정된 트레일러만 처리할 수 있습니다.");
+                && !isApprovalTargetVehicle(vehicle.getVehicleType())) {
+            throw new IllegalArgumentException("관리자 최종 승인은 배정된 트랙터 또는 트레일러만 처리할 수 있습니다.");
         }
 
         if (vehicle.getDriverId() == null) {
-            throw new IllegalArgumentException("배정 기사가 없는 트레일러입니다.");
+            throw new IllegalArgumentException("배정 기사가 없는 차량입니다.");
         }
 
         DriverDTO driver = driverMapper.detail(vehicle.getDriverId());
@@ -163,7 +168,7 @@ public class VehicleService {
         if (driver.getCarrierId() != null
                 && vehicle.getCarrierId() != null
                 && !driver.getCarrierId().equals(vehicle.getCarrierId())) {
-            throw new IllegalArgumentException("트레일러와 기사 소속 운송사 정보가 일치하지 않습니다.");
+            throw new IllegalArgumentException("차량과 기사 소속 운송사 정보가 일치하지 않습니다.");
         }
 
         boolean approved = Boolean.TRUE.equals(dto.getIsRegistered());
@@ -217,5 +222,13 @@ public class VehicleService {
 
     private boolean isTrailer(String vehicleType) {
         return "TRAILER".equalsIgnoreCase(vehicleType) || "트레일러".equals(vehicleType);
+    }
+
+    private boolean isTractor(String vehicleType) {
+        return "TRACTOR".equalsIgnoreCase(vehicleType) || "트랙터".equals(vehicleType);
+    }
+
+    private boolean isApprovalTargetVehicle(String vehicleType) {
+        return isTractor(vehicleType) || isTrailer(vehicleType);
     }
 }

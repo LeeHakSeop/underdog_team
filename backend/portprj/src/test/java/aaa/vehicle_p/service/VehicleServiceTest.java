@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +35,7 @@ class VehicleServiceTest {
     void vehicleFinalApprovalAlsoActivatesDriverAndEntryPermission() {
         VehicleDTO vehicle = new VehicleDTO();
         vehicle.setVehicleId(20L);
+        vehicle.setVehicleType("TRAILER");
         vehicle.setDriverId(10L);
 
         DriverDTO driver = new DriverDTO();
@@ -54,6 +56,81 @@ class VehicleServiceTest {
         verify(vehicleMapper).updateApproval(20L, true, "정상");
         verify(driverMapper).updateApprovalByDriverId(10L, true, true);
         verify(userMapper).updateStatus(100L, "ACTIVE");
+    }
+
+    @Test
+    void trailerAssignmentCreatesTrailerSubtype() {
+        VehicleDTO trailer = new VehicleDTO();
+        trailer.setPlateNumber("부산80바9999");
+        trailer.setDriverId(10L);
+        trailer.setCarrierId(5L);
+        trailer.setTonnage("25톤");
+
+        DriverDTO driver = new DriverDTO();
+        driver.setDriverId(10L);
+        driver.setCarrierId(5L);
+        driver.setUserId(100L);
+        driver.setIsRegistered(true);
+        driver.setCanEnter(false);
+
+        when(vehicleMapper.findByPlateNumber("부산80바9999")).thenReturn(null);
+        when(driverMapper.detail(10L)).thenReturn(driver);
+        when(vehicleMapper.insert(trailer)).thenAnswer(invocation -> {
+            trailer.setVehicleId(20L);
+            return 1;
+        });
+
+        assertEquals(1, service.insert(trailer));
+
+        verify(vehicleMapper).insert(trailer);
+        verify(vehicleMapper).insertTrailerSubtype(20L);
+    }
+
+    @Test
+    void tractorFinalApprovalAlsoActivatesDriverAndEntryPermission() {
+        VehicleDTO vehicle = new VehicleDTO();
+        vehicle.setVehicleId(21L);
+        vehicle.setVehicleType("TRACTOR");
+        vehicle.setDriverId(11L);
+
+        DriverDTO driver = new DriverDTO();
+        driver.setDriverId(11L);
+        driver.setUserId(101L);
+
+        VehicleDTO approval = new VehicleDTO();
+        approval.setIsRegistered(true);
+
+        when(vehicleMapper.detail(21L)).thenReturn(vehicle);
+        when(driverMapper.detail(11L)).thenReturn(driver);
+        when(vehicleMapper.updateApproval(21L, true, "정상")).thenReturn(1);
+
+        assertEquals(1, service.updateApproval(21L, approval));
+
+        verify(vehicleMapper).detail(21L);
+        verify(driverMapper).detail(11L);
+        verify(vehicleMapper).updateApproval(21L, true, "정상");
+        verify(driverMapper).updateApprovalByDriverId(11L, true, true);
+        verify(userMapper).updateStatus(101L, "ACTIVE");
+    }
+
+    @Test
+    void finalApprovalRejectsUnsupportedVehicleType() {
+        VehicleDTO vehicle = new VehicleDTO();
+        vehicle.setVehicleId(22L);
+        vehicle.setVehicleType("FORKLIFT");
+
+        VehicleDTO approval = new VehicleDTO();
+        approval.setIsRegistered(true);
+
+        when(vehicleMapper.detail(22L)).thenReturn(vehicle);
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.updateApproval(22L, approval)
+        );
+
+        assertEquals("관리자 최종 승인은 배정된 트랙터 또는 트레일러만 처리할 수 있습니다.", error.getMessage());
+        verify(vehicleMapper).detail(22L);
     }
 
     @Test

@@ -130,6 +130,20 @@ public interface    VehicleMapper {
     )
     int insert(VehicleDTO dto);
 
+    @Insert("""
+        INSERT INTO tractor (vehicle_id)
+        VALUES (#{vehicleId})
+        ON CONFLICT (vehicle_id) DO NOTHING
+        """)
+    int insertTractorSubtype(@Param("vehicleId") Long vehicleId);
+
+    @Insert("""
+        INSERT INTO trailer (vehicle_id)
+        VALUES (#{vehicleId})
+        ON CONFLICT (vehicle_id) DO NOTHING
+        """)
+    int insertTrailerSubtype(@Param("vehicleId") Long vehicleId);
+
     @Update("""
         UPDATE vehicle
         SET
